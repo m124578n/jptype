@@ -213,3 +213,21 @@ kana_stats 的 key 是實際打的 unit（可能是片假名、可能帶 っ 前
 ### 補充：adapter-cloudflare 會把 bundle 寫到 wrangler config 的 `main`
 
 `@sveltejs/adapter-cloudflare` 讀到 `main` 就把輸出寫到那個路徑，先前把 `main` 指向 `src/worker/index.ts` 時，`pnpm build` 直接覆蓋了原始碼（commit `da53142` 內的 entry 其實是被覆蓋後的 bundle，沒有 `scheduled`）。修正：adapter 改讀 `wrangler.adapter.jsonc`（`main` = `.svelte-kit/cloudflare/_worker.js`），真正的 `wrangler.jsonc` 保持 `main` = `src/worker/index.ts`；dev 綁定仍由 `platformProxy.configPath: wrangler.jsonc` 提供。兩個檔的 `assets` 必須一致。
+
+## 2026-09-10 M3 C 歌詞打字
+
+### 歌詞只存本機 localStorage，伺服器完全不碰
+
+採用先前「歌詞打字」決策的方案 1：歌詞由使用者自己貼上，存在 `jptype:songs`（`apps/web/src/lib/songs.ts`，防禦式讀寫同 `storage.ts`），只留在那一台瀏覽器。後端沒有任何歌詞相關的 API、schema 或 migration；`POST /api/runs` 也不送（歌詞文字不得離開瀏覽器），成績只寫 localStorage 的 `recordResult('song:' + id, result)`，因此歌詞模式不進排行榜。專案任何地方（程式碼、測試、fixture、文件）都不放真實歌曲的歌詞，測試一律用自創的假名字串。
+
+### 影片用官方 `youtube-nocookie` iframe 嵌入
+
+`/songs/[id]` 上方放 `https://www.youtube-nocookie.com/embed/<id>`（16:9 responsive、有 `title`、`allow="encrypted-media; picture-in-picture"`）。我們只存 11 碼影片 ID，不存影音、不抓字幕。`parseYoutubeId` 接受 watch / youtu.be / shorts / embed / live 網址與裸 ID，其他（含非 YouTube 網域、`javascript:`）一律拒絕。
+
+### 只收打得出來的假名，漢字請使用者換成讀音
+
+`validateLines` 用跟 tokenizer 同樣的最長匹配檢查每行：假名表（`findKana`，1–2 字切片）、`SYMBOLS`（ー、。？！）、空白、可見 ASCII 以外的字元都回報「第幾行、哪個字」，儲存前擋下來。漢字刻意不支援（規格 §1 不做 IME 變換），UI 提示使用者貼平假名／片假名讀音。`parseLyrics` 一行一題：全形空白轉半形、trim、丟掉空行。
+
+### `PracticeRun` 多一個 `sequence` 選項
+
+歌詞要照順序打，不是隨機抽題，所以 `RunOptions` 加 `sequence?: readonly string[]`：直接使用給定題目（允許相鄰重複），優先於 `count` / `endless`，pool 不使用。原有課程（`count`）與計時賽（`endless`）行為與測試不變。

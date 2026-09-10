@@ -1,8 +1,9 @@
 import { KANA } from './kana.ts';
 import { findLesson } from './lessons.ts';
+import { WORDS_N5 } from './words-n5.ts';
 
-/** Pools selectable in timed mode (spec §7.2). `n5` arrives with M3. */
-export const TIMED_POOL_IDS = ['allhira', 'allkata', 'all'] as const;
+/** Pools selectable in timed mode (spec §7.2). */
+export const TIMED_POOL_IDS = ['allhira', 'allkata', 'all', 'n5'] as const;
 export type TimedPoolId = (typeof TIMED_POOL_IDS)[number];
 
 export const TIMED_SECONDS = [30, 60, 120] as const;
@@ -17,7 +18,8 @@ const ALL_KATA = [...CORE, ...FOREIGN].map((e) => e.kata);
 export const TIMED_POOLS: Readonly<Record<TimedPoolId, readonly string[]>> = {
 	allhira: ALL_HIRA,
 	allkata: ALL_KATA,
-	all: [...ALL_HIRA, ...ALL_KATA]
+	all: [...ALL_HIRA, ...ALL_KATA],
+	n5: WORDS_N5.map((w) => w.kana)
 };
 
 /** Mode string for 弱項練習 (spec §7.3): questions may be any kana, so its pool is `all`. */

@@ -7,7 +7,8 @@ import {
 	timedMode,
 	toKatakana,
 	findLesson,
-	WEAK_MODE
+	WEAK_MODE,
+	WORDS_N5
 } from '../src/index.ts';
 
 describe('TIMED_POOLS', () => {
@@ -28,6 +29,11 @@ describe('TIMED_POOLS', () => {
 	it('all is the union', () => {
 		expect(TIMED_POOLS.all).toHaveLength(TIMED_POOLS.allhira.length + TIMED_POOLS.allkata.length);
 	});
+
+	it('n5 is the 100 word readings (spec §7.2)', () => {
+		expect(TIMED_POOLS.n5).toEqual(WORDS_N5.map((w) => w.kana));
+		expect(TIMED_POOLS.n5).toHaveLength(100);
+	});
 });
 
 describe('mode strings', () => {
@@ -35,6 +41,7 @@ describe('mode strings', () => {
 		expect(timedMode('allhira', 60)).toBe('timed:allhira:60');
 		expect(parseMode('timed:allhira:60')).toEqual({ kind: 'timed', pool: 'allhira', seconds: 60 });
 		expect(parseMode('timed:all:120')).toEqual({ kind: 'timed', pool: 'all', seconds: 120 });
+		expect(parseMode('timed:n5:60')).toEqual({ kind: 'timed', pool: 'n5', seconds: 60 });
 	});
 
 	it('parses the weak-practice mode with the full pool', () => {
@@ -53,7 +60,8 @@ describe('mode strings', () => {
 			'timed',
 			'timed:allhira',
 			'timed:allhira:45',
-			'timed:n5:60',
+			'timed:n5:45',
+			'timed:words:60',
 			'lesson:',
 			'lesson:nope',
 			'lesson:hira-a:1',
@@ -65,6 +73,7 @@ describe('mode strings', () => {
 
 	it('poolForMode returns the timed pool or the lesson units', () => {
 		expect(poolForMode('timed:allkata:30')).toBe(TIMED_POOLS.allkata);
+		expect(poolForMode('timed:n5:120')).toBe(TIMED_POOLS.n5);
 		expect(poolForMode('lesson:kata-ka')).toBe(findLesson('kata-ka')?.units);
 		expect(poolForMode('nope')).toBeUndefined();
 	});

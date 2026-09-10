@@ -78,7 +78,7 @@ describe('getLeaderboard', () => {
 
 	it('returns null for unknown modes without touching the store', async () => {
 		const { store, calls } = fakeStore([]);
-		expect(await getLeaderboard({ store, kv: fakeKv() }, 'timed:n5:60', 'week')).toBeNull();
+		expect(await getLeaderboard({ store, kv: fakeKv() }, 'timed:n5:45', 'week')).toBeNull();
 		expect(calls).toEqual([]);
 	});
 });

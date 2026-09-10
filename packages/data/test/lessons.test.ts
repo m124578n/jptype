@@ -13,7 +13,7 @@ describe('LESSONS', () => {
 		expect([...grouped].sort()).toEqual([...ids].sort());
 	});
 
-	it('follows the spec order: hira rows → all → dakuon → yōon → sokuon → kata … → foreign', () => {
+	it('follows the spec order: hira rows → … → foreign → N5 words → sentences', () => {
 		expect(LESSONS.map((l) => l.id)).toEqual([
 			'hira-a',
 			'hira-ka',
@@ -42,15 +42,17 @@ describe('LESSONS', () => {
 			'kata-all',
 			'kata-dakuon',
 			'kata-youon',
-			'foreign'
+			'foreign',
+			'n5-words',
+			'sentences'
 		]);
 	});
 
-	it('every unit is typeable: made only of table kana, ー or spaces', () => {
+	it('every unit is typeable: made only of table kana, ー、。 or spaces', () => {
 		for (const lesson of LESSONS) {
 			expect(lesson.units.length, lesson.id).toBeGreaterThan(0);
 			for (const unit of lesson.units) {
-				const stripped = toHiragana(unit).replace(/ー/g, '');
+				const stripped = toHiragana(unit).replace(/[ー、。]/g, '');
 				// greedy check: every char (or digraph) must exist in the table
 				const chars = [...stripped];
 				let i = 0;

@@ -46,7 +46,7 @@
 
 ## M3 — 內容擴充（第二階段，另開規格）
 
-- ⬜ N5 單字 100 個（`words-n5.json`，含振假名與中文）、短句 20 句
+- ✅ N5 單字 100 個（`packages/data/src/words-n5.ts`，讀音＋漢字＋中文）、短句 20 句（`sentences.ts`）；新增 `n5-words` / `sentences` 兩課、計時賽 pool `n5`，練習時題目上方顯示漢字與中文
 - ⬜ TTS 音檔批次（Azure Speech ja-JP → R2），認識頁播放鈕
 - ⬜ AI 生成分級文章（離線 + 人工校對）
 - ⬜ 聽打模式（只聽不看）

@@ -76,7 +76,7 @@ owner 要求打字機「答答答」。不用音檔：帶通噪音 35 ms + 180 H
 
 ### 課程頁預先渲染
 
-`/learn/[lessonId]` 用 `prerender = true` + `entries` 列出 28 課，靜態 HTML 由 Workers Static Assets 直接服務；localStorage 讀取放在 `onMount`，SSR 與 hydration 一致。
+`/learn/[lessonId]` 用 `prerender = true` + `entries` 列出所有課程（M1 為 28 課，M3 A 後 30 課），靜態 HTML 由 Workers Static Assets 直接服務；localStorage 讀取放在 `onMount`，SSR 與 hydration 一致。
 
 ### 片假名課程的 intro 卡片
 
@@ -213,3 +213,17 @@ kana_stats 的 key 是實際打的 unit（可能是片假名、可能帶 っ 前
 ### 補充：adapter-cloudflare 會把 bundle 寫到 wrangler config 的 `main`
 
 `@sveltejs/adapter-cloudflare` 讀到 `main` 就把輸出寫到那個路徑，先前把 `main` 指向 `src/worker/index.ts` 時，`pnpm build` 直接覆蓋了原始碼（commit `da53142` 內的 entry 其實是被覆蓋後的 bundle，沒有 `scheduled`）。修正：adapter 改讀 `wrangler.adapter.jsonc`（`main` = `.svelte-kit/cloudflare/_worker.js`），真正的 `wrangler.jsonc` 保持 `main` = `src/worker/index.ts`；dev 綁定仍由 `platformProxy.configPath: wrangler.jsonc` 提供。兩個檔的 `assets` 必須一致。
+
+## 2026-09-10 M3 A 單字與短句
+
+### 單字/短句放 `.ts` 而不是 `words-n5.json`
+
+規格 §7.1 寫 `words-n5.json`。改成 `packages/data/src/words-n5.ts` / `sentences.ts`：package 以 TS 原始碼被消費（無 build step），寫成 TS 才有型別（`WordEntry` / `SentenceEntry`）與註解，也免掉 `resolveJsonModule` 的 readonly 轉型。內容完全自寫（單字為不受著作權保護的基礎詞彙，短句為原創）。
+
+### `Lesson` 多一個 `hints`
+
+`intro` 維持 `KanaEntry[]`，單字/短句課的 `intro` 是空陣列（認識頁自動略過卡片）。題目的漢字與中文改放 `hints?: Record<string, { kanji?: string; zh: string }>`（key = 出題的 kana），由 `TypingArea` 在假名上方以小字顯示；計時賽 `n5` pool 也用同一份 map。
+
+### 計時賽 pool `n5` 也進排行榜
+
+`TIMED_POOL_IDS` 加入 `n5` 後，排行榜與週一 cron 快照從 9 個榜變成 12 個（3 pool × 3 秒數 → 4 × 3）。`TIMED_POOLS.all` 維持「全部假名」，不含單字。

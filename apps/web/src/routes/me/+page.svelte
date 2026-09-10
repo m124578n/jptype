@@ -3,7 +3,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import KanaHeatmap from '$lib/components/KanaHeatmap.svelte';
-	import { formatAccuracy, formatKpm } from '$lib/format';
+	import { formatAccuracy, formatDateTime, formatKpm } from '$lib/format';
 	import {
 		loadKanaStats,
 		loadResults,
@@ -41,6 +41,21 @@
 		if (kind === 'timed') return `${m.nav_timed()} ${a} ${b}s`;
 		return `${m.nav_learn()} ${a ?? ''}`;
 	}
+	/** Unread first; a notice stays visible after it is read, it is a record. */
+	const unreadNotices = $derived(data.notices.filter((n) => n.readAt === null));
+
+	function noticeTitle(kind: string): string {
+		if (kind === 'song_removed') return m.notice_song_removed_title();
+		if (kind === 'suspended') return m.notice_suspended_title();
+		return m.notice_generic_title();
+	}
+
+	function noticeBody(kind: string): string {
+		if (kind === 'song_removed') return m.notice_song_removed_body();
+		if (kind === 'suspended') return m.notice_suspended_body();
+		return '';
+	}
+
 	const dateFmt = new Intl.DateTimeFormat('zh-TW', {
 		month: 'numeric',
 		day: 'numeric',
@@ -62,6 +77,27 @@
 			</p>
 		{/if}
 	</header>
+
+	{#if unreadNotices.length > 0}
+		<section class="stack notices" aria-live="polite">
+			<h2>{m.notice_title()}</h2>
+			<ul class="list">
+				{#each unreadNotices as notice (notice.id)}
+					<li class="card notice">
+						<strong>{noticeTitle(notice.kind)}</strong>
+						<span class="muted small">{formatDateTime(notice.createdAt)}</span>
+						<p>{noticeBody(notice.kind)}</p>
+						{#if notice.message !== ''}
+							<p class="detail">{notice.message}</p>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+			<form method="post" action="?/readNotices">
+				<button type="submit" class="btn">{m.notice_mark_read()}</button>
+			</form>
+		</section>
+	{/if}
 
 	<section class="stats">
 		{#if data.stats}
@@ -148,6 +184,28 @@
 	}
 	.head {
 		gap: var(--space-2);
+	}
+	.notices .list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+	.notice {
+		padding: var(--space-4) var(--space-6);
+		border-color: var(--accent);
+	}
+	.notice p {
+		margin: var(--space-2) 0 0;
+	}
+	.notice .small {
+		font-size: 0.875rem;
+	}
+	.notice .detail {
+		color: var(--fg-muted);
+		word-break: break-word;
 	}
 	.stats {
 		display: grid;

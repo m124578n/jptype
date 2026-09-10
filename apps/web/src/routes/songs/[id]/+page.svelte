@@ -12,14 +12,8 @@
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { SongSyncRun } from '$lib/practice/song-sync.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
-	import {
-		findSong,
-		hasSync,
-		loadSongMode,
-		saveSongMode,
-		type Song,
-		type SongMode
-	} from '$lib/songs';
+	import { hasSync, loadSongMode, saveSongMode, type Song, type SongMode } from '$lib/songs';
+	import { loadOne, setVisibility, toSong, type SongVisibility } from '$lib/songs-api';
 	import {
 		DEFAULT_SETTINGS,
 		loadSettings,
@@ -31,10 +25,20 @@
 
 	let { data } = $props();
 
-	// Songs live in this browser only; read after mount so SSR and hydration agree.
+	// The song comes from the account (signed in), from this browser, or — for a published song —
+	// from the public API; either way it is fetched after mount so SSR and hydration agree.
 	let song = $state.raw<Song | null>(null);
 	let loaded = $state(false);
 	let mode = $state<SongMode>('free');
+
+	/** Publishing state, only meaningful for a song that lives on the server. */
+	let isOwner = $state(false);
+	let remote = $state(false);
+	let visibility = $state<SongVisibility>('private');
+	let removed = $state(false);
+	let consent = $state(false);
+	let publishing = $state(false);
+	let publishError = $state('');
 
 	let run = $state.raw<PracticeRun | null>(null);
 	let sync = $state.raw<SongSyncRun | null>(null);
@@ -64,15 +68,43 @@
 	const syncable = $derived(song !== null && hasSync(song));
 	const active = $derived<PracticeRun | SongSyncRun | null>(mode === 'sync' ? sync : run);
 
+	async function load() {
+		const found = await loadOne(data.id, data.user !== null);
+		song = found ? toSong(found.entry) : null;
+		isOwner = found?.isOwner ?? false;
+		remote = found?.entry.remote ?? false;
+		visibility = found?.entry.visibility ?? 'private';
+		removed = found?.entry.status === 'removed';
+		loaded = true;
+		mode = song && hasSync(song) && loadSongMode() === 'sync' ? 'sync' : 'free';
+		reset();
+	}
+
 	onMount(() => {
 		settings = loadSettings();
 		coarsePointer = window.matchMedia('(pointer: coarse)').matches;
-		const found = findSong(data.id) ?? null;
-		song = found;
-		loaded = true;
-		mode = found && hasSync(found) && loadSongMode() === 'sync' ? 'sync' : 'free';
-		reset();
+		void load();
 	});
+
+	/** Publish / unpublish. Going public needs the rights declaration ticked. */
+	async function togglePublic() {
+		if (!song || !isOwner || !remote) return;
+		const next: SongVisibility = visibility === 'public' ? 'private' : 'public';
+		if (next === 'public' && !consent) {
+			publishError = m.songs_publish_need_consent();
+			return;
+		}
+		publishing = true;
+		publishError = '';
+		const result = await setVisibility(data.id, next, consent);
+		publishing = false;
+		if (!result.ok) {
+			publishError = result.status === 403 ? m.songs_publish_suspended() : m.songs_publish_error();
+			return;
+		}
+		visibility = result.song.visibility;
+		consent = false;
+	}
 
 	onDestroy(clearCountdown);
 
@@ -270,14 +302,59 @@
 			{#if !syncable}
 				<p class="muted small">
 					{m.songs_sync_unavailable()}
-					<a href={resolve('/songs/[id]/timing', { id: data.id })}>{m.songs_timing_link()}</a>
+					{#if isOwner}
+						<a href={resolve('/songs/[id]/timing', { id: data.id })}>{m.songs_timing_link()}</a>
+					{/if}
 				</p>
 			{:else if mode === 'sync'}
 				<p class="muted small">{m.songs_mode_sync_hint()}</p>
 			{:else}
 				<p class="muted small">{m.songs_mode_free_hint()}</p>
 			{/if}
+			{#if !isOwner}
+				<p class="muted small">{m.songs_public_owner()}</p>
+			{/if}
 		</header>
+
+		{#if isOwner && !removed}
+			<section class="card publish stack">
+				<strong>{m.songs_publish_title()}</strong>
+				<p class="muted small">{m.songs_publish_body()}</p>
+				{#if !remote}
+					<p class="muted small">{m.songs_publish_local()}</p>
+				{:else if visibility === 'public'}
+					<p class="row">
+						<span class="ok small">{m.songs_visibility_public()}</span>
+						<button type="button" class="btn" disabled={publishing} onclick={togglePublic}>
+							{m.songs_unpublish_button()}
+						</button>
+					</p>
+				{:else}
+					<label class="row consent">
+						<input type="checkbox" bind:checked={consent} />
+						<span class="small">{m.songs_publish_consent()}</span>
+					</label>
+					<p>
+						<button
+							type="button"
+							class="btn btn--primary"
+							disabled={publishing || !consent}
+							onclick={togglePublic}
+						>
+							{m.songs_publish_button()}
+						</button>
+					</p>
+				{/if}
+				{#if publishError !== ''}
+					<p class="error small" role="alert">{publishError}</p>
+				{/if}
+			</section>
+		{:else if isOwner && removed}
+			<section class="card publish stack">
+				<strong>{m.songs_status_removed()}</strong>
+				<p class="muted small">{m.songs_publish_removed()}</p>
+			</section>
+		{/if}
 
 		<div class="stage">
 			<YouTubePlayer
@@ -447,6 +524,27 @@
 	}
 	.small {
 		font-size: 0.875rem;
+	}
+	.publish {
+		padding: var(--space-4) var(--space-6);
+		gap: var(--space-2);
+	}
+	.publish p {
+		margin: 0;
+	}
+	.consent {
+		align-items: flex-start;
+		gap: var(--space-2);
+		cursor: pointer;
+	}
+	.consent input {
+		margin-top: 0.2em;
+	}
+	.ok {
+		color: var(--accent);
+	}
+	.error {
+		color: var(--danger);
 	}
 	.center {
 		text-align: center;

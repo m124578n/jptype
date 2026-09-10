@@ -349,3 +349,33 @@ App 端**不會 fetch 任何歌詞網站**（先前決策的著作權結論不�
 5. **Admin 判定**：`ADMIN_EMAILS` var（逗號分隔，目前只有 m23568n@gmail.com）比對登入者 email；所有 `/admin` 與 `/api/admin/*` 伺服器端檢查。
 6. **登入只留 Google**：LINE 短中期不做（2026-09-10 移除 provider、按鈕、環境變數）。admin 因此一定有 email 可比對。
 7. 附帶：公開歌的歌詞在伺服器上，之後可做歌曲排行榜（後端可重算）；私有歌成績只存個人紀錄。
+
+## 2026-09-10 M4-1b 實作：歌詞進 D1、時間軸共享、可選公開與 admin
+
+上一條「歌曲功能定案」的實作。migration `0002_songs` 只新增表，沒有動 `runs` / `kana_stats`，所以不會踩到 drizzle-kit 重建 sqlite 表時產生壞索引欄位的 bug。
+
+### 五張新表
+
+- **`songs`**：`id`(ulid)、`ownerId`→`user.id`(cascade)、`videoId`(11 碼)、`title`、`lines`（JSON `{text,start?}[]`）、`visibility`（`private`｜`public`，預設 private）、`publicConsentAt`、`status`（`active`｜`removed`）、`removedReason`、`createdAt`、`updatedAt`；索引 `(ownerId, updatedAt DESC)` 與 `(visibility, status, updatedAt DESC)`。
+- **`song_timings`**：`videoId`、`lineCount`、`lineHashes`（JSON，每行文字的 hex SHA-256）、`starts`（JSON number[]）、`createdBy`（set null）、`useCount`；索引 `videoId`。**沒有任何欄位存歌詞文字。**
+- **`takedown_requests`**：`songId`（set null，歌被刪掉仍留紀錄）、`videoId`、`reporterContact`、`claim`、`status`（`open`｜`removed`｜`rejected`）、`adminNote`、`createdAt`、`resolvedAt`。
+- **`user_strikes`**：`userId` PK、`strikes`、`suspendedAt`。
+- **`notices`**：站內通知（`song_removed` / `suspended`）。Worker 不對外發信，通知只在 `/me` 顯示；`message` 只放資料（歌名、admin 寫的原因），句子本身走 Paraglide。
+
+### 雜湊在哪裡算
+
+`lib/song-hash.ts` 是同構模組（`crypto.subtle.digest('SHA-256')` 在 Worker、瀏覽器、Node 都有）：伺服器用它擋 `POST /api/timings` 的重複，瀏覽器在「貼完歌詞」時用它比對 `GET /api/timings?videoId=` 拿回來的候選。`matchTiming` 要求行數與每一行雜湊全等才算命中（多筆命中時取 `useCount` 高者、再取新者）。所以「找有沒有現成時間軸」這件事**完全不會把歌詞送出去**。
+
+### 三振規則
+
+一次下架（檢舉處理或 admin 直接下架）＝ `songs.status='removed'` ＋ `removedReason` ＋ `visibility` 改回 private ＋ 該 owner `strikes+1` ＋ 一筆 `song_removed` 通知。第三次時寫入 `suspendedAt`、把該 owner **所有** public 歌改回 private、再加一筆 `suspended` 通知；之後 `setVisibility(…, 'public')` 一律 403。第四次以後只累加次數，不重複發停權通知。
+
+### 誰在 client、誰在 server
+
+- **server**：`lib/server/songs/{store,service,route}.ts`。`store.ts` 是介面 + D1 實作，`service.ts` 是純函式（`SongDeps = { store, now?, newId? }`），單元測試用 fake store，跟 `runs/submit.ts` 同一套；`route.ts` 只做 bindings→deps、session→userId、JSON→驗證、`Result`→回應。權限全在 service：非本人的私有歌一律 404（不透露存在）、公開要 `consent:true`、停權擋公開、已下架不能再公開。
+- **client**：`lib/songs-api.ts` 是唯一的 fetch 層，並提供 `loadLibrary` / `loadOne` / `saveEntryLines` / `removeEntry` / `importLocalSongs` 門面 —— 登入走 D1、未登入走 localStorage，頁面只看 `LibraryEntry.remote`。`lib/songs.ts` 仍是未登入者的儲存，以及共用的 `parseLyrics` / `validateLines` / `parseYoutubeId`。
+- 公開歌任何人（含未登入）都能練；只有 owner 能編輯與對時。首次登入時 `/songs` 會提示把本機歌單一鍵搬到帳號（搬成功的才刪本機那份）。
+
+### Admin
+
+`ADMIN_EMAILS`、`PUBLIC_CONTACT_EMAIL` 放在 `wrangler.jsonc` 的 vars（`wrangler types` 會產生到 `Env`，不需要手動加進 `app.d.ts`）。`lib/server/admin.ts` 的 `isAdmin(user, env)` 做小寫比對。`+layout.server.ts` 只吐一個 `isAdmin` boolean 給 nav 用；`/admin` 的 load 與每一支 `/api/admin/*` 都各自再檢查一次。

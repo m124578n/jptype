@@ -12,17 +12,33 @@
 		stampLine,
 		timedCount
 	} from '$lib/song-timing';
-	import { findSong, saveSong, type Song, type SongLine } from '$lib/songs';
+	import { startsOf } from '$lib/song-hash';
+	import type { SongLine } from '$lib/songs';
+	import {
+		loadOne,
+		publishTiming,
+		saveEntryLines,
+		toSong,
+		type LibraryEntry
+	} from '$lib/songs-api';
 	import type { PlayerController } from '$lib/youtube';
 
 	let { data } = $props();
 
-	let song = $state.raw<Song | null>(null);
+	let entry = $state.raw<LibraryEntry | null>(null);
+	const song = $derived(entry === null ? null : toSong(entry));
+	let isOwner = $state(false);
 	let loaded = $state(false);
 	let lines = $state<SongLine[]>([]);
 	let index = $state(0);
 	let dirty = $state(false);
 	let saved = $state(false);
+	let saveFailed = $state(false);
+
+	/** Sharing the timeline sends hashes and seconds only — never the lyric text. */
+	let sharing = $state(false);
+	let shareNote = $state('');
+	let shareError = $state('');
 
 	let controller = $state<PlayerController | undefined>(undefined);
 	let playerFailed = $state(false);
@@ -32,11 +48,14 @@
 	const NUDGE_S = 0.5;
 
 	onMount(() => {
-		const found = findSong(data.id) ?? null;
-		song = found;
-		lines = found ? found.lines.map((l) => ({ ...l })) : [];
-		index = Math.min(firstUntimedIndex(lines), Math.max(0, lines.length - 1));
-		loaded = true;
+		void (async () => {
+			const found = await loadOne(data.id, data.user !== null);
+			entry = found?.entry ?? null;
+			isOwner = found?.isOwner ?? false;
+			lines = found ? found.entry.lines.map((l) => ({ ...l })) : [];
+			index = Math.min(firstUntimedIndex(lines), Math.max(0, lines.length - 1));
+			loaded = true;
+		})();
 	});
 
 	const done = $derived(timedCount(lines));
@@ -84,18 +103,47 @@
 		void focusRow(0);
 	}
 
-	function save() {
-		const current = song;
+	async function save() {
+		const current = entry;
 		if (!current) return;
-		const updated: Song = {
-			...current,
-			lines: lines.map((l) => ({ ...l })),
-			updatedAt: Date.now()
-		};
-		saveSong(updated);
-		song = updated;
+		saveFailed = false;
+		const updated = await saveEntryLines(current, lines);
+		if (!updated) {
+			saveFailed = true;
+			return;
+		}
+		entry = updated;
 		dirty = false;
 		saved = true;
+	}
+
+	/**
+	 * Offer this timeline to anyone who pasted the same reading. Only the video id, one SHA-256 per
+	 * line and the seconds are sent (DECISIONS「歌曲功能定案」item 3), and only a fully timed song
+	 * is worth sharing.
+	 */
+	async function share() {
+		const current = entry;
+		if (!current) return;
+		shareNote = '';
+		shareError = '';
+		if (data.user === null) {
+			shareError = m.songs_timing_share_login();
+			return;
+		}
+		const starts = startsOf(lines);
+		if (starts === null || starts.length < 2) {
+			shareError = m.songs_timing_share_need_all();
+			return;
+		}
+		sharing = true;
+		const result = await publishTiming(current.youtubeId, lines, starts);
+		sharing = false;
+		if (!result) {
+			shareError = m.songs_timing_share_failed();
+			return;
+		}
+		shareNote = m.songs_timing_share_done();
 	}
 
 	function onkeydown(e: KeyboardEvent) {
@@ -129,11 +177,17 @@
 	{#if loaded && !song}
 		<h1>{m.songs_not_found()}</h1>
 		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
+	{:else if loaded && song && !isOwner}
+		<h1>{m.songs_timing_title()} · {song.title}</h1>
+		<p class="muted">{m.songs_timing_not_owner()}</p>
+		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
 	{:else if song}
 		<header class="stack head">
 			<h1>{m.songs_timing_title()} · {song.title}</h1>
 			<p class="muted">{m.songs_timing_lead()}</p>
-			<p class="muted small">{m.songs_timing_privacy()}</p>
+			<p class="muted small">
+				{entry?.remote ? m.songs_timing_privacy_account() : m.songs_timing_privacy()}
+			</p>
 		</header>
 
 		<YouTubePlayer
@@ -216,9 +270,28 @@
 			</a>
 			<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
 			<span class="muted small" aria-live="polite">
-				{#if saved}{m.songs_timing_saved()}{:else if dirty}{m.songs_timing_unsaved()}{:else if done === lines.length && lines.length > 0}{m.songs_timing_done()}{/if}
+				{#if saveFailed}{m.songs_save_failed()}{:else if saved}{m.songs_timing_saved()}{:else if dirty}{m.songs_timing_unsaved()}{:else if done === lines.length && lines.length > 0}{m.songs_timing_done()}{/if}
 			</span>
 		</div>
+
+		<section class="stack share">
+			<div class="row bar">
+				<button
+					type="button"
+					class="btn"
+					disabled={sharing || dirty || done !== lines.length || lines.length < 2}
+					onclick={share}
+				>
+					{m.songs_timing_share()}
+				</button>
+				<span class="muted small" aria-live="polite">
+					{#if shareError !== ''}<span class="error">{shareError}</span>{:else if shareNote !== ''}
+						<span class="ok">{shareNote}</span>
+					{/if}
+				</span>
+			</div>
+			<p class="muted small">{m.songs_timing_share_hint()}</p>
+		</section>
 	{/if}
 </div>
 
@@ -228,6 +301,18 @@
 	}
 	.head {
 		gap: var(--space-2);
+	}
+	.share {
+		gap: var(--space-2);
+	}
+	.share p {
+		margin: 0;
+	}
+	.ok {
+		color: var(--accent);
+	}
+	.error {
+		color: var(--danger);
 	}
 	.small {
 		font-size: 0.875rem;

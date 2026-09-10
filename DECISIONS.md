@@ -96,3 +96,28 @@ owner 提議：貼 YouTube 網址 → 抓歌詞（字幕）→ 存歌詞與網�
 3. 只存網址與時間軸，不存歌詞文字；打字內容由使用者端即時從 YouTube 字幕取得、不經我們的伺服器（仍有灰色地帶，需再查 YouTube ToS）。
 
 補充（owner 問「直接嵌入 YouTube 也不行嗎」）：**嵌入影片本身可以。** YouTube 官方 iframe 播放器就是給網站嵌入用的，權利由 YouTube 與權利人處理，我們只放播放器、不存影音。有疑慮的只有「歌詞文字」存在我們伺服器並對所有人顯示這一層。建議做法：嵌 YouTube 播放器 + 歌詞由使用者自己貼、只存在自己的瀏覽器或帳號（方案 1）；公有領域 / CC 曲目才進共用曲庫（方案 2）。M3 開規格時以此為基準。
+
+## 2026-09-10 M2 ② 登入
+
+### Better Auth 實例 per-request 建立
+
+Workers 的綁定（D1、secrets）只在 request 時可得，所以 `getAuth(env, origin)` 在 hooks 裡以 env 物件 + origin 為 key 快取實例（WeakMap），不是模組頂層單例。`baseURL` 取自 request origin，本機、preview、正式站不用改設定。
+
+### Auth schema 由 CLI 產生
+
+`pnpm --filter web auth:schema` 用 `auth.cli.ts`（stub，不連 DB）跑 `@better-auth/cli generate` 輸出 `src/lib/server/db/auth-schema.ts`，不手寫。`user.plan` 以 `additionalFields` 預留（規格 §12）。CLI 帶進 `@prisma/client`、`better-sqlite3` 的 build script，已在 workspace 設定明確拒絕。
+
+### drizzle-kit 重建 sqlite 表時把 `sql\`DESC\`` 索引寫壞
+
+`0001_auth.sql` 由 drizzle-kit 產生後，`runs_lb` / `runs_user` 索引被輸出成 `` `"score" DESC` ``（整串當欄位名）。已手動修成 `` `score` DESC ``。之後任何會重建 `runs` 表的 migration 都要檢查這兩行。
+
+### pnpm 12 在 Windows 的長路徑問題
+
+`@better-auth/drizzle-adapter` 的 peer 後綴讓 virtual store 路徑超過 260 字元，junction 變成無效。`pnpm-workspace.yaml` 設 `peersSuffixMaxLength: 40` 把後綴改成短 hash。
+
+### 端到端登入需要 owner 提供的東西 **[待確認]**
+
+- Google Cloud Console → OAuth 2.0 Client（Web）：`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`，Authorized redirect URI 加 `http://localhost:5180/api/auth/callback/google`（本機）與正式網域的 `/api/auth/callback/google`。
+- LINE Developers → LINE Login channel：`LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET`，Callback URL 同樣加 `/api/auth/callback/line`，開啟 email 權限申請（可選）。
+- 填進 `apps/web/.dev.vars`（本機，git 忽略）；正式站用 `wrangler secret put`（部署時再說）。
+  沒有憑證時 `/login` 頁可開、`/api/auth/*` 端點正常、DB 寫入正常（verification 表有 state 記錄），按登入會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，屬預期。

@@ -33,8 +33,8 @@
 
 ## M2 — 帳號、計時賽、排行榜
 
-- ⬜ Better Auth + Drizzle/D1 adapter，Google、LINE OAuth；`/login`
-- ⬜ Better Auth 四張表 + `runs.userId` FK migration
+- 🔨 Better Auth + Drizzle/D1 adapter，Google、LINE OAuth；`/login`、header 登入/登出 ✅；端到端登入待 owner 提供 Google / LINE 的 client ID / secret（見 DECISIONS）
+- ✅ Better Auth 四張表（CLI 產生）+ `runs.userId` / `kana_stats.userId` FK，migration `0001_auth`
 - ⬜ `POST /api/runs`：session → Turnstile → text 合法性 → `replay` 重算 → anticheat → 寫 D1 + R2 → kana_stats → KV 失效
 - ⬜ Anticheat 規則（§9.5 六條）
 - 🔨 計時賽 `/timed`：pool（平假名全 / 片假名全 / 全部）× 30/60/120 秒，第一鍵起算，時間到自動結算 ✅；結束自動送分（登入者）待 ③ API

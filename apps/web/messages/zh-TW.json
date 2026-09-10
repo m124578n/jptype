@@ -5,6 +5,8 @@
 	"nav_timed": "計時賽",
 	"nav_leaderboard": "排行榜",
 	"nav_coming_soon": "即將推出",
+	"nav_login": "登入",
+	"nav_logout": "登出",
 	"footer_note": "羅馬字輸入練習・全部判定在瀏覽器完成",
 
 	"home_tagline": "給台灣日文初學者的日文打字練習",
@@ -61,5 +63,13 @@
 	"timed_start_hint": "按下第一個鍵才開始計時。",
 	"timed_cancel": "取消",
 	"timed_again": "再來一場",
-	"timed_change_settings": "改範圍或時間"
+	"timed_change_settings": "改範圍或時間",
+
+	"login_title": "登入",
+	"login_lead": "登入後計時賽成績會進排行榜，練習紀錄也會跨裝置同步。",
+	"login_with_google": "使用 Google 登入",
+	"login_with_line": "使用 LINE 登入",
+	"login_failed": "登入失敗，請再試一次。",
+	"login_note": "我們只取得你的名稱與頭像，不會發文或讀取聯絡人。",
+	"login_already": "你已經以 {name} 登入。"
 }

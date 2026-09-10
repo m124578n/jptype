@@ -13,3 +13,10 @@ catalog:
 allowBuilds:
   workerd: true
   esbuild: true
+  # pulled in by @better-auth/cli; never run on Workers, no need to build
+  '@prisma/client': false
+  better-sqlite3: false
+
+# Windows MAX_PATH: @better-auth/drizzle-adapter has a ~200-char peer suffix, which pushes the
+# virtual-store path past 260 chars and leaves dangling junctions. Hash long peer suffixes.
+peersSuffixMaxLength: 40

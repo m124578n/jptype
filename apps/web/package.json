@@ -15,17 +15,21 @@
 		"test:watch": "vitest",
 		"gen": "wrangler types",
 		"i18n:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
+		"auth:schema": "better-auth generate --config ./auth.cli.ts --output ./src/lib/server/db/auth-schema.ts --yes && prettier --write ./src/lib/server/db/auth-schema.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate:local": "wrangler d1 migrations apply DB --local",
 		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
+		"@better-auth/drizzle-adapter": "^1.7.3",
 		"@jptype/data": "workspace:*",
 		"@jptype/engine": "workspace:*",
+		"better-auth": "1.7.3",
 		"drizzle-orm": "^0.45.1"
 	},
 	"devDependencies": {
+		"@better-auth/cli": "1.4.21",
 		"@inlang/paraglide-js": "^2.18.2",
 		"@sveltejs/adapter-cloudflare": "^7.2.8",
 		"@sveltejs/kit": "^2.63.0",

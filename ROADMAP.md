@@ -48,7 +48,7 @@
 
 - 🔨 A. N5 單字 100 個 + 短句 20 句（`@jptype/data`，含振假名與中文）→ 課程 8、9 與計時賽 pool `n5`
 - ✅ B. 瀏覽器 TTS（`lib/speech.ts`，Web Speech API 本機 ja-JP 語音，零網路零 assets）：認識頁卡片播放鈕 + 聽打模式 `/listen`（計時賽題庫 × 20 題、自動念題、Tab 重播、答對或連錯兩鍵才短暫揭曉；成績只存本機）
-- 🔨 C. 歌詞打字 `/songs`：嵌 YouTube 播放器 + 使用者自貼假名歌詞，只存 localStorage，不進共用曲庫
+- ✅ C. 歌詞打字 `/songs`：嵌 youtube-nocookie 官方播放器（只存 11 字元影片 id）+ 使用者自貼假名歌詞（漢字會被擋下並指出行號），只存 localStorage、不送伺服器、不進榜；`/songs/[id]` 逐行打（前後行淡顯）
 - ⬜ Azure Speech 批次音檔 → R2（需要 owner 的 Azure key；瀏覽器 TTS 先頂著）
 - ⬜ AI 生成分級文章（離線 + 人工校對，需要 API key）
 - ⬜ 多人競速房（Durable Objects，另開規格）
@@ -61,6 +61,6 @@
 
 （owner 提出、尚未排程的想法。格式：日期 · 一句話 · 備註）
 
-- 2026-09-10 · 歌詞打字：貼 YouTube 網址 → 嘗試抓歌詞 → 存歌詞＋網址 → 提供「選歌打」，慢慢擴充曲庫（owner）· 著作權疑慮見 DECISIONS.md「歌詞打字」，M3 再議
+- 2026-09-10 · 歌詞打字：貼 YouTube 網址 → 嘗試抓歌詞 → 存歌詞＋網址 → 提供「選歌打」，慢慢擴充曲庫（owner）· 已用方案 1（使用者自帶、只存本機）實作，見 M3 C 與 DECISIONS.md「M3 C」；共用曲庫（公有領域 / CC）仍未做
 - 2026-09-10 · 打字音效可選不同機種（機械鍵盤 / 打字機 / 靜音）· 先做打字機一種
 - 2026-09-10 · 若批次腳本改用 Python，用 uv 管 `scripts/py/` 獨立專案 · 目前全 TS，不需要

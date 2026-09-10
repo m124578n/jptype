@@ -104,3 +104,36 @@ describe('PracticeRun – endless (timed)', () => {
 		expect(run.elapsed(1500)).toBe(500);
 	});
 });
+
+describe('PracticeRun – sequence (song lines)', () => {
+	it('uses the given questions verbatim and in order, repeats included', () => {
+		const lines = ['あい', 'あい', 'うえ'];
+		const run = new PracticeRun(lines, { sequence: lines });
+		expect(run.questions).toEqual(lines);
+		expect(run.total).toBe(3);
+		let now = 0;
+		[...('ai' + 'ai' + 'ue')].forEach((k) => run.press(k, (now += 50)));
+		expect(run.finished).toBe(true);
+		expect(run.text).toBe('あい\nあい\nうえ');
+		expect(replay(run.text, run.log, run.durationMs)).toEqual(run.result());
+	});
+
+	it('takes precedence over count and endless', () => {
+		const run = new PracticeRun(['か'], {
+			sequence: ['き'],
+			count: 5,
+			endless: true,
+			rng: fixedRng
+		});
+		expect(run.questions).toEqual(['き']);
+		expect(run.total).toBe(1);
+		run.press('k', 0);
+		run.press('i', 10);
+		expect(run.finished).toBe(true);
+		expect(run.questions).toEqual(['き']);
+	});
+
+	it('is finished immediately for an empty sequence', () => {
+		expect(new PracticeRun([], { sequence: [] }).finished).toBe(true);
+	});
+});

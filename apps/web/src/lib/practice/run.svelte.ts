@@ -18,6 +18,11 @@ export interface RunOptions {
 	count?: number;
 	/** Keep generating questions until `stop()` is called (timed mode). */
 	endless?: boolean;
+	/**
+	 * Use exactly these questions, in this order (song mode: lyric lines).
+	 * Takes precedence over `count` / `endless`; the pool is then unused.
+	 */
+	sequence?: readonly string[];
 	rng?: Rng;
 }
 
@@ -49,10 +54,14 @@ export class PracticeRun {
 
 	constructor(pool: readonly string[], options: RunOptions = {}) {
 		this.pool = pool;
-		this.endless = options.endless ?? false;
+		this.endless = options.sequence ? false : (options.endless ?? false);
 		this.rng = options.rng ?? Math.random;
-		const count = this.endless ? 1 : (options.count ?? QUESTIONS_PER_RUN);
-		this.questions.push(...pickQuestions(pool, count, this.rng));
+		if (options.sequence) {
+			this.questions.push(...options.sequence);
+		} else {
+			const count = this.endless ? 1 : (options.count ?? QUESTIONS_PER_RUN);
+			this.questions.push(...pickQuestions(pool, count, this.rng));
+		}
 		this.session = new TypingSession(this.questions[0] ?? '');
 		this.finished = this.questions.length === 0;
 	}

@@ -9,14 +9,20 @@
 		wrongUnits,
 		newBest = false,
 		onpracticeWrong,
-		onretry
+		onretry,
+		retryLabel = m.result_retry(),
+		showPracticeWrong = true
 	}: {
 		result: ScoreResult;
 		wrongUnits: string[];
 		newBest?: boolean;
 		onpracticeWrong: () => void;
 		onretry: () => void;
+		retryLabel?: string;
+		showPracticeWrong?: boolean;
 	} = $props();
+
+	const offerWrong = $derived(showPracticeWrong && wrongUnits.length > 0);
 </script>
 
 <section class="stack result" aria-labelledby="result-title">
@@ -54,18 +60,13 @@
 	</div>
 
 	<div class="row actions">
-		{#if wrongUnits.length > 0}
+		{#if offerWrong}
 			<button type="button" class="btn btn--primary" onclick={onpracticeWrong}>
 				{m.result_practice_wrong()}
 			</button>
 		{/if}
-		<button
-			type="button"
-			class="btn"
-			class:btn--primary={wrongUnits.length === 0}
-			onclick={onretry}
-		>
-			{m.result_retry()}
+		<button type="button" class="btn" class:btn--primary={!offerWrong} onclick={onretry}>
+			{retryLabel}
 		</button>
 		<a class="btn" href={resolve('/learn')}>{m.lesson_back_to_map()}</a>
 	</div>

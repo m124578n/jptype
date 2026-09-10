@@ -143,3 +143,20 @@ describe('tokenize – edge cases', () => {
 		expect(romaji('ん5', 0)).not.toContain('n');
 	});
 });
+
+describe('tokenize – "\n" question boundary', () => {
+	it('produces no unit and separates questions', () => {
+		expect(kanas('か\nき')).toEqual(['か', 'き']);
+		expect(tokenize('か\n\nき\n')).toHaveLength(2);
+	});
+
+	it('blocks っ merging and the bare-n rule across the boundary', () => {
+		expect(kanas('っ\nか')).toEqual(['っ', 'か']);
+		expect(romaji('ん\nか', 0)).toEqual(['nn', "n'", 'xn']);
+	});
+
+	it('equals the concatenation of tokenizing each question alone', () => {
+		const questions = ['がっこう', 'かんたん', 'マッチ', 'こんにちは', 'ん', 'っ'];
+		expect(tokenize(questions.join('\n'))).toEqual(questions.flatMap((q) => tokenize(q)));
+	});
+});

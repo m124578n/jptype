@@ -145,3 +145,12 @@ describe('TypingSession – ignored input', () => {
 		expect(s.progress.typed).toBe('');
 	});
 });
+
+describe('TypingSession – joined questions', () => {
+	it('types across a "\n" boundary without any extra key', () => {
+		const s = new TypingSession('か\nき');
+		const results = typeAll(s, 'kaki');
+		expect(results.every((r) => r.ok)).toBe(true);
+		expect(results.at(-1)?.finished).toBe(true);
+	});
+});

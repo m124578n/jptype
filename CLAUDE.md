@@ -28,3 +28,8 @@ Read `jp-typing-spec.md` first; §1 is a list of hard decisions, do not change t
 
 - Never run `wrangler deploy`, create Cloudflare resources, or put secrets from a Claude session. The owner verifies locally first and says when to deploy.
 - The GitHub Actions `deploy.yml` (push to `main`) is intentionally left enabled.
+
+## Local dev gotchas (Windows)
+
+- `pnpm dev` (Vite + adapter-cloudflare platform proxy) keeps `apps/web/.svelte-kit/cloudflare` open through workerd; `pnpm build` then fails with `EBUSY` on that folder. Stop the dev server before building (or run them at different times). Kill only the PID that owns the dev port — other side projects on this machine run their own wrangler/vite.
+- `wrangler types --check` gives different hashes between Git Bash and PowerShell; `build` regenerates types instead of checking.

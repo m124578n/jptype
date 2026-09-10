@@ -7,6 +7,7 @@
 
 	let { children } = $props();
 	const isLearn = $derived(page.url.pathname.startsWith('/learn'));
+	const isTimed = $derived(page.url.pathname.startsWith('/timed'));
 </script>
 
 <svelte:head>
@@ -18,7 +19,7 @@
 	<nav class="container container--wide row" aria-label="主要">
 		<a class="brand" href={resolve('/')}>{m.app_name()}</a>
 		<a href={resolve('/learn')} aria-current={isLearn ? 'page' : undefined}>{m.nav_learn()}</a>
-		<span class="muted soon" title={m.nav_coming_soon()}>{m.nav_timed()}</span>
+		<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
 		<span class="muted soon" title={m.nav_coming_soon()}>{m.nav_leaderboard()}</span>
 	</nav>
 </header>

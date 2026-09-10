@@ -47,5 +47,19 @@
 	"result_wrong_none": "全部一次打對，漂亮。",
 	"result_practice_wrong": "加強練習錯字",
 	"result_retry": "再練一次",
-	"result_new_best": "新紀錄"
+	"result_new_best": "新紀錄",
+
+	"timed_title": "計時賽",
+	"timed_lead": "選範圍和時間，連續出題直到時間到。登入後成績會進排行榜。",
+	"timed_pool_label": "範圍",
+	"timed_pool_allhira": "平假名全部",
+	"timed_pool_allkata": "片假名全部",
+	"timed_pool_all": "全部",
+	"timed_seconds_label": "時間",
+	"timed_seconds_option": "{seconds} 秒",
+	"timed_start": "開始",
+	"timed_start_hint": "按下第一個鍵才開始計時。",
+	"timed_cancel": "取消",
+	"timed_again": "再來一場",
+	"timed_change_settings": "改範圍或時間"
 }

@@ -11,12 +11,20 @@ const SOKUON_PREFIXES = ['xtu', 'ltu', 'xtsu', 'ltsu'];
 /** Spellings that ん always accepts (spec §6.3). */
 const HATSUON_FIXED = ['nn', "n'", 'xn'];
 
+/**
+ * Question separator: produces no unit and blocks っ / ん context across it, so
+ * `tokenize(a + '\n' + b)` equals `[...tokenize(a), ...tokenize(b)]`. Lets a run of
+ * several questions be replayed server-side as one text.
+ */
+export const BOUNDARY = '\n';
+
 /** A raw token before context rules are applied. */
 interface Raw {
 	kana: string;
 	/** True when the token came from the kana table (as opposed to symbol / space / ASCII). */
 	isKana: boolean;
 	romaji: string[];
+	boundary?: true;
 }
 
 /** Step 1 (spec §6.2.1): longest-match split into raw tokens. */
@@ -40,7 +48,8 @@ function split(text: string): Raw[] {
 
 		const ch = chars.slice(i, i + 1).join('');
 		const symbol = SYMBOLS[ch];
-		if (symbol !== undefined) out.push({ kana: ch, isKana: false, romaji: [symbol] });
+		if (ch === BOUNDARY) out.push({ kana: ch, isKana: false, romaji: [], boundary: true });
+		else if (symbol !== undefined) out.push({ kana: ch, isKana: false, romaji: [symbol] });
 		else if (ch === ' ' || ch === '　') out.push({ kana: ch, isKana: false, romaji: [' '] });
 		else out.push({ kana: ch, isKana: false, romaji: [ch.toLowerCase()] });
 		i += 1;
@@ -78,21 +87,31 @@ function hatsuonRomaji(nextRomaji: string[] | undefined): string[] {
 export function tokenize(text: string): Unit[] {
 	const raws = split(text);
 
-	// Pass 1: merge っ into the following unit.
-	const merged: Unit[] = [];
+	// Pass 1: merge っ into the following unit (boundaries never merge: they are not kana).
+	const merged: Raw[] = [];
 	for (let i = 0; i < raws.length; i++) {
 		const r = raws[i] as Raw;
 		const next = raws[i + 1];
 		if (SOKUON.has(r.kana) && acceptsSokuon(next)) {
-			merged.push({ kana: r.kana + next.kana, romaji: sokuonRomaji(next.romaji) });
+			merged.push({ kana: r.kana + next.kana, isKana: true, romaji: sokuonRomaji(next.romaji) });
 			i += 1;
 			continue;
 		}
-		merged.push({ kana: r.kana, romaji: r.romaji });
+		merged.push(r);
 	}
 
-	// Pass 2: resolve ん against the (already merged) following unit.
-	return merged.map((u, i) =>
-		HATSUON.has(u.kana) ? { kana: u.kana, romaji: hatsuonRomaji(merged[i + 1]?.romaji) } : u
-	);
+	// Pass 2: resolve ん against the following unit (a boundary counts as "nothing follows"),
+	// then drop boundaries.
+	const units: Unit[] = [];
+	for (let i = 0; i < merged.length; i++) {
+		const u = merged[i] as Raw;
+		if (u.boundary) continue;
+		const next = merged[i + 1];
+		const nextRomaji = next && !next.boundary ? next.romaji : undefined;
+		units.push({
+			kana: u.kana,
+			romaji: HATSUON.has(u.kana) ? hatsuonRomaji(nextRomaji) : u.romaji
+		});
+	}
+	return units;
 }

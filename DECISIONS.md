@@ -59,22 +59,40 @@ Better Auth CLI 產生 `user/session/account/verification` schema 時再加 FK�
 ## 2026-09-10 M1
 
 ### 設計系統來源
+
 用 ui-ux-pro-max skill 產生初稿（`design-system/jptype/MASTER.md`），資料庫建議的字型（Baloo 2 / Comic Neue）與配色（教育 teal + amber）和規格 §10「不要遊戲化」衝突，改為 Noto Sans JP + 系統字、中性灰階 + 單一 teal 主色、錯誤紅只用在錯鍵。Google Fonts 以 `<link>` 載入（瀏覽器端，不違反「runtime 不呼叫外部 API」；若要完全自架可改 M2+）。
 
 ### 打字音效用 Web Audio 合成
+
 owner 要求打字機「答答答」。不用音檔：帶通噪音 35 ms + 180 Hz 低音當擊鍵聲，錯鍵用 500 Hz 低頻悶響 70 ms，完成一課敲一聲鈴。AudioContext 在第一次按鍵才建立（符合瀏覽器自動播放政策）。預設開、音量 0.6、可關、存 localStorage。**[待確認]** 音色是否符合期待；若要更「機械」可調頻率/時長。
 
 ### 練習題 20 題、不連續重複
+
 規格「隨機出 20 題，可重複」。實作允許重複但不連續出同一題（pool > 1 時），避免同一假名連打兩次的無聊感。「加強練習錯字」的題庫 = 錯字 ×3 + 其餘課程假名 ×1。
 
 ### 一課的計時與 KPM
+
 `durationMs` = 第一鍵到最後一鍵；題與題之間的切換時間包含在內（沒有「讀題暫停」）。每題一個 `TypingSession`，log 合併後用 engine 的 `score()`。
 
 ### 課程頁預先渲染
+
 `/learn/[lessonId]` 用 `prerender = true` + `entries` 列出 28 課，靜態 HTML 由 Workers Static Assets 直接服務；localStorage 讀取放在 `onMount`，SSR 與 hydration 一致。
 
 ### 片假名課程的 intro 卡片
+
 卡片主字顯示片假名、副字顯示平假名（平假名課則相反）；資料仍是同一個 `KanaEntry`。
 
 ### ESLint svelte 規則採用
+
 `svelte/no-navigation-without-resolve`：所有 `href` 走 `resolve()`（base path 安全）。`svelte/prefer-svelte-reactivity`：衍生值裡不用 `Set`，改陣列去重。
+
+## 2026-09-10 點子：歌詞打字（M3）
+
+owner 提議：貼 YouTube 網址 → 抓歌詞（字幕）→ 存歌詞與網址 → 選歌打字，逐步擴充曲庫。
+技術上可行（YouTube 字幕軌、或第三方歌詞 API），但**著作權不因來源是 YouTube 而消失**：把歌詞存進 D1 再顯示給所有使用者打，等同重製與公開傳輸，原規格 §11 M3 也限定「僅公有領域 / 使用者自帶內容」。**[待確認]** 建議三選一或組合：
+
+1. 使用者自帶：貼網址後由使用者自己貼歌詞，只存在該使用者的瀏覽器（localStorage / 自己帳號），不進共用曲庫。
+2. 只收公有領域或 CC 授權曲目（童謠、民謠、校歌類），可進共用曲庫。
+3. 只存網址與時間軸，不存歌詞文字；打字內容由使用者端即時從 YouTube 字幕取得、不經我們的伺服器（仍有灰色地帶，需再查 YouTube ToS）。
+
+補充（owner 問「直接嵌入 YouTube 也不行嗎」）：**嵌入影片本身可以。** YouTube 官方 iframe 播放器就是給網站嵌入用的，權利由 YouTube 與權利人處理，我們只放播放器、不存影音。有疑慮的只有「歌詞文字」存在我們伺服器並對所有人顯示這一層。建議做法：嵌 YouTube 播放器 + 歌詞由使用者自己貼、只存在自己的瀏覽器或帳號（方案 1）；公有領域 / CC 曲目才進共用曲庫（方案 2）。M3 開規格時以此為基準。

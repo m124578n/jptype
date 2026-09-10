@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { replay } from '@jptype/engine';
 import { PracticeRun } from './run.svelte.ts';
 
 const fixedRng = () => 0; // always the first pool item
 
-describe('PracticeRun', () => {
+describe('PracticeRun – fixed count', () => {
 	it('walks through every question and finishes', () => {
-		const run = new PracticeRun(['か'], 3, fixedRng);
+		const run = new PracticeRun(['か'], { count: 3, rng: fixedRng });
 		expect(run.total).toBe(3);
 		expect(run.current).toBe('か');
 		expect(run.nextKey).toBe('k');
@@ -21,7 +22,7 @@ describe('PracticeRun', () => {
 	});
 
 	it('tracks wrong units by first-attempt errors and exposes nextKey from the hint', () => {
-		const run = new PracticeRun(['し'], 2, fixedRng);
+		const run = new PracticeRun(['し'], { count: 2, rng: fixedRng });
 		expect(run.press('x', 0)?.ok).toBe(false);
 		expect(run.lastWrongAt).toBe(0);
 		expect(run.nextKey).toBe('s');
@@ -43,15 +44,63 @@ describe('PracticeRun', () => {
 	});
 
 	it('ignores non-typing keys and presses after finishing', () => {
-		const run = new PracticeRun(['あ'], 1, fixedRng);
+		const run = new PracticeRun(['あ'], { count: 1, rng: fixedRng });
 		expect(run.press('Shift', 0)).toBeNull();
 		expect(run.durationMs).toBe(0);
+		expect(run.started).toBe(false);
 		run.press('a', 5);
 		expect(run.finished).toBe(true);
 		expect(run.press('a', 6)).toBeNull();
 	});
 
 	it('is finished immediately for an empty pool', () => {
-		expect(new PracticeRun([], 5).finished).toBe(true);
+		expect(new PracticeRun([], { count: 5 }).finished).toBe(true);
+	});
+
+	it('text + log replay to the same score on the engine (server-side verification path)', () => {
+		const run = new PracticeRun(['がっこう', 'かんたん'], { count: 4, rng: fixedRng });
+		// fixedRng picks index 0 but never the same twice in a row → alternates
+		expect(run.questions).toEqual(['がっこう', 'かんたん', 'がっこう', 'かんたん']);
+		const keys = 'gakkou' + 'kantann' + 'gakkou' + 'kantann';
+		[...keys].forEach((k, i) => run.press(k, i * 50));
+		expect(run.finished).toBe(true);
+		expect(run.text).toBe('がっこう\nかんたん\nがっこう\nかんたん');
+		expect(replay(run.text, run.log, run.durationMs)).toEqual(run.result());
+	});
+});
+
+describe('PracticeRun – endless (timed)', () => {
+	it('keeps producing questions until stopped and keeps the partial question', () => {
+		const run = new PracticeRun(['か', 'き'], { endless: true, rng: fixedRng });
+		expect(run.total).toBe(Infinity);
+		let now = 0;
+		for (let i = 0; i < 5; i++) {
+			run.press('k', (now += 100));
+			run.press(run.nextKey, (now += 100));
+		}
+		expect(run.index).toBe(5);
+		expect(run.questions).toHaveLength(6);
+		run.press('k', (now += 100)); // half of the 6th question
+		run.stop(now + 400);
+		expect(run.finished).toBe(true);
+		expect(run.durationMs).toBe(now + 400 - 100);
+		expect(run.log).toHaveLength(11);
+		expect(run.text.split('\n')).toHaveLength(6);
+		expect(run.press('a', now + 500)).toBeNull();
+		expect(replay(run.text, run.log, run.durationMs)).toEqual(run.result());
+	});
+
+	it('stop() before any key yields an empty result', () => {
+		const run = new PracticeRun(['か'], { endless: true, rng: fixedRng });
+		run.stop(1000);
+		expect(run.finished).toBe(true);
+		expect(run.result()).toMatchObject({ correctKeys: 0, wrongKeys: 0, score: 0 });
+	});
+
+	it('elapsed() is 0 before the first key and counts from it afterwards', () => {
+		const run = new PracticeRun(['か'], { endless: true, rng: fixedRng });
+		expect(run.elapsed(5000)).toBe(0);
+		run.press('k', 1000);
+		expect(run.elapsed(1500)).toBe(500);
 	});
 });

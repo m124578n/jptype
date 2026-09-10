@@ -25,7 +25,7 @@
 - ✅ `/learn/[lessonId]`：認識頁（卡片、標準拼法、鍵盤高亮）→ 練習（20 題）→ 結果頁（KPM、準確率、錯字列表、加強練習）；TTS 播放鈕留 M3
 - ✅ `TypingArea` 元件：逐鍵判定、目前 unit 高亮、羅馬字提示（可關）、錯鍵閃紅震動 160ms、`keydown` 全域監聽
 - ✅ 打字音效：打字機「答答答」（Web Audio 合成、不用音檔），正確/錯誤音不同，可關閉、記憶設定（owner 2026-09-10）
-- 🔨 打字手感（待 owner 地端試打回饋）：零延遲判定、動畫輕、鍵盤與提示同步（owner 2026-09-10 強調 UX 舒服）
+- ✅ 打字手感（owner 2026-09-10 地端試打：「很好」）：零延遲判定、動畫輕、鍵盤與提示同步（owner 2026-09-10 強調 UX 舒服）
 - ✅ 螢幕鍵盤（QWERTY）高亮下一鍵，可收合
 - ✅ 練習結果存 localStorage（每課最佳 / 次數、每假名 attempts / errors、設定）
 - ✅ 手機提示「建議使用實體鍵盤」（pointer: coarse）
@@ -37,7 +37,7 @@
 - ⬜ Better Auth 四張表 + `runs.userId` FK migration
 - ⬜ `POST /api/runs`：session → Turnstile → text 合法性 → `replay` 重算 → anticheat → 寫 D1 + R2 → kana_stats → KV 失效
 - ⬜ Anticheat 規則（§9.5 六條）
-- ⬜ 計時賽 `/timed`：pool × 30/60/120 秒，結束自動送分
+- 🔨 計時賽 `/timed`：pool（平假名全 / 片假名全 / 全部）× 30/60/120 秒，第一鍵起算，時間到自動結算 ✅；結束自動送分（登入者）待 ③ API
 - ⬜ `GET /api/leaderboard`（KV 快取 60 s）、`/leaderboard` 週榜 / 總榜
 - ⬜ Cron：週榜結算快照、刪 90 天前 R2 keylog（需 `scheduled` handler，見 DECISIONS）
 - ⬜ `GET /api/me/stats`、`/me`：統計、錯字熱圖、streak、歷史
@@ -61,5 +61,6 @@
 
 （owner 提出、尚未排程的想法。格式：日期 · 一句話 · 備註）
 
+- 2026-09-10 · 歌詞打字：貼 YouTube 網址 → 嘗試抓歌詞 → 存歌詞＋網址 → 提供「選歌打」，慢慢擴充曲庫（owner）· 著作權疑慮見 DECISIONS.md「歌詞打字」，M3 再議
 - 2026-09-10 · 打字音效可選不同機種（機械鍵盤 / 打字機 / 靜音）· 先做打字機一種
 - 2026-09-10 · 若批次腳本改用 Python，用 uv 管 `scripts/py/` 獨立專案 · 目前全 TS，不需要

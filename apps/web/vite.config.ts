@@ -20,6 +20,12 @@ export default defineConfig({
 			emitTsDeclarations: true
 		})
 	],
+	server: {
+		watch: {
+			// adapter-cloudflare rm -rf's this on every build; a dev watcher holding it → EBUSY on Windows
+			ignored: ['**/.svelte-kit/cloudflare/**', '**/.wrangler/**']
+		}
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

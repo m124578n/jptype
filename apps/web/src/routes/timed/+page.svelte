@@ -16,6 +16,7 @@
 	import TypingArea from '$lib/components/TypingArea.svelte';
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
+	import { submitPracticeRun } from '$lib/practice/submit';
 	import {
 		DEFAULT_SETTINGS,
 		loadSettings,
@@ -31,8 +32,11 @@
 		all: m.timed_pool_all
 	};
 
+	let { data } = $props();
+
 	type Phase = 'setup' | 'run' | 'result';
 	let phase = $state<Phase>('setup');
+	let rank = $state<number | undefined>(undefined);
 	let pool = $state<TimedPoolId>('allhira');
 	let seconds = $state<TimedSeconds>(60);
 	let run = $state.raw<PracticeRun | null>(null);
@@ -91,6 +95,14 @@
 		recordKanaStats(r.unitOutcomes);
 		sound.play('bell');
 		phase = 'result';
+		rank = undefined;
+		const submittedMode = mode;
+		void submitPracticeRun(r, submittedMode, {
+			loggedIn: !!data.user,
+			turnstileSiteKey: data.turnstileSiteKey
+		}).then((res) => {
+			if (res?.rank !== undefined && run === r) rank = res.rank;
+		});
 	}
 
 	function onkeydown(e: KeyboardEvent) {
@@ -221,6 +233,7 @@
 			{result}
 			wrongUnits={run.wrongUnits}
 			{newBest}
+			{rank}
 			onpracticeWrong={start}
 			onretry={start}
 			retryLabel={m.timed_again()}

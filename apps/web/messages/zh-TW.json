@@ -50,6 +50,8 @@
 	"result_practice_wrong": "加強練習錯字",
 	"result_retry": "再練一次",
 	"result_new_best": "新紀錄",
+	"result_rank": "本週第 {rank} 名",
+	"result_saved": "成績已送出",
 
 	"timed_title": "計時賽",
 	"timed_lead": "選範圍和時間，連續出題直到時間到。登入後成績會進排行榜。",

@@ -121,3 +121,33 @@ Workers 的綁定（D1、secrets）只在 request 時可得，所以 `getAuth(en
 - LINE Developers → LINE Login channel：`LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET`，Callback URL 同樣加 `/api/auth/callback/line`，開啟 email 權限申請（可選）。
 - 填進 `apps/web/.dev.vars`（本機，git 忽略）；正式站用 `wrangler secret put`（部署時再說）。
   沒有憑證時 `/login` 頁可開、`/api/auth/*` 端點正常、DB 寫入正常（verification 表有 state 記錄），按登入會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，屬預期。
+
+## 2026-09-10 M2 ③ `POST /api/runs`
+
+### 多題一場：`text` 用 `\n` 串起各題
+
+引擎把 `\n` 當「題目分隔符」：不產生 unit、切斷 っ / ん 的上下文，保證 `tokenize(a + '\n' + b)` 等於分開 tokenize 再串接。前端仍是一題一個 `TypingSession`，送出時 `text = questions.join('\n')`，後端用同一份 log 重跑就完全一致。計時賽最後一題打到一半也照送（未完成 unit 不進 kana_stats）。
+
+### 後端重算用 `analyze()` 而不是 `replay()`
+
+`analyze` = `replay` + 每個 unit 首次是否打對（§9.7 kana_stats 需要）。`replay` 保留給只要分數的場合。
+
+### 送分流程拆成純函式 + Store 介面
+
+`submitRun(userId, body, deps)` 不碰 D1 / R2 / KV，透過 `RunStore`、`putLog`、`invalidateLeaderboard` 注入，單元測試用假物件覆蓋六條 anticheat 與各種拒絕情境；`d1RunStore` 是 Drizzle 實作。
+
+### KV 失效條件
+
+規格 §9.8「分數 ≥ 該榜第 100 名才刪」：查該 mode 本週各使用者最佳分的第 100 名（`GROUP BY userId ORDER BY best DESC LIMIT 1 OFFSET 99`），沒有 100 人時一律刪。同時刪週榜與總榜兩個 key。
+
+### 匿名者也送分
+
+規格 §8：未登入可 POST 取得分數但不入榜、不寫 kana_stats。前端課程與計時賽結束都會送；失敗時 UI 保留本機分數，不阻塞。
+
+### Turnstile
+
+伺服器只在「已登入」且 `TURNSTILE_SECRET_KEY` 有設時要求 token；前端用隱形 widget（`getTurnstileToken`）在送出前取 token，site key 由 layout 傳入。本機 `.dev.vars.example` 放的是 Cloudflare 測試 secret（永遠通過）。**[待確認]** 正式站要建 Turnstile widget 拿 site key / secret（部署時再說）。
+
+### 名次
+
+回應的 `rank` = 本週該 mode 中「最佳分 > 此分」的使用者數 + 1，只給未 flagged 的登入者；被 flag 的人拿到分數但沒有名次，不透露原因。

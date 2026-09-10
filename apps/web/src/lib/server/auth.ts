@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { dev } from '$app/environment';
 import { createDb, schema } from './db/index.ts';
 
 export interface AuthEnv {
@@ -57,8 +58,13 @@ export type Auth = ReturnType<typeof betterAuth<ReturnType<typeof authOptions>>>
 // Bindings are per-request on Workers; one auth instance per env object per origin.
 const cache = new WeakMap<object, Map<string, Auth>>();
 
-/** Get (or lazily create) the Better Auth instance for this request's bindings + origin. */
+/**
+ * Get (or lazily create) the Better Auth instance for this request's bindings + origin.
+ * In `vite dev` the platform proxy keeps the same `env` object across Miniflare restarts while
+ * its binding stubs get "poisoned", so caching is production-only.
+ */
 export function getAuth(env: AuthEnv, origin: string): Auth {
+	if (dev) return betterAuth(authOptions(env, origin));
 	let byOrigin = cache.get(env);
 	if (!byOrigin) {
 		byOrigin = new Map();

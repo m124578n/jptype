@@ -11,6 +11,8 @@
 	import { weakPool } from '$lib/practice/questions';
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
+	import { submitPracticeRun } from '$lib/practice/submit';
+	import { lessonMode } from '@jptype/data';
 	import {
 		DEFAULT_SETTINGS,
 		loadSettings,
@@ -69,6 +71,11 @@
 		recordKanaStats(r.unitOutcomes);
 		sound.play('bell');
 		phase = 'result';
+		// Server copy: anonymous runs are scored only; logged-in runs also feed kana_stats.
+		void submitPracticeRun(r, lessonMode(lesson.id), {
+			loggedIn: !!data.user,
+			turnstileSiteKey: data.turnstileSiteKey
+		});
 	}
 
 	function onkeydown(e: KeyboardEvent) {

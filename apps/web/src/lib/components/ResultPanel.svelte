@@ -11,7 +11,8 @@
 		onpracticeWrong,
 		onretry,
 		retryLabel = m.result_retry(),
-		showPracticeWrong = true
+		showPracticeWrong = true,
+		rank
 	}: {
 		result: ScoreResult;
 		wrongUnits: string[];
@@ -20,6 +21,8 @@
 		onretry: () => void;
 		retryLabel?: string;
 		showPracticeWrong?: boolean;
+		/** Weekly rank from the server (logged-in, unflagged runs only). */
+		rank?: number | undefined;
 	} = $props();
 
 	const offerWrong = $derived(showPracticeWrong && wrongUnits.length > 0);
@@ -29,6 +32,7 @@
 	<div class="row heading">
 		<h2 id="result-title">{m.result_title()}</h2>
 		{#if newBest}<span class="badge">{m.result_new_best()}</span>{/if}
+		{#if rank !== undefined}<span class="badge">{m.result_rank({ rank })}</span>{/if}
 	</div>
 
 	<dl class="stats">

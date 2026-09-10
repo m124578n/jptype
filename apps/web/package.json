@@ -1,0 +1,41 @@
+{
+	"name": "web",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "wrangler types --check && vite build",
+		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"prepare": "pnpm i18n:compile && svelte-kit sync || echo ''",
+		"check": "wrangler types && pnpm i18n:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run --passWithNoTests",
+		"test:watch": "vitest",
+		"gen": "wrangler types",
+		"i18n:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate:local": "wrangler d1 migrations apply DB --local",
+		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"@jptype/data": "workspace:*",
+		"@jptype/engine": "workspace:*",
+		"drizzle-orm": "^0.45.1"
+	},
+	"devDependencies": {
+		"@inlang/paraglide-js": "^2.18.2",
+		"@sveltejs/adapter-cloudflare": "^7.2.8",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/node": "catalog:",
+		"drizzle-kit": "^0.31.4",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"typescript": "catalog:",
+		"vite": "^8.0.16",
+		"vitest": "catalog:",
+		"wrangler": "^4.97.0"
+	}
+}

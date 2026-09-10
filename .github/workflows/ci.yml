@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # version comes from package.json#packageManager
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (prettier + eslint)
+        run: pnpm lint
+
+      - name: Typecheck (tsc + svelte-check)
+        run: pnpm check
+
+      - name: Validate kana table
+        run: pnpm validate:data
+
+      - name: Test with coverage (engine gate ≥ 90 %)
+        run: pnpm test:coverage
+
+      - name: Build worker
+        run: pnpm build
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: packages/*/coverage/lcov.info
+          if-no-files-found: ignore

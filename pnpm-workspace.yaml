@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Shared dependency versions (`"dep": "catalog:"` in package.json files)
+catalog:
+  typescript: ^6.0.3
+  vitest: ^4.1.8
+  '@vitest/coverage-v8': ^4.1.8
+  '@types/node': ^22
+
+# pnpm ≥10 blocks lifecycle scripts of deps unless allow-listed
+allowBuilds:
+  workerd: true
+  esbuild: true

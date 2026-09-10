@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+.svelte-kit
+.wrangler
+build
+coverage
+apps/web/static
+apps/web/src/lib/paraglide
+apps/web/worker-configuration.d.ts
+apps/web/drizzle/meta
+apps/web/project.inlang/.meta.json
+apps/web/project.inlang/README.md

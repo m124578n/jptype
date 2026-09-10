@@ -1,0 +1,30 @@
+{
+	"name": "@jptype/data",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Kana ↔ romaji table, lesson definitions and their validation. Pure data + types.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"scripts": {
+		"check": "tsc -p tsconfig.json",
+		"validate": "node scripts/validate.ts",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"@vitest/coverage-v8": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

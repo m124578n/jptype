@@ -1,0 +1,28 @@
+{
+	"name": "@jptype/engine",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Romaji → kana typing engine: tokenizer, per-key state machine, scoring, replay. Pure TypeScript, zero runtime dependencies.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"files": [
+		"src"
+	],
+	"scripts": {
+		"check": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@vitest/coverage-v8": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

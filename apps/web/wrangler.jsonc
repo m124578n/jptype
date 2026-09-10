@@ -1,0 +1,42 @@
+// Cloudflare Workers config (spec §3). Lives next to the SvelteKit app because
+// `wrangler types` / `wrangler dev` resolve paths relative to this file.
+// Secrets (never here): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID/SECRET,
+// LINE_CHANNEL_ID/SECRET, TURNSTILE_SECRET_KEY → `wrangler secret put` / .dev.vars
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "jptype",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-09-10",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"workers_dev": true,
+	"preview_urls": true,
+	"observability": { "enabled": true },
+
+	// ── Bindings ──────────────────────────────────────────────────────────────
+	// Replace the placeholder IDs after running:
+	//   wrangler d1 create jptype
+	//   wrangler kv namespace create KV
+	//   wrangler r2 bucket create jptype
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "jptype",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"kv_namespaces": [{ "binding": "KV", "id": "0000000000000000000000000000000000" }],
+	"r2_buckets": [{ "binding": "R2", "bucket_name": "jptype" }],
+
+	// Weekly leaderboard settlement: Monday 00:00 Asia/Taipei = Sunday 16:00 UTC.
+	// Enabled in M2 together with a `scheduled` handler (see DECISIONS.md).
+	// "triggers": { "crons": ["0 16 * * 0"] },
+
+	"vars": {
+		"PUBLIC_TURNSTILE_SITE_KEY": ""
+	}
+}

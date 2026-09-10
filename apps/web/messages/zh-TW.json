@@ -1,0 +1,6 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"app_name": "jptype",
+	"home_tagline": "給台灣日文初學者的日文打字練習",
+	"home_cta_start": "開始學五十音"
+}

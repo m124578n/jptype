@@ -1,0 +1,20 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"rewriteRelativeImportExtensions": true,
+		"allowJs": true,
+		// Generated Paraglide JS (src/lib/paraglide) trips over wrangler's global Request generics;
+		// app code is TS-only, so skip semantic checks on .js and rely on its emitted .d.ts.
+		"checkJs": false,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"moduleResolution": "bundler",
+		"types": ["./worker-configuration.d.ts"]
+	}
+}

@@ -1,0 +1,8 @@
+# Copy to .dev.vars (git-ignored). Read by `wrangler dev` and by the Vite dev
+# server through adapter-cloudflare's platform proxy.
+BETTER_AUTH_SECRET=change-me-32-bytes-random
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+LINE_CHANNEL_ID=
+LINE_CHANNEL_SECRET=
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA

@@ -44,14 +44,14 @@
 - ✅ 弱項練習 `/learn/weak`（errors/attempts > 0.2 且 attempts ≥ 3，隨機補足到 20 題；mode `weak` 可送分）
 - ⬜ 無提示加成（關閉羅馬字提示 ×1.1）— 規格允許第一版不做，留到 review 後決定
 
-## M3 — 內容擴充（第二階段，另開規格）
+## M3 — 內容擴充（2026-09-10 開工，三塊平行由 Opus agent 實作）
 
-- ⬜ N5 單字 100 個（`words-n5.json`，含振假名與中文）、短句 20 句
-- ⬜ TTS 音檔批次（Azure Speech ja-JP → R2），認識頁播放鈕
-- ⬜ AI 生成分級文章（離線 + 人工校對）
-- ⬜ 聽打模式（只聽不看）
-- ⬜ 多人競速房（Durable Objects）
-- ⬜ 歌詞打字（公有領域 / 使用者自帶）
+- 🔨 A. N5 單字 100 個 + 短句 20 句（`@jptype/data`，含振假名與中文）→ 課程 8、9 與計時賽 pool `n5`
+- 🔨 B. 瀏覽器 TTS（Web Speech API ja-JP，不叫外部 API）：認識頁播放鈕 + 聽打模式 `/listen`
+- 🔨 C. 歌詞打字 `/songs`：嵌 YouTube 播放器 + 使用者自貼假名歌詞，只存 localStorage，不進共用曲庫
+- ⬜ Azure Speech 批次音檔 → R2（需要 owner 的 Azure key；瀏覽器 TTS 先頂著）
+- ⬜ AI 生成分級文章（離線 + 人工校對，需要 API key）
+- ⬜ 多人競速房（Durable Objects，另開規格）
 
 ## 明確不做（第一版）
 

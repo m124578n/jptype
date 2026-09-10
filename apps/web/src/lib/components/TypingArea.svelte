@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { LessonHint } from '@jptype/data';
 	import { m } from '$lib/paraglide/messages';
-	import type { PracticeRun } from '$lib/practice/run.svelte';
+	import type { TypingRun } from '$lib/practice/run.svelte';
 
 	let {
 		run,
 		showHint = true,
 		hints
 	}: {
-		run: PracticeRun;
+		run: TypingRun;
 		showHint?: boolean;
 		/** Kanji + 繁體中文 for word/sentence questions, keyed by the question's kana. */
 		hints?: Record<string, LessonHint>;

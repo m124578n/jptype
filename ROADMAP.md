@@ -49,6 +49,8 @@
 - ✅ A. N5 單字 100 個 + 短句 20 句（`@jptype/data`，原創內容，含漢字與中文）→ 課程 `n5-words`、`sentences`（練習時顯示漢字與中文提示）與計時賽 pool `n5`（排行榜與 cron 因此變 12 個榜）
 - ✅ B. 瀏覽器 TTS（`lib/speech.ts`，Web Speech API 本機 ja-JP 語音，零網路零 assets）：認識頁卡片播放鈕 + 聽打模式 `/listen`（計時賽題庫 × 20 題、自動念題、Tab 重播、答對或連錯兩鍵才短暫揭曉；成績只存本機）
 - ✅ C. 歌詞打字 `/songs`：嵌 youtube-nocookie 官方播放器（只存 11 字元影片 id）+ 使用者自貼假名歌詞（漢字會被擋下並指出行號），只存 localStorage、不送伺服器、不進榜；`/songs/[id]` 逐行打（前後行淡顯）
+  - ✅ 同步模式（唱到哪打到哪）：`lines` 改成 `{ text, start? }`（秒），`parseLyrics` 吃 LRC `[mm:ss.xx]`／`[mm:ss]`（一行多標籤會複製該行）、裸 `mm:ss`／`hh:mm:ss` 前綴、metadata 與 enhanced 標籤會丟掉；YouTube IFrame Player API 每 100 ms 回報時間，`start <= t` 的最後一行就是目前句，沒打完也跟著走（結果頁顯示跳過句數），暫停時不吃鍵、Seek 會重開該行的 `TypingSession`；倒數 3-2-1-START、Space 播放／暫停、Esc 離開、Ctrl+R 重來。模式（同步／自由）記在 localStorage
+  - ✅ 對時工具 `/songs/[id]/timing`：時間標記不靠任何網站，使用者邊播邊按 Space 打點（每行 ±0.5 秒微調、「從這句重播」、上一句重打、全部重來），存回該首歌的 `lines[].start`；兩行以上有時間才開放同步模式
 - ⬜ Azure Speech 批次音檔 → R2（需要 owner 的 Azure key；瀏覽器 TTS 先頂著）
 - ⬜ AI 生成分級文章（離線 + 人工校對，需要 API key）
 - ⬜ 多人競速房（Durable Objects，另開規格）
@@ -68,11 +70,12 @@
 
 ### M4-2 YouTube 同步播放
 
-- ⬜ YouTube IFrame Player API：play / pause / seek / currentTime / duration / 音量 / 速度
-- ⬜ `startTime <= currentTime < endTime` 決定目前句；打完且下一句已開始就自動進下一句，不用按 Next
-- ⬜ 影片暫停 → 打字暫停；Seek → 重新定位句子並清空暫存輸入
-- ⬜ 三種模式：Sync（跟影片）、Typing（不受時間限制）、Review（只練曾錯的句子）
-- ⬜ 倒數 3-2-1 START；鍵盤快捷：Space 播放/暫停、Esc 離開、Ctrl+R 重來
+- ✅ YouTube IFrame Player API：play / pause / seek / currentTime / duration（`lib/components/YouTubePlayer.svelte`）— **songs only**；音量與速度沿用播放器自己的控制列
+- ✅ `startTime <= currentTime` 決定目前句；打完就顯示 ✓ 等下一句，不用按 Next — **songs only**（只有 start，沒有 endTime）
+- ✅ 影片暫停 → 打字暫停；Seek → 重新定位句子並清空暫存輸入 — **songs only**
+- 🔨 三種模式：Sync（跟影片）✅、Typing（不受時間限制）✅ = 自由模式 — 兩者 **songs only**；Review（只練曾錯的句子）⬜
+- ✅ 倒數 3-2-1 START；鍵盤快捷：Space 播放/暫停、Esc 離開、Ctrl+R 重來 — **songs only**
+- ✅ 對時（tap-to-sync）：使用者自己邊播邊打點產生時間軸，±0.5 秒微調 — **songs only**（M4-1 的 Line Editor 之後接手）
 
 ### M4-3 練習 UI 與統計擴充
 
@@ -105,7 +108,7 @@
 
 （owner 提出、尚未排程的想法。格式：日期 · 一句話 · 備註）
 
-- 2026-09-10 · 唱到哪打到哪（sing-along 打字）：需要帶時間軸的歌詞，三條路 A 授權 API / B 公有領域曲庫 / C 自貼+對時工具，見 DECISIONS · 等 owner 決定預算
+- 2026-09-10 · 唱到哪打到哪（sing-along 打字）：需要帶時間軸的歌詞，三條路 A 授權 API / B 公有領域曲庫 / C 自貼+對時工具，見 DECISIONS · **已走 C**（M3 C 同步模式 + `/songs/[id]/timing` 對時），A 的授權曲庫與 B 的公有領域共用曲庫仍未做
 - 2026-09-10 · 歌詞打字：貼 YouTube 網址 → 嘗試抓歌詞 → 存歌詞＋網址 → 提供「選歌打」，慢慢擴充曲庫（owner）· 已用方案 1（使用者自帶、只存本機）實作，見 M3 C 與 DECISIONS.md「M3 C」；共用曲庫（公有領域 / CC）仍未做
 - 2026-09-10 · 打字音效可選不同機種（機械鍵盤 / 打字機 / 靜音）· 先做打字機一種
 - 2026-09-10 · 若批次腳本改用 Python，用 uv 管 `scripts/py/` 獨立專案 · 目前全 TS，不需要

@@ -16,9 +16,11 @@ describe('validateKana', () => {
 	});
 
 	it('rejects duplicate kana', () => {
-		const errors = validateKana([entry(), entry({ kata: 'キ' })]);
-		expect(errors).toHaveLength(1);
-		expect(errors[0]).toMatch(/duplicate kana/);
+		const errors = validateKana([entry(), entry()]);
+		expect(errors).toEqual([
+			expect.stringMatching(/duplicate kana/),
+			expect.stringMatching(/duplicate kata/)
+		]);
 	});
 
 	it('rejects duplicate katakana mapping', () => {
@@ -42,5 +44,21 @@ describe('validateKana', () => {
 	it('rejects repeated spellings inside one entry', () => {
 		const errors = validateKana([entry({ romaji: ['ka', 'ka'] })]);
 		expect(errors).toEqual([expect.stringMatching(/duplicate romaji/)]);
+	});
+});
+
+describe('validateKana – katakana mapping', () => {
+	it('rejects kata that is not the katakana form of kana', () => {
+		const errors = validateKana([entry({ kana: 'か', kata: 'キ' })]);
+		expect(errors).toEqual([expect.stringMatching(/kata "キ" is not the katakana of "か"/)]);
+	});
+
+	it('accepts multi-character entries and ゔ', () => {
+		expect(
+			validateKana([
+				entry({ kana: 'きゃ', kata: 'キャ', romaji: ['kya'] }),
+				entry({ kana: 'ゔぁ', kata: 'ヴァ', romaji: ['va'] })
+			])
+		).toEqual([]);
 	});
 });

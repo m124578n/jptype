@@ -220,6 +220,10 @@ importers:
         version: 4.1.11(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@22.20.1)(jiti@2.7.0))
 
   packages/engine:
+    dependencies:
+      '@jptype/data':
+        specifier: workspace:*
+        version: link:../data
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'

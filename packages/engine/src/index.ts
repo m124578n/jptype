@@ -1,3 +1,5 @@
 export type { KeyEvent, PressResult, ScoreResult, Unit } from './types.ts';
+export { tokenize } from './tokenize.ts';
+export { TypingSession, isTypingKey } from './session.ts';
 export { score } from './score.ts';
-// M0 (spec §6): tokenize, TypingSession, replay
+export { replay, type ReplayResult } from './replay.ts';

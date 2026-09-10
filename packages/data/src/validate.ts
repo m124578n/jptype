@@ -1,3 +1,4 @@
+import { toHiragana, toKatakana } from './script.ts';
 import type { KanaEntry } from './types.ts';
 
 const ROMAJI_PATTERN = /^[a-z'-]+$/;
@@ -7,7 +8,7 @@ const ROMAJI_PATTERN = /^[a-z'-]+$/;
  *  - no duplicate `kana`
  *  - every entry has ≥ 1 romaji
  *  - every romaji matches /^[a-z'-]+$/
- *  - hiragana ↔ katakana mapping is one-to-one (no duplicate `kata`, kana ≠ kata unless both sides agree)
+ *  - hiragana ↔ katakana mapping is bidirectional (kata = toKatakana(kana), kana = toHiragana(kata)) and unique
  */
 export function validateKana(entries: readonly KanaEntry[]): string[] {
 	const errors: string[] = [];
@@ -29,6 +30,10 @@ export function validateKana(entries: readonly KanaEntry[]): string[] {
 			);
 		} else {
 			seenKata.set(entry.kata, i);
+		}
+
+		if (toKatakana(entry.kana) !== entry.kata || toHiragana(entry.kata) !== entry.kana) {
+			errors.push(`${where}: kata "${entry.kata}" is not the katakana of "${entry.kana}"`);
 		}
 
 		if (entry.romaji.length === 0) {

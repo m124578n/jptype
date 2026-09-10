@@ -33,7 +33,7 @@
 
 ## M2 — 帳號、計時賽、排行榜
 
-- ✅ Better Auth + Drizzle/D1 adapter，Google、LINE OAuth；`/login`、header 登入/登出。端到端登入待 owner 提供 Google / LINE 憑證（見 DECISIONS）
+- ✅ Better Auth + Drizzle/D1 adapter，Google OAuth（LINE 於 2026-09-10 移除，短中期不做）；`/login`、header 登入/登出。端到端登入待 owner 提供 Google 憑證（見 DECISIONS）
 - ✅ Better Auth 四張表（CLI 產生）+ `runs.userId` / `kana_stats.userId` FK，migration `0001_auth`
 - ✅ `POST /api/runs`：session → Turnstile（有 secret 且已登入才要求）→ text 合法性 → `analyze` 重算 → anticheat → 寫 D1 + R2 → kana_stats upsert → KV 失效（分數 ≥ 第 100 名才刪）→ 回 rank；課程與計時賽結束都會送
 - ✅ Anticheat 規則（§9.5 六條，單元測試）
@@ -67,6 +67,16 @@
 - ⬜ Manual Import 管線：貼文字 → 斷句 → 漢字→假名（瀏覽器端 kuromoji 字典，不叫外部 API）→ 羅馬字 → 管理員校對 → 發布
 - ⬜ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs` localStorage 版本併入此模型
 - ⬜ 之後任何第三方來源都以獨立 Connector 實作，並遵守該來源的使用條款（不做繞過、不做大量抓取）
+
+### M4-1b 歌曲：歌詞私有、時間軸共享、可選公開（owner 2026-09-10 定案，第二個 Opus agent）
+
+- ⬜ D1 `songs`（私有：ownerId、videoId、title、lines[text,start]、visibility、publicConsentAt、status）與 `song_timings`（共享：videoId、lineCount、lineHashes、starts、createdBy、useCount）
+- ⬜ API：`GET/POST/PUT/DELETE /api/songs`（本人）、`GET /api/songs/public`、`GET/POST /api/timings?videoId=`；登入者歌單改存 D1 並跨裝置同步，未登入維持 localStorage
+- ⬜ 貼歌詞後比對雜湊，有一致的共享時間軸就提示「套用」
+- ⬜ 公開開關 + 權利聲明勾選；公開曲庫列表（不精選、不推薦）
+- ⬜ 通知取下：`/copyright` 政策頁（`PUBLIC_CONTACT_EMAIL`）、檢舉表單 → `takedown_requests`、admin 下架 + 上傳者通知、三次停權、紀錄
+- ⬜ Admin：`ADMIN_EMAILS` 比對、`/admin` 檢舉與歌曲管理頁、`/api/admin/*`
+- ⬜ 服務條款 `/terms`：使用者上傳內容責任條款
 
 ### M4-2 YouTube 同步播放
 

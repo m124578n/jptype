@@ -2,9 +2,12 @@
 	import { onMount } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
+	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
+	import { timedCount } from '$lib/song-timing';
 	import {
 		deleteSong,
 		loadSongs,
+		lyricsSearchUrl,
 		newSongId,
 		parseLyrics,
 		parseYoutubeId,
@@ -13,6 +16,7 @@
 		type LineIssue,
 		type Song
 	} from '$lib/songs';
+	import { watchUrl } from '$lib/youtube';
 
 	// The library lives in localStorage only, so it is read after mount (SSR renders the shell).
 	let songs = $state<Song[]>([]);
@@ -27,25 +31,33 @@
 	let lyrics = $state('');
 	let errors = $state<string[]>([]);
 	let issues = $state<LineIssue[]>([]);
+	/** Once the user edits the title themselves, YouTube must not overwrite it. */
+	let titleEdited = $state(false);
+
+	const videoId = $derived(parseYoutubeId(url));
+
+	/** YouTube reported the title: prefill, unless the user already typed one. */
+	function playerReady(info: { title: string }) {
+		if (!titleEdited && title.trim() === '' && info.title !== '') title = info.title;
+	}
 
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		const found: string[] = [];
 		const t = title.trim();
 		if (t === '') found.push(m.songs_error_title());
-		const youtubeId = parseYoutubeId(url);
-		if (youtubeId === null) found.push(m.songs_error_url());
+		if (videoId === null) found.push(m.songs_error_url());
 		const lines = parseLyrics(lyrics);
 		if (lines.length === 0) found.push(m.songs_error_lyrics());
 		issues = lines.length === 0 ? [] : validateLines(lines);
 		errors = found;
-		if (found.length > 0 || issues.length > 0 || youtubeId === null) return;
+		if (found.length > 0 || issues.length > 0 || videoId === null) return;
 
 		const now = Date.now();
 		songs = saveSong({
 			id: newSongId(),
 			title: t,
-			youtubeId,
+			youtubeId: videoId,
 			lines,
 			createdAt: now,
 			updatedAt: now
@@ -53,6 +65,7 @@
 		title = '';
 		url = '';
 		lyrics = '';
+		titleEdited = false;
 	}
 
 	function remove(song: Song) {
@@ -80,10 +93,19 @@
 					<li class="card item">
 						<div class="stack info">
 							<span class="name">{song.title}</span>
-							<span class="muted small">{m.songs_line_count({ count: song.lines.length })}</span>
+							<span class="muted small">
+								{m.songs_line_count({ count: song.lines.length })}
+								·
+								{timedCount(song.lines) === 0
+									? m.songs_untimed()
+									: m.songs_timed_count({ count: timedCount(song.lines) })}
+							</span>
 						</div>
 						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: song.id })}>
 							{m.songs_practice()}
+						</a>
+						<a class="btn" href={resolve('/songs/[id]/timing', { id: song.id })}>
+							{m.songs_timing_link()}
 						</a>
 						<button type="button" class="btn" onclick={() => remove(song)}>
 							{m.songs_delete()}
@@ -98,20 +120,52 @@
 		<h2>{m.songs_add_title()}</h2>
 		<form class="stack form" onsubmit={submit}>
 			<div class="stack field">
+				<label for="song-url">{m.songs_field_url()}</label>
+				<input id="song-url" type="text" bind:value={url} autocomplete="off" spellcheck="false" />
+				<p class="muted small">{m.songs_field_url_hint()}</p>
+			</div>
+
+			{#if videoId !== null}
+				<!-- Mounted paused: it is how we learn the title, and it lets the user check the video. -->
+				<YouTubePlayer {videoId} {title} onready={playerReady} />
+			{/if}
+
+			<div class="stack field">
 				<label for="song-title">{m.songs_field_title()}</label>
 				<input
 					id="song-title"
 					type="text"
 					bind:value={title}
+					oninput={() => (titleEdited = true)}
 					placeholder={m.songs_field_title_placeholder()}
 					autocomplete="off"
 				/>
 			</div>
 
 			<div class="stack field">
-				<label for="song-url">{m.songs_field_url()}</label>
-				<input id="song-url" type="text" bind:value={url} autocomplete="off" spellcheck="false" />
-				<p class="muted small">{m.songs_field_url_hint()}</p>
+				<p class="muted small">{m.songs_source_hint()}</p>
+				<p class="row links">
+					{#if title.trim() !== ''}
+						<a
+							class="btn"
+							href={lyricsSearchUrl(title)}
+							target="_blank"
+							rel="external noopener noreferrer"
+						>
+							{m.songs_search_lyrics()}
+						</a>
+					{/if}
+					{#if videoId !== null}
+						<a
+							class="btn"
+							href={watchUrl(videoId)}
+							target="_blank"
+							rel="external noopener noreferrer"
+						>
+							{m.songs_open_youtube()}
+						</a>
+					{/if}
+				</p>
 			</div>
 
 			<div class="stack field">
@@ -119,6 +173,7 @@
 				<textarea id="song-lyrics" rows="10" bind:value={lyrics} lang="ja" spellcheck="false"
 				></textarea>
 				<p class="muted small">{m.songs_field_lyrics_hint()}</p>
+				<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
 			</div>
 
 			{#if errors.length > 0 || issues.length > 0}
@@ -184,6 +239,10 @@
 	}
 	.field {
 		gap: var(--space-2);
+	}
+	.links {
+		flex-wrap: wrap;
+		gap: var(--space-3);
 	}
 	label {
 		font-weight: 500;

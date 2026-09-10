@@ -298,3 +298,44 @@ owner 提供一份與 GPT 討論的 PRD（內容平台：歌曲 / 動畫 / 新�
 **不採納**：技術棧（Next.js / Prisma / PostgreSQL / Auth.js）— 現有 SvelteKit + Cloudflare + Better Auth 已完成 M0–M3，不重來；Email 登入（規格 §1 只有 Google / LINE）；「錯誤仍可繼續輸入」— 現行引擎是錯鍵不推進、只計入 accuracy，這是規格 §6.4 的硬性決策，M4 沿用；WPM — 日文用 KPM / CPM。
 
 **待確認**：分數公式是否加入 Combo 係數；Admin 角色如何指定（先用 `user.role` 欄位 + 手動設定）。
+
+## 2026-09-10 歌詞打字同步模式：owner 拍板
+
+owner 決定（此條取代上一條「唱到哪打到哪」的 **[待確認]**，走路線 C）：
+
+**歌曲 = 官方 YouTube 嵌入；歌詞 = 使用者自己找、自己貼；時間軸 = 使用者自己在 App 裡打點。** 三件事都不經伺服器。
+
+### 不推薦、不連結、不特別支援任何歌詞來源
+
+歌詞從哪裡來由使用者決定。程式碼、訊息、測試、文件都不提任何特定歌詞網站，也不會對某個站做 DOM 解析或格式特判。`/songs` 只提供兩個中性的外連（`target="_blank" rel="external noopener noreferrer"`，都只是開新分頁）：
+
+- 「搜尋歌詞」→ `https://www.google.com/search?q=<歌名> 歌詞 ひらがな`（`lyricsSearchUrl()`）
+- 「在 YouTube 開啟」→ 該影片的 watch 頁（官方 MV 的說明欄常常就有歌詞）
+
+App 端**不會 fetch 任何歌詞網站**（先前決策的著作權結論不變：嵌播放器可以，自動抓取／存放歌詞不行）。使用者複製什麼、貼什麼，全部只留在他自己的瀏覽器。
+
+### `Song.lines` 改成 `{ text: string; start?: number }`
+
+`start` 是影片內的秒數，有時間的行才進得了同步模式。舊版存成 `string[]` 的歌在 `loadSongs()` 讀取時自動遷移（`toLine`），不需要 migration 也不會掉資料。`hasSync(song)` = 至少兩行有 `start`。`validateLines` 改吃 `SongLine[]`、檢查 `text`，行為不變。
+
+### `parseLyrics` 吃 LRC，但不假設一定拿得到 LRC
+
+支援：`[mm:ss.xx]` / `[mm:ss]` / 舊式 `[mm:ss:xx]`（括號內第三段一律當秒的小數，這是 LRC 的定義）、一行多個時間標籤（該行文字複製到每個時間）、裸前綴 `mm:ss` / `hh:mm:ss`（括號外第三段才是時分秒）、metadata 標籤 `[ti:…]` `[ar:…]` `[offset:…]`（丟掉）、enhanced LRC 的逐字 `<mm:ss.xx>`（去掉）、BOM、全形空白、空行。**全部行都有時間**時依時間排序（多標籤的 LRC 才會照播放順序出來）；只有部分行有時間就維持貼上的順序。
+
+### 對時工具 `/songs/[id]/timing`（tap-to-sync）
+
+因為沒有任何來源保證附時間軸，時間軸就在 App 裡自己做：播放器一直放，使用者對到哪一句就按一次 Space / Enter /「標記這句」，把 `currentTime()` 寫進那一句的 `start` 並跳下一句；每句有 ±0.5 秒微調、「從這句重播」（seek + play）、Backspace 回上一句重打、「全部重來」。純函式放 `lib/song-timing.ts`（`stampLine` / `nudgeLine` / `clearLineTiming` / `clearAllTimings` / `timedCount` / `firstUntimedIndex` / `formatTime`，秒數 clamp 到 0、四捨五入到百分之一秒），元件只負責事件，所以邏輯可以無 DOM 單元測試。貼上的歌詞本來就帶 LRC 時間也沒關係，打點會覆蓋。
+
+### 同步模式不用 `PracticeRun`，自己一個 controller
+
+`PracticeRun` 是「打完才換題」，同步模式是「歌換句就換題」，兩者相反，所以另開 `lib/practice/song-sync.svelte.ts` 的 `SongSyncRun`（runes class）：每行一個 `TypingSession`，`timeUpdate(seconds)` 用「最後一個 `start <= t` 的行」決定目前句；換句時沒打完的行計入 `skippedLines`（結果頁顯示），打完的行顯示 ✓ 等下一句；`seek(seconds)` 重新定位並重開該行的 session（連同清空 buffer、把該行的 skipped 標記還原）；影片 ended 或打完最後一句就結算。時間來源是播放器每 100 ms 的回報，兩次回報差超過 1.5 秒就當成 seek。沒有 `start` 的行不進同步模式（同步模式的每一題都要有時間才排得上去）。
+
+`text` / `log` / `durationMs` / `wrongUnits` / `unitOutcomes` / `result()` 與 `PracticeRun` 同形，但**不保證能過 `replay()`**（跳過與重打的行會讓 text 與 log 對不上）。這沒關係：歌詞成績只寫 `recordResult('song:' + id, result)`，永遠不送後端。`TypingArea` 的 prop 型別因此抽成 `TypingRun` 介面，兩個 run 都實作它。
+
+### `YouTubePlayer.svelte` 與 IFrame API
+
+`https://www.youtube.com/iframe_api` 只載入一次（`lib/youtube.ts` 的 `loadIframeApi()`，串接而不是覆寫 `onYouTubeIframeAPIReady`，失敗會 reject 讓 UI 顯示 fallback），播放器本身仍指向 `host: 'https://www.youtube-nocookie.com'`。對外只有 callback props（`onready` 帶 `getVideoData().title` 與 duration、`onstate`、`ontime` 每 100 ms）與 `bind:controller`（`play` / `pause` / `seekTo` / `currentTime`）。型別放 `lib/youtube-iframe.d.ts`（沒有裝 `@types/youtube`）。SSR 不會跑 `$effect`，`loadIframeApi()` 也會在沒有 `window` 時直接 reject。加歌表單貼好網址就掛一個暫停的播放器，用它拿到的標題預填歌名（使用者改過就不再覆寫）。
+
+### 模式與快捷鍵
+
+`/songs/[id]` 上方兩顆按鈕切「同步模式」／「自由模式」，選擇記在 `jptype:songMode`（沒有時間軸的歌只給自由模式）。同步模式：Space（或「開始」）→ 倒數 3-2-1-START → `play()`；之後 Space 是播放／暫停（除非目前 unit 就是要打空白）、Esc 回 `/songs`、Ctrl+R 重來；播放器暫停時不吃打字鍵。自由模式維持原本的逐行打法，播放器可有可無。

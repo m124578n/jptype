@@ -13,6 +13,24 @@ export interface UnitOutcome {
 	error: boolean;
 }
 
+/**
+ * What `TypingArea` (and `Keyboard`) need from a run. Implemented by `PracticeRun` and by
+ * `SongSyncRun`, which drives its own questions from the video's timeline instead of a pool.
+ */
+export interface TypingRun {
+	readonly index: number;
+	readonly total: number;
+	readonly current: string;
+	readonly unitIndex: number;
+	/** Bumped on every accepted/rejected key so derived UI recomputes. */
+	readonly tick: number;
+	readonly session: TypingSession;
+	readonly typed: string;
+	readonly hint: string;
+	readonly nextKey: string;
+	readonly lastWrongAt: number;
+}
+
 export interface RunOptions {
 	/** Fixed number of questions (lesson mode). Ignored when `endless` is set. */
 	count?: number;
@@ -33,7 +51,7 @@ export interface RunOptions {
  * `text` (questions joined with the engine BOUNDARY) + `log` reproduce the run exactly
  * through `replay()` on the server.
  */
-export class PracticeRun {
+export class PracticeRun implements TypingRun {
 	readonly questions: string[] = $state([]);
 	index = $state(0);
 	session = $state.raw<TypingSession>(new TypingSession(''));

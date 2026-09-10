@@ -288,3 +288,13 @@ owner 指出：使用者自貼歌詞、還要自己標時間，UX 太差；要�
 - **C. 使用者自貼 + 對時工具**：貼歌詞後隨播放器「拍一下」標每行開始時間，本機產生 LRC。合法免費、UX 有摩擦，適合當 A 之前的過渡或補 A 沒收錄的歌。
 
 建議：先做 sing-along 播放器引擎（時間軸資料模型、YouTube IFrame API 同步、逐行打字），歌詞來源做成可插拔；用 B + C 的內容上線，A 由 owner 決定預算後接上。
+
+## 2026-09-10 採納 GPT PRD 的部分內容為 M4
+
+owner 提供一份與 GPT 討論的 PRD（內容平台：歌曲 / 動畫 / 新聞 / JLPT / 小說 / 自由輸入，統一 Content + Line 模型，YouTube 同步，Combo，後台與 Line Editor）。採納與否：
+
+**採納**（寫入 ROADMAP M4）：統一 Content / Line 模型與必填權利 metadata、Manual Import 管線（漢字→假名在瀏覽器端）、YouTube IFrame API 同步與暫停 / Seek 行為、Sync / Typing / Review 三模式、Combo 與錯誤分析、每內容排行榜（Accuracy ≥ 90% 才有效）、內容探索篩選、Admin 與 Line Editor、成就、分析漏斗、AI 只用自有內容。PRD §30 / §31 / §54 明確反對自動抓取歌詞，與本專案既有結論一致。
+
+**不採納**：技術棧（Next.js / Prisma / PostgreSQL / Auth.js）— 現有 SvelteKit + Cloudflare + Better Auth 已完成 M0–M3，不重來；Email 登入（規格 §1 只有 Google / LINE）；「錯誤仍可繼續輸入」— 現行引擎是錯鍵不推進、只計入 accuracy，這是規格 §6.4 的硬性決策，M4 沿用；WPM — 日文用 KPM / CPM。
+
+**待確認**：分數公式是否加入 Combo 係數；Admin 角色如何指定（先用 `user.role` 欄位 + 手動設定）。

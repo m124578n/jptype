@@ -2,7 +2,8 @@
 	import type { ScoreResult } from '@jptype/engine';
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
-	import { formatAccuracy, formatKpm } from '$lib/format';
+	import { formatAccuracy, formatDuration, formatKpm } from '$lib/format';
+	import type { ErrorAnalysis } from '$lib/practice/errors';
 
 	let {
 		result,
@@ -12,7 +13,10 @@
 		onretry,
 		retryLabel = m.result_retry(),
 		showPracticeWrong = true,
-		rank
+		rank,
+		durationMs,
+		maxCombo,
+		errors
 	}: {
 		result: ScoreResult;
 		wrongUnits: string[];
@@ -23,9 +27,26 @@
 		showPracticeWrong?: boolean;
 		/** Weekly rank from the server (logged-in, unflagged runs only). */
 		rank?: number | undefined;
+		/** Typing time of the run (M4-3). Omitted → the Time tile is hidden. */
+		durationMs?: number | undefined;
+		/** Longest streak of correct keys (M4-3). Omitted → the Max Combo tile is hidden. */
+		maxCombo?: number | undefined;
+		/** Top wrong kana / spellings, from `run.errorAnalysis()` (M4-3). */
+		errors?: ErrorAnalysis | undefined;
 	} = $props();
 
 	const offerWrong = $derived(showPracticeWrong && wrongUnits.length > 0);
+	const topSpellings = $derived(errors?.spellings ?? []);
+
+	/**
+	 * The wrong-kana list (spec §7.3), with the top offenders first and their counts. Kana that
+	 * did not make the top 5 keep their place at the end without a count.
+	 */
+	const wrongChips = $derived.by(() => {
+		const counted = errors?.units ?? [];
+		const rest = wrongUnits.filter((kana) => !counted.some((u) => u.kana === kana));
+		return [...counted, ...rest.map((kana) => ({ kana, count: 0 }))];
+	});
 </script>
 
 <section class="stack result" aria-labelledby="result-title">
@@ -50,18 +71,59 @@
 		</div>
 	</dl>
 
+	<dl class="stats stats--minor">
+		{#if durationMs !== undefined}
+			<div>
+				<dt class="muted">{m.stats_time()}</dt>
+				<dd>{formatDuration(durationMs)}</dd>
+			</div>
+		{/if}
+		{#if maxCombo !== undefined}
+			<div>
+				<dt class="muted">{m.stats_max_combo()}</dt>
+				<dd>{maxCombo}</dd>
+			</div>
+		{/if}
+		<div>
+			<dt class="muted">{m.stats_errors()}</dt>
+			<dd>{result.wrongKeys}</dd>
+		</div>
+	</dl>
+
 	<div class="stack wrong">
 		<h3>{m.result_wrong_title()}</h3>
-		{#if wrongUnits.length === 0}
+		{#if wrongChips.length === 0}
 			<p class="muted">{m.result_wrong_none()}</p>
 		{:else}
 			<ul class="chips" lang="ja">
-				{#each wrongUnits as kana (kana)}
-					<li class="chip">{kana}</li>
+				{#each wrongChips as chip (chip.kana)}
+					<li class="chip">
+						{chip.kana}{#if chip.count > 0}<span class="count">×{chip.count}</span>{/if}
+					</li>
 				{/each}
 			</ul>
 		{/if}
 	</div>
+
+	{#if topSpellings.length > 0}
+		<div class="stack block">
+			<h3>{m.stats_top_spellings_title()}</h3>
+			<ul class="spellings">
+				{#each topSpellings as s (`${s.kana}|${s.expected}|${s.typed}`)}
+					<li>
+						<span class="kana" lang="ja">{s.kana}</span>
+						<span class="pair"
+							><span class="expected">{s.expected}</span>
+							<span class="arrow" aria-hidden="true">→</span>
+							<span class="typed">{s.typed}</span></span
+						>
+						<span class="count">×{s.count}</span>
+					</li>
+				{/each}
+			</ul>
+			<p class="muted note">{m.stats_top_spellings_note()}</p>
+		</div>
+	{/if}
 
 	<div class="row actions">
 		{#if offerWrong}
@@ -108,6 +170,13 @@
 		font-variant-numeric: tabular-nums;
 		line-height: 1.1;
 	}
+	.stats--minor {
+		margin-top: calc(-1 * var(--space-4));
+	}
+	.stats--minor dd {
+		font-size: 1.5rem;
+		font-weight: 500;
+	}
 	.score {
 		color: var(--accent);
 	}
@@ -130,6 +199,60 @@
 		border-radius: var(--radius);
 		background: var(--danger-soft);
 		color: var(--danger);
+	}
+	.block {
+		align-items: center;
+		text-align: center;
+		gap: var(--space-3);
+	}
+	.count {
+		font-size: 0.875rem;
+		color: var(--fg-muted);
+		margin-left: var(--space-1);
+		font-variant-numeric: tabular-nums;
+	}
+	.chip .count {
+		color: inherit;
+		opacity: 0.75;
+	}
+	.spellings {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		width: min(100%, 22rem);
+	}
+	.spellings li {
+		display: grid;
+		grid-template-columns: 2.5rem 1fr auto;
+		align-items: baseline;
+		gap: var(--space-3);
+		text-align: left;
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+	.spellings .kana {
+		font-size: 1.25rem;
+	}
+	.pair {
+		letter-spacing: 0.06em;
+	}
+	.expected {
+		color: var(--accent);
+	}
+	.arrow {
+		color: var(--fg-muted);
+		margin: 0 var(--space-1);
+	}
+	.spellings .typed {
+		color: var(--danger);
+	}
+	.note {
+		font-size: 0.8125rem;
 	}
 	.actions {
 		justify-content: center;

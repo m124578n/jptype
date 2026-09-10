@@ -7,6 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
+	import type { ErrorAnalysis } from '$lib/practice/errors';
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
 	import { hasJapaneseVoice, speak, speechAvailable, stopSpeaking } from '$lib/speech';
@@ -39,6 +40,7 @@
 	let run = $state.raw<PracticeRun | null>(null);
 	let result = $state<ScoreResult | null>(null);
 	let newBest = $state(false);
+	let errors = $state<ErrorAnalysis | null>(null);
 
 	/** 'checking' until we know whether a local ja-JP voice exists. */
 	let voice = $state<'checking' | 'ready' | 'none'>('checking');
@@ -137,7 +139,11 @@
 		stuck = false;
 		const s = r.result();
 		result = s;
-		newBest = recordResult(`listen:${pool}`, s);
+		errors = r.errorAnalysis();
+		newBest = recordResult(`listen:${pool}`, s, {
+			durationMs: r.durationMs,
+			maxCombo: r.maxCombo
+		});
 		recordKanaStats(r.unitOutcomes);
 		sound.play('bell');
 		phase = 'result';
@@ -296,6 +302,9 @@
 			{result}
 			wrongUnits={run.wrongUnits}
 			{newBest}
+			durationMs={run.durationMs}
+			maxCombo={run.maxCombo}
+			errors={errors ?? undefined}
 			onpracticeWrong={start}
 			onretry={start}
 			retryLabel={m.listen_again()}

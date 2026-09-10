@@ -35,6 +35,40 @@ export interface KanaStat {
 
 export type KanaStats = Record<string, KanaStat>;
 
+/**
+ * One finished run, kept so the logged-out `/me` can show practice time, 30-day averages and
+ * achievements without a server (M4-3). `keys` and `maxCombo` are what the achievement rules
+ * need on top of the score; both default to 0 for callers that do not have them.
+ */
+export interface RunHistoryEntry {
+	mode: string;
+	score: number;
+	kpm: number;
+	/** 0..1 */
+	accuracy: number;
+	durationMs: number;
+	/** Correct + wrong keys of the run. */
+	keys: number;
+	maxCombo: number;
+	/** epoch ms */
+	at: number;
+}
+
+/** Rolling window; old entries fall off the front. */
+export const HISTORY_LIMIT = 200;
+
+/** Arrays must not be merged key-by-key the way `read` merges objects. */
+function readArray<T>(key: string): T[] {
+	try {
+		const raw = globalThis.localStorage?.getItem(PREFIX + key);
+		if (raw === null || raw === undefined) return [];
+		const parsed: unknown = JSON.parse(raw);
+		return Array.isArray(parsed) ? (parsed as T[]) : [];
+	} catch {
+		return [];
+	}
+}
+
 function read<T>(key: string, fallback: T): T {
 	try {
 		const raw = globalThis.localStorage?.getItem(PREFIX + key);
@@ -65,8 +99,31 @@ export function loadResults(): LessonResults {
 	return read<LessonResults>('results', {});
 }
 
-/** Record a finished run; returns true when it set a new best score. */
-export function recordResult(lessonId: string, result: ScoreResult, now = Date.now()): boolean {
+/** Runs recorded in this browser, oldest first (at most `HISTORY_LIMIT`). */
+export function loadHistory(): RunHistoryEntry[] {
+	return readArray<RunHistoryEntry>('history');
+}
+
+/** Append one run to the rolling history, dropping the oldest entries past the cap. */
+export function recordHistory(entry: RunHistoryEntry): void {
+	const history = loadHistory();
+	history.push(entry);
+	write('history', history.slice(-HISTORY_LIMIT));
+}
+
+/**
+ * Record a finished run: per-mode best/attempts, plus one entry in the rolling history.
+ * Returns true when it set a new best score.
+ *
+ * `durationMs` / `maxCombo` are optional so older call sites keep compiling; a run submitted
+ * without them simply contributes 0 practice time and no combo achievement.
+ */
+export function recordResult(
+	lessonId: string,
+	result: ScoreResult,
+	opts: { now?: number; durationMs?: number; maxCombo?: number } = {}
+): boolean {
+	const now = opts.now ?? Date.now();
 	const all = loadResults();
 	const prev = all[lessonId];
 	const isBest = !prev || result.score > prev.best.score;
@@ -76,6 +133,16 @@ export function recordResult(lessonId: string, result: ScoreResult, now = Date.n
 		lastAt: now
 	};
 	write('results', all);
+	recordHistory({
+		mode: lessonId,
+		score: result.score,
+		kpm: result.kpm,
+		accuracy: result.accuracy,
+		durationMs: opts.durationMs ?? 0,
+		keys: result.correctKeys + result.wrongKeys,
+		maxCombo: opts.maxCombo ?? 0,
+		at: now
+	});
 	return isBest;
 }
 

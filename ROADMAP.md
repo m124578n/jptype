@@ -90,13 +90,13 @@
 
 ### M4-3 練習 UI 與統計擴充
 
-- ⬜ Combo（連續正確）與 Max Combo；里程碑 10 / 20 / 50 / 100
-- ⬜ 錯誤分析：最常錯的假名、最常錯的拼法（如 shi → si）
-- ⬜ 結果頁補：Time、Max Combo、Errors、最常錯誤
+- ✅ Combo（連續正確）與 Max Combo；里程碑 10 / 20 / 50 / 100（`lib/practice/combo.ts`；`TypingArea` 連續 5 以上才顯示，里程碑閃一下主色，尊重 reduced-motion）
+- ✅ 錯誤分析：最常錯的假名、最常錯的拼法（如 shi → si）— `lib/practice/errors.ts`，結果頁各列前 5
+- ✅ 結果頁補：Time、Max Combo、Errors、最常錯誤（`ResultPanel` 可選 props，既有呼叫端不受影響）
 - ✅ 每個內容的排行榜：mode `content:{id}` 直接沿用既有排行榜（KV 快取、週榜 / 總榜），`/leaderboard?mode=content:{id}` 顯示內容標題；草稿內容的成績一律被擋掉
 - ⬜ Accuracy ≥ 90% 才算有效成績；分數公式是否加 Combo 係數 **[待確認]**（現行 §6.5 是 kpm × accuracy²）
-- ⬜ 個人統計補：今日 / 本週練習時間、平均 Accuracy / CPM
-- ⬜ 簡單成就：First Practice、100 Combo、CPM > 100、Perfect、10 次練習
+- ✅ 個人統計補：今日 / 本週練習時間、近 30 天平均 Accuracy / KPM（登入走 D1，未登入走 localStorage 的 200 筆滾動紀錄，共用 `lib/stats.ts`）
+- ✅ 簡單成就：First Practice、100 Combo、KPM ≥ 100、Perfect、10 次練習（`lib/achievements.ts` 純推導，不另開表；`runs.max_combo` migration `0004_achievements`）
 
 ### M4-4 內容探索與後台
 

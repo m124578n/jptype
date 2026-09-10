@@ -13,7 +13,6 @@
 	"footer_note": "羅馬字輸入練習・全部判定在瀏覽器完成",
 	"footer_terms": "服務條款",
 	"footer_copyright": "著作權與檢舉",
-
 	"home_tagline": "給台灣日文初學者的日文打字練習",
 	"home_lead": "從五十音開始，一個假名一個假名，把羅馬字輸入練成反射動作。",
 	"home_cta_start": "開始學五十音",
@@ -23,14 +22,12 @@
 	"home_benefit_2_body": "打錯不會吃進去，畫面閃一下、鍵盤指給你看下一個鍵。",
 	"home_benefit_3_title": "從認識到熟練",
 	"home_benefit_3_body": "每課先看卡片，再練二十題，最後只練你錯過的。",
-
 	"learn_title": "課程",
 	"learn_lead": "依序完成，每課約三分鐘。",
 	"learn_best": "最佳 {score} 分",
 	"learn_not_started": "尚未練習",
 	"learn_completed": "已完成",
 	"learn_lesson_count": "{count} 題",
-
 	"lesson_not_found": "找不到這個課程",
 	"lesson_back_to_map": "回課程地圖",
 	"lesson_intro_title": "認識",
@@ -39,15 +36,12 @@
 	"lesson_practice_progress": "第 {current} 題 / 共 {total} 題",
 	"lesson_practice_hint_off": "提示已關閉",
 	"lesson_restart": "重新開始",
-
 	"card_play": "播放發音",
-
 	"typing_hint_toggle": "羅馬字提示",
 	"typing_keyboard_toggle": "螢幕鍵盤",
 	"typing_sound_toggle": "打字音效",
 	"typing_status": "第 {current} 題，共 {total} 題，目前 {kana}",
 	"typing_mobile_notice": "建議使用實體鍵盤練習，手機觸控鍵盤體驗未最佳化。",
-
 	"result_title": "結果",
 	"result_kpm": "每分鐘按鍵",
 	"result_accuracy": "準確率",
@@ -59,7 +53,6 @@
 	"result_new_best": "新紀錄",
 	"result_rank": "本週第 {rank} 名",
 	"result_saved": "成績已送出",
-
 	"timed_title": "計時賽",
 	"timed_lead": "選範圍和時間，連續出題直到時間到。登入後成績會進排行榜。",
 	"timed_pool_label": "範圍",
@@ -74,7 +67,6 @@
 	"timed_cancel": "取消",
 	"timed_again": "再來一場",
 	"timed_change_settings": "改範圍或時間",
-
 	"listen_title": "聽打模式",
 	"listen_lead": "只聽不看：系統念出假名，你直接打。答對或連錯兩次才會顯示答案。",
 	"listen_pool_label": "範圍",
@@ -211,7 +203,6 @@
 	"songs_timing_line": "第 {line} 句",
 	"songs_timing_done": "全部對完了，可以回去用同步模式。",
 	"songs_timing_open_practice": "去練這首",
-
 	"copyright_title": "著作權與檢舉",
 	"copyright_lead": "這一頁說明本站的內容從哪裡來、權利人要怎麼通知我們下架，以及重複被下架的處理方式。",
 	"copyright_h_content": "站上的歌詞是誰放的",
@@ -235,7 +226,6 @@
 	"copyright_sent": "已收到，謝謝。我們會盡快處理。",
 	"copyright_error": "送不出去，請確認欄位都有填，或改寄信到 {email}。",
 	"copyright_error_fields": "請填寫聯絡方式、歌曲與說明。",
-
 	"terms_title": "服務條款",
 	"terms_lead": "使用本站即表示你同意以下條款。條款如有更動會直接改在這一頁。",
 	"terms_h_service": "服務內容",
@@ -250,7 +240,6 @@
 	"terms_h_liability": "免責",
 	"terms_p_liability": "本站按現況提供，不保證不中斷或無錯誤。影片由 YouTube 提供，播放行為適用 YouTube 自己的條款。",
 	"terms_contact": "有問題請聯絡 {email}。",
-
 	"admin_title": "管理",
 	"admin_lead": "檢舉處理與歌曲下架。所有動作都會留紀錄。",
 	"admin_reports_title": "檢舉",
@@ -280,7 +269,6 @@
 	"admin_working": "處理中…",
 	"admin_failed": "處理失敗，請重新整理後再試。",
 	"admin_done": "已處理。",
-
 	"notice_title": "站內通知",
 	"notice_none": "沒有新的通知。",
 	"notice_mark_read": "全部標為已讀",
@@ -289,17 +277,14 @@
 	"notice_suspended_title": "帳號已停止公開權限",
 	"notice_suspended_body": "你的內容已累計三次下架，此帳號不能再公開內容，既有的公開內容也已改回私有。",
 	"notice_generic_title": "通知",
-
 	"login_title": "登入",
 	"login_lead": "登入後計時賽成績會進排行榜，練習紀錄也會跨裝置同步。",
 	"login_with_google": "使用 Google 登入",
 	"login_failed": "登入失敗，請再試一次。",
 	"login_note": "我們只取得你的名稱與頭像，不會發文或讀取聯絡人。",
 	"login_already": "你已經以 {name} 登入。",
-
 	"home_top_title": "本週排行榜前 5",
 	"home_top_more": "看完整排行榜 →",
-
 	"leaderboard_title": "排行榜",
 	"leaderboard_lead": "計時賽成績，每人取最佳一場。週榜每週一 00:00 重置。",
 	"leaderboard_filters": "篩選",
@@ -313,7 +298,6 @@
 	"leaderboard_me_in_top": "（在上方名單中）",
 	"leaderboard_me_none": "你在這個榜還沒有成績。",
 	"leaderboard_login_hint": "登入後計時賽成績會進榜。",
-
 	"nav_me": "我的",
 	"me_title": "我的紀錄",
 	"me_anon_lead": "以下是這個瀏覽器的紀錄。登入後會跨裝置同步，也能進排行榜。",
@@ -339,10 +323,8 @@
 	"me_col_mode": "模式",
 	"me_mode_weak": "弱項練習",
 	"weak_lead": "這次的題庫包含 {count} 個弱項假名，其餘隨機補足。",
-
 	"nav_contents": "內容",
 	"leaderboard_content_board": "「{title}」的排行榜。",
-
 	"contents_title": "內容",
 	"contents_lead": "用真實的日文內容練打字：挑一個內容，打上面的假名。",
 	"contents_filters": "內容篩選",
@@ -401,7 +383,6 @@
 	"contents_leaderboard": "這個內容的排行榜",
 	"contents_source_label": "來源：",
 	"contents_source_link": "原始連結",
-
 	"admin_contents_title": "內容管理",
 	"admin_contents_lead": "匯入、校對與發布練習內容。平台本身不附任何內容，全部由管理員匯入。",
 	"admin_contents_new": "新增內容",
@@ -486,5 +467,29 @@
 	"admin_contents_line_untypeable": "打不了：{chars}",
 	"admin_contents_save_lines": "儲存句子",
 	"admin_contents_lines_saved": "句子已儲存",
-	"admin_contents_unsaved": "尚未儲存"
+	"admin_contents_unsaved": "尚未儲存",
+	"stats_combo": "連續 {count}",
+	"stats_time": "時間",
+	"stats_max_combo": "最高連續",
+	"stats_errors": "錯誤鍵數",
+	"stats_top_spellings_title": "最常打錯的拼法",
+	"stats_top_spellings_note": "左邊是當下該打的拼法，右邊是實際按下去的。",
+	"stats_today_time": "今日練習時間",
+	"stats_week_time": "本週練習時間",
+	"stats_avg_accuracy_30": "近 30 天平均準確率",
+	"stats_avg_kpm_30": "近 30 天平均 KPM",
+	"achv_title": "成就",
+	"achv_progress": "{unlocked} / {total}",
+	"achv_state_unlocked": "已達成",
+	"achv_state_locked": "未達成",
+	"achv_first_practice": "第一次練習",
+	"achv_first_practice_hint": "完成任何一場練習",
+	"achv_perfect": "全對",
+	"achv_perfect_hint": "一場 20 鍵以上、準確率 100%",
+	"achv_lessons_10": "練習 10 場",
+	"achv_lessons_10_hint": "累積完成 10 場練習",
+	"achv_kpm_100": "每分鐘 100 鍵",
+	"achv_kpm_100_hint": "單場 KPM 達到 100",
+	"achv_combo_100": "連續 100",
+	"achv_combo_100_hint": "一場中連續打對 100 個鍵"
 }

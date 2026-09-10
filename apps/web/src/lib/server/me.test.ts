@@ -53,12 +53,27 @@ describe('getMyStats', () => {
 				T('2026-09-09T02:00:00Z'),
 				T('2026-07-01T01:00:00Z')
 			],
-			totalRuns: async () => 12
+			totalRuns: async () => 12,
+			runSamples: async () => [
+				{ at: T('2026-09-10T01:00:00Z'), durationMs: 60_000, kpm: 120, accuracy: 1 },
+				{ at: T('2026-09-09T01:00:00Z'), durationMs: 40_000, kpm: 80, accuracy: 0.8 }
+			],
+			achievementTotals: async () => ({ maxCombo: 101, bestKpm: 120, perfectRuns: 1 })
 		};
 		const s = await getMyStats(store, 'u', now);
 		expect(s.weak).toEqual(['し']);
 		expect(s.streak).toBe(2);
 		expect(s.activeDays30).toBe(2);
 		expect(s.totalRuns).toBe(12);
+		// Today = 2026-09-10 Taipei; both runs fall in the same ISO week.
+		expect(s.summary.todayMs).toBe(60_000);
+		expect(s.summary.weekMs).toBe(100_000);
+		expect(s.summary.avgKpm30).toBe(100);
+		expect(s.achievements).toEqual({
+			totalRuns: 12,
+			maxCombo: 101,
+			bestKpm: 120,
+			perfectRuns: 1
+		});
 	});
 });

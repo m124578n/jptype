@@ -6,6 +6,8 @@ import {
 	type PressResult,
 	type ScoreResult
 } from '@jptype/engine';
+import { applyComboKey } from './combo.ts';
+import { analyzeErrors, type ErrorAnalysis, type KeyError } from './errors.ts';
 import { pickNext, pickQuestions, QUESTIONS_PER_RUN, type Rng } from './questions.ts';
 
 export interface UnitOutcome {
@@ -29,6 +31,14 @@ export interface TypingRun {
 	readonly hint: string;
 	readonly nextKey: string;
 	readonly lastWrongAt: number;
+	/** Consecutive accepted keys (M4-3); 0 right after a wrong key. */
+	readonly combo: number;
+	/** Highest `combo` reached so far. */
+	readonly maxCombo: number;
+	/** Last combo milestone crossed (0 before the first one), for the UI's accent flash. */
+	readonly milestone: number;
+	/** `nowMs` of the last milestone; bumped on every crossing so the flash re-triggers. */
+	readonly milestoneAt: number;
 }
 
 export interface RunOptions {
@@ -59,6 +69,10 @@ export class PracticeRun implements TypingRun {
 	tick = $state(0);
 	finished = $state(false);
 	lastWrongAt = $state(0);
+	combo = $state(0);
+	maxCombo = $state(0);
+	milestone = $state(0);
+	milestoneAt = $state(0);
 
 	private readonly pool: readonly string[];
 	private readonly endless: boolean;
@@ -67,6 +81,7 @@ export class PracticeRun implements TypingRun {
 	private lastKeyAt = 0;
 	private readonly events: KeyEvent[] = [];
 	private readonly outcomes: UnitOutcome[] = [];
+	private readonly errors: KeyError[] = [];
 	private currentUnitErrored = false;
 	private stoppedAt: number | null = null;
 
@@ -143,9 +158,19 @@ export class PracticeRun implements TypingRun {
 		this.startedAt = startedAt;
 		this.lastKeyAt = nowMs;
 		const unit = this.session.units[result.unitIndex];
+		applyComboKey(this, result.ok, nowMs);
 		if (!result.ok) {
 			this.currentUnitErrored = true;
 			this.lastWrongAt = nowMs;
+			// A rejected key never enters the buffer, so `typed` still holds the accepted prefix.
+			if (unit) {
+				this.errors.push({
+					kana: unit.kana,
+					romaji: unit.romaji,
+					typed: this.session.progress.typed,
+					key: this.session.log[this.session.log.length - 1]?.key ?? ''
+				});
+			}
 		}
 		if (result.unitDone && unit) {
 			this.outcomes.push({ kana: unit.kana, error: this.currentUnitErrored });
@@ -186,6 +211,17 @@ export class PracticeRun implements TypingRun {
 
 	get unitOutcomes(): readonly UnitOutcome[] {
 		return this.outcomes;
+	}
+
+	/** One record per rejected key, in order; input to `analyzeErrors`. */
+	get keyErrors(): readonly KeyError[] {
+		void this.tick;
+		return this.errors;
+	}
+
+	/** Most-often-wrong kana and spellings for the result page (M4-3). */
+	errorAnalysis(limit = 5): ErrorAnalysis {
+		return analyzeErrors(this.errors, limit);
 	}
 
 	/** Questions shown so far (including a partially typed last one), joined for replay(). */

@@ -7,6 +7,7 @@ export interface SubmittableRun {
 	readonly text: string;
 	readonly log: KeyEvent[];
 	readonly durationMs: number;
+	readonly maxCombo: number;
 }
 
 /**
@@ -26,6 +27,7 @@ export async function submitPracticeRun(
 		text: run.text,
 		durationMs: run.durationMs,
 		log,
+		maxCombo: run.maxCombo,
 		...(turnstileToken ? { turnstileToken } : {})
 	});
 }

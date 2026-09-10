@@ -16,7 +16,13 @@
 			| 'newspaper'
 			| 'book'
 			| 'clipboard'
-			| 'pen';
+			| 'pen'
+			| 'sparkles'
+			| 'target'
+			| 'list-checks'
+			| 'zap'
+			| 'flame'
+			| 'clock';
 		size?: number;
 	} = $props();
 </script>
@@ -64,5 +70,25 @@
 		/><path d="M9 13h6M9 17h4" />
 	{:else if name === 'pen'}
 		<path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+	{:else if name === 'sparkles'}
+		<path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" /><path
+			d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"
+		/>
+	{:else if name === 'target'}
+		<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle
+			cx="12"
+			cy="12"
+			r="1.5"
+		/>
+	{:else if name === 'list-checks'}
+		<path d="M3 6l2 2 3-3M3 14l2 2 3-3M12 7h9M12 15h9" />
+	{:else if name === 'zap'}
+		<path d="M13 2 4 14h7l-1 8 9-12h-7z" />
+	{:else if name === 'flame'}
+		<path
+			d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4.5-9C13 3.5 12 2 12 2s-1 3-3 5.5S5 12 5 15a7 7 0 0 0 7 7z"
+		/><path d="M12 22a3 3 0 0 0 3-3c0-1.8-1.5-2.6-2-3.8-.6 1.2-2 2-2 3.8a3 3 0 0 0 1 3z" />
+	{:else if name === 'clock'}
+		<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
 	{/if}
 </svg>

@@ -27,6 +27,9 @@ export const runs = sqliteTable(
 		correctKeys: integer('correct_keys').notNull(),
 		wrongKeys: integer('wrong_keys').notNull(),
 		durationMs: integer('duration_ms').notNull(),
+		// Longest streak of accepted keys, recomputed from the log server-side (M4-3).
+		// Nullable: runs recorded before the column existed have no combo.
+		maxCombo: integer('max_combo'),
 		week: text('week').notNull(), // 'YYYY-Www' in Asia/Taipei
 		flagged: integer('flagged').notNull().default(0), // 1 → anticheat suspect
 		createdAt: integer('created_at').notNull() // epoch ms

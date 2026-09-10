@@ -62,6 +62,9 @@
 	<header class="stack head">
 		<h1>{m.admin_title()}</h1>
 		<p class="muted">{m.admin_lead()}</p>
+		<p class="row">
+			<a class="btn" href={resolve('/admin/contents')}>{m.admin_contents_title()}</a>
+		</p>
 	</header>
 
 	<section class="stack">

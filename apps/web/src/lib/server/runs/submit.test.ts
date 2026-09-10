@@ -160,4 +160,35 @@ describe('submitRun', () => {
 		const r = await submitRun('u1', { mode: 'timed:allhira:60', text, log, durationMs }, d);
 		expect(r.ok).toBe(true);
 	});
+
+	it('validates a content run against the pool the deps resolve from D1 (M4-1)', async () => {
+		const text = 'あさ\nよる';
+		const log = record(text, 'asayoru');
+		const durationMs = (log.at(-1)?.t ?? 0) - (log[0]?.t ?? 0);
+		const { store, inserted } = fakeStore();
+		const { d } = deps(store);
+		const withPool = {
+			...d,
+			poolForMode: async (_mode: string, parsed: { kind: string }) =>
+				parsed.kind === 'content' ? ['あさ', 'よる'] : undefined
+		};
+
+		const r = await submitRun('u1', { mode: 'content:C1', text, log, durationMs }, withPool);
+		expect(r.ok).toBe(true);
+		expect(inserted[0]?.mode).toBe('content:C1');
+
+		// A line that is not part of the content is rejected like any other foreign text…
+		expect(
+			await submitRun('u1', { mode: 'content:C1', text: 'ひる', log, durationMs }, withPool)
+		).toMatchObject({ ok: false, error: /text|replay/ });
+
+		// …and a content with no pool (draft / deleted) is simply an unknown mode.
+		expect(
+			await submitRun(
+				'u1',
+				{ mode: 'content:C9', text, log, durationMs },
+				{ ...d, poolForMode: async () => undefined }
+			)
+		).toMatchObject({ ok: false, error: /mode/ });
+	});
 });

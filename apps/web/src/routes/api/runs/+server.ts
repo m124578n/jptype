@@ -1,5 +1,7 @@
 import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { d1ContentStore } from '$lib/server/contents/store';
 import { createDb } from '$lib/server/db';
+import { contentPoolResolver } from '$lib/server/mode';
 import { d1RunStore } from '$lib/server/runs/store';
 import { parseSubmission, submitRun } from '$lib/server/runs/submit';
 import { verifyTurnstile } from '$lib/server/turnstile';
@@ -34,8 +36,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		}
 	}
 
+	const db = createDb(env.DB);
 	const result = await submitRun(userId, parsed, {
-		store: d1RunStore(createDb(env.DB)),
+		store: d1RunStore(db),
+		// `content:{id}` runs are validated against the content's own lines (M4-1).
+		poolForMode: contentPoolResolver({ store: d1ContentStore(db) }),
 		putLog: (id, log) =>
 			env.R2.put(`runs/${id}.json`, JSON.stringify(log), {
 				httpMetadata: { contentType: 'application/json' }

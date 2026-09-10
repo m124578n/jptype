@@ -25,10 +25,17 @@ export const TIMED_POOLS: Readonly<Record<TimedPoolId, readonly string[]>> = {
 /** Mode string for 弱項練習 (spec §7.3): questions may be any kana, so its pool is `all`. */
 export const WEAK_MODE = 'weak';
 
+/**
+ * Ids of imported contents (M4-1). Deliberately permissive: this package cannot know which
+ * contents exist — that lives in D1 — so it only checks the shape of the id.
+ */
+const CONTENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
 export type ParsedMode =
 	| { kind: 'timed'; pool: TimedPoolId; seconds: TimedSeconds }
 	| { kind: 'lesson'; lessonId: string }
-	| { kind: 'weak' };
+	| { kind: 'weak' }
+	| { kind: 'content'; contentId: string };
 
 export function timedMode(pool: TimedPoolId, seconds: TimedSeconds): string {
 	return `timed:${pool}:${seconds}`;
@@ -38,7 +45,15 @@ export function lessonMode(lessonId: string): string {
 	return `lesson:${lessonId}`;
 }
 
-/** Parse a `mode` string (`timed:{pool}:{seconds}` | `lesson:{id}` | `weak`); undefined when malformed. */
+/** Mode string of one imported content (M4-1); ranked per content on the leaderboard. */
+export function contentMode(contentId: string): string {
+	return `content:${contentId}`;
+}
+
+/**
+ * Parse a `mode` string (`timed:{pool}:{seconds}` | `lesson:{id}` | `weak` | `content:{id}`);
+ * undefined when malformed.
+ */
 export function parseMode(mode: string): ParsedMode | undefined {
 	if (mode === WEAK_MODE) return { kind: 'weak' };
 	const parts = mode.split(':');
@@ -51,14 +66,21 @@ export function parseMode(mode: string): ParsedMode | undefined {
 	if (parts[0] === 'lesson' && parts.length === 2 && parts[1] && findLesson(parts[1])) {
 		return { kind: 'lesson', lessonId: parts[1] };
 	}
+	if (parts[0] === 'content' && parts.length === 2 && parts[1] && CONTENT_ID.test(parts[1])) {
+		return { kind: 'content', contentId: parts[1] };
+	}
 	return undefined;
 }
 
-/** Question pool a mode draws from; undefined for unknown modes. */
+/**
+ * Question pool a mode draws from; undefined for unknown modes **and for `content:{id}`**,
+ * whose lines live in D1 — the server loads those itself (`server/mode.ts`).
+ */
 export function poolForMode(mode: string): readonly string[] | undefined {
 	const parsed = parseMode(mode);
 	if (!parsed) return undefined;
 	if (parsed.kind === 'timed') return TIMED_POOLS[parsed.pool];
 	if (parsed.kind === 'weak') return TIMED_POOLS.all;
+	if (parsed.kind === 'content') return undefined;
 	return findLesson(parsed.lessonId)?.units;
 }

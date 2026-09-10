@@ -59,13 +59,14 @@
 
 定位從「假名打字練習」擴大為「用真實日文內容練打字」：歌曲只是入口，動畫台詞、新聞、JLPT 題、文章、自由輸入都走同一條管線 **內容 → 解析 → 假名 / 羅馬字 → 引擎 → 判定 → 統計**。技術棧不變（SvelteKit + Cloudflare D1/KV/R2，引擎沿用 `@jptype/engine`）。
 
-### M4-1 內容資料模型與匯入（先做，其餘都建立在它上面）
+### M4-1 內容資料模型與匯入（先做，其餘都建立在它上面，2026-09-10 實作）
 
-- ⬜ `contents`：id、type（song / anime / news / novel / jlpt / free）、title、description、youtubeVideoId、jlptLevel（N5–N1 / unknown）、difficulty（easy / normal / hard / expert）、status（draft / published）
-- ⬜ `content_lines`：order、startTime、endTime（秒，可為空）、originalText、kanaText、romajiText（自動產生，可人工改）、metadata
-- ⬜ 權利 metadata 為必填：sourceType、sourceUrl、sourceName、license、rightsStatus（original / licensed / public_domain / user_provided / other）；rightsStatus 不明者不得發布
-- ⬜ Manual Import 管線：貼文字 → 斷句 → 漢字→假名（瀏覽器端 kuromoji 字典，不叫外部 API）→ 羅馬字 → 管理員校對 → 發布
-- ⬜ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs` localStorage 版本併入此模型
+- ✅ `contents`：id、type（song / anime / news / novel / jlpt / free）、title、description、videoId、jlptLevel（N5–N1 / unknown）、difficulty（easy / normal / hard / expert）、status（draft / published）；migration `0003_contents`
+- ✅ `content_lines`：order、startTime、endTime（秒，可為空）、originalText、kanaText、romajiText（自動產生，可人工改）、metadata；`unique(contentId, order)`，Line Editor 整張表一次覆寫
+- ✅ 權利 metadata 為必填：sourceType（original / licensed / public_domain / user_provided / other）、sourceUrl、sourceName、license、rightsStatus（cleared / unknown）；**`rightsStatus != 'cleared'` 或沒有任何一句打得出來就不能發布**（伺服器 409）
+- ✅ Manual Import 管線：貼文字 → 斷句（`lib/ja/segment`）→ 漢字→假名（瀏覽器端 kuromoji，字典由自己的網域提供，不叫外部 API）→ 羅馬字（`lib/ja/romaji`）→ 管理員逐句校對 → 發布
+- ✅ 公開瀏覽 `/contents`（類型 / JLPT / 難度篩選 + 搜尋 + 個人最佳）與練習 `/contents/[id]`（有時間軸走同步模式，否則逐句）；成績送 `POST /api/runs`，mode `content:{id}`
+- ⬜ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs`（M4-1b 的 `songs` 表）併入此模型
 - ⬜ 之後任何第三方來源都以獨立 Connector 實作，並遵守該來源的使用條款（不做繞過、不做大量抓取）
 
 ### M4-1b 歌曲：歌詞私有、時間軸共享、可選公開（owner 2026-09-10 定案，第二個 Opus agent）
@@ -92,16 +93,17 @@
 - ⬜ Combo（連續正確）與 Max Combo；里程碑 10 / 20 / 50 / 100
 - ⬜ 錯誤分析：最常錯的假名、最常錯的拼法（如 shi → si）
 - ⬜ 結果頁補：Time、Max Combo、Errors、最常錯誤
-- ⬜ 每個內容的排行榜，Accuracy ≥ 90% 才算有效成績；分數公式是否加 Combo 係數 **[待確認]**（現行 §6.5 是 kpm × accuracy²）
+- ✅ 每個內容的排行榜：mode `content:{id}` 直接沿用既有排行榜（KV 快取、週榜 / 總榜），`/leaderboard?mode=content:{id}` 顯示內容標題；草稿內容的成績一律被擋掉
+- ⬜ Accuracy ≥ 90% 才算有效成績；分數公式是否加 Combo 係數 **[待確認]**（現行 §6.5 是 kpm × accuracy²）
 - ⬜ 個人統計補：今日 / 本週練習時間、平均 Accuracy / CPM
 - ⬜ 簡單成就：First Practice、100 Combo、CPM > 100、Perfect、10 次練習
 
 ### M4-4 內容探索與後台
 
-- ⬜ 內容列表：搜尋、類型、JLPT、難度篩選；卡片顯示縮圖、標籤、個人最佳
+- ✅ 內容列表 `/contents`：搜尋、類型、JLPT、難度篩選；卡片顯示 YouTube 縮圖（沒有影片就用類型圖示）、標籤、個人最佳（localStorage `content:{id}`）
 - ⬜ 首頁改版：Hero + 熱門類型 + 你的進度
-- ⬜ Admin（`user.plan` 之外新增 `user.role`）：內容 CRUD、發布 / 下架、使用者、練習紀錄
-- ⬜ Line Editor：播放器旁逐句設定 start / end、改假名與羅馬字、上移下移刪除
+- 🔨 Admin：內容 CRUD、發布 / 下架 ✅（`/admin/contents`，沿用 `ADMIN_EMAILS`，沒有新增 `user.role`）；使用者與練習紀錄管理 ⬜
+- ✅ Line Editor：`/admin/contents/[id]` 播放器旁逐句設定 start / end（「用目前時間填入」）、改假名與羅馬字（打不出來的字會標紅）、上移下移刪除新增
 - ⬜ 分析事件：內容瀏覽、開始練習、完成練習（核心指標 = 開始 → 完成的轉換率）
 
 ### M4-5 AI（最後做，且只用自有內容）

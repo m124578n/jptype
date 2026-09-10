@@ -26,7 +26,8 @@
 		"@jptype/data": "workspace:*",
 		"@jptype/engine": "workspace:*",
 		"better-auth": "1.7.3",
-		"drizzle-orm": "^0.45.1"
+		"drizzle-orm": "^0.45.1",
+		"kuromoji": "^0.1.2"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "1.4.21",
@@ -40,6 +41,7 @@
 		"svelte-check": "^4.6.0",
 		"typescript": "catalog:",
 		"vite": "^8.0.16",
+		"vite-plugin-static-copy": "^4.1.1",
 		"vitest": "catalog:",
 		"wrangler": "^4.97.0"
 	}

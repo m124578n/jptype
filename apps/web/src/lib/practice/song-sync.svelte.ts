@@ -6,10 +6,19 @@ import {
 	type PressResult,
 	type ScoreResult
 } from '@jptype/engine';
-import type { SongLine } from '../songs.ts';
 import type { TypingRun, UnitOutcome } from './run.svelte.ts';
 
-/** A lyric line that carries a start time; only these take part in sync mode. */
+/**
+ * A line this controller can be fed: the typed text plus, optionally, where it starts in the
+ * video. Both a lyric line (`SongLine`) and an imported content line fit, which is how the same
+ * controller drives `/songs/[id]` and `/contents/[id]` (M4-1).
+ */
+export interface TimedLine {
+	text: string;
+	start?: number;
+}
+
+/** A line that carries a start time; only these take part in sync mode. */
 export interface SyncLine {
 	text: string;
 	start: number;
@@ -17,6 +26,7 @@ export interface SyncLine {
 
 /**
  * Sync mode ("唱到哪打到哪"): the **video** decides which line is current, not the typist.
+ * Used by 歌詞同步 and by any imported content whose lines carry start times (M4-1).
  *
  * `PracticeRun` advances when a question is finished, which is exactly wrong here — the song
  * does not wait. So this is its own controller: one `TypingSession` per line, driven by
@@ -49,11 +59,13 @@ export class SongSyncRun implements TypingRun {
 	private readonly events: KeyEvent[] = [];
 	private readonly outcomes: UnitOutcome[] = [];
 	private currentUnitErrored = false;
+	/** A line was re-entered (seek / rewind), so `text` and `log` no longer correspond. */
+	private replayBroken = false;
 	/** Per line: finished by the user / counted as skipped. Rewinding clears both. */
 	private readonly done: boolean[];
 	private readonly skipped: boolean[];
 
-	constructor(lines: readonly SongLine[]) {
+	constructor(lines: readonly TimedLine[]) {
 		const timed: SyncLine[] = [];
 		for (const line of lines) {
 			if (line.start !== undefined) timed.push({ text: line.text, start: line.start });
@@ -149,6 +161,9 @@ export class SongSyncRun implements TypingRun {
 	}
 
 	private jumpTo(index: number): void {
+		// Going back to a line that was already reached leaves its earlier keys in the log while
+		// `text` lists the line once: the server can no longer replay this run.
+		if (index <= this.maxIndex) this.replayBroken = true;
 		this.commit();
 		this.done[index] = false;
 		this.skipped[index] = false;
@@ -204,6 +219,16 @@ export class SongSyncRun implements TypingRun {
 		this.stoppedAt = this.startedAt === null ? null : nowMs;
 		this.finished = true;
 		this.tick += 1;
+	}
+
+	/**
+	 * Whether `text` + `log` still reproduce each other, i.e. the server's `replay()` will accept
+	 * this run. False as soon as a line was skipped or re-entered, which is why song results stay
+	 * local (DECISIONS「歌詞打字」) and why a content run is only submitted when this is true.
+	 */
+	get replayable(): boolean {
+		void this.tick;
+		return !this.replayBroken && !this.skipped.some(Boolean);
 	}
 
 	/** Units the user got wrong at least once, deduplicated, in order of first error. */

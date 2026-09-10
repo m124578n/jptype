@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	contentMode,
 	lessonMode,
 	parseMode,
 	poolForMode,
@@ -54,6 +55,16 @@ describe('mode strings', () => {
 		expect(parseMode('lesson:hira-a')).toEqual({ kind: 'lesson', lessonId: 'hira-a' });
 	});
 
+	it('round-trips content modes with a shape-only id check', () => {
+		expect(contentMode('01JABCDEF0123456789ABCDEF')).toBe('content:01JABCDEF0123456789ABCDEF');
+		expect(parseMode('content:01JABCDEF0123456789ABCDEF')).toEqual({
+			kind: 'content',
+			contentId: '01JABCDEF0123456789ABCDEF'
+		});
+		// The pool of a content lives in D1, so this package cannot supply one.
+		expect(poolForMode('content:01JABCDEF0123456789ABCDEF')).toBeUndefined();
+	});
+
 	it('rejects malformed or unknown modes', () => {
 		for (const bad of [
 			'',
@@ -65,7 +76,11 @@ describe('mode strings', () => {
 			'lesson:',
 			'lesson:nope',
 			'lesson:hira-a:1',
-			'race:allhira:60'
+			'race:allhira:60',
+			'content:',
+			'content:a:b',
+			'content:has space',
+			`content:${'x'.repeat(65)}`
 		]) {
 			expect(parseMode(bad), bad).toBeUndefined();
 		}

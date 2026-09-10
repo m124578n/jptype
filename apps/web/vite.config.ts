@@ -2,6 +2,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
 	plugins: [
@@ -23,8 +24,21 @@ export default defineConfig({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
 			emitTsDeclarations: true
+		}),
+
+		// 漢字→かな runs in the admin's browser (spec §1: no external API at runtime), so kuromoji's
+		// IPADIC has to come from our own origin. ~17 MB of .dat.gz is served at /dict/kuromoji/ —
+		// copied out of node_modules on dev/build and never committed. The files must be served
+		// **as-is**: the loader gunzips them itself.
+		viteStaticCopy({
+			targets: [{ src: 'node_modules/kuromoji/dict/*.dat.gz', dest: 'dict/kuromoji' }]
 		})
 	],
+	// The tokenizer is imported dynamically from the admin import step; pre-bundling it keeps dev
+	// from re-optimizing (and reloading the page) in the middle of an import.
+	optimizeDeps: {
+		include: ['kuromoji/build/kuromoji.js']
+	},
 	server: {
 		watch: {
 			// adapter-cloudflare rm -rf's this on every build; a dev watcher holding it → EBUSY on Windows

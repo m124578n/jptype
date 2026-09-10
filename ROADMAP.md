@@ -38,7 +38,7 @@
 - ✅ `POST /api/runs`：session → Turnstile（有 secret 且已登入才要求）→ text 合法性 → `analyze` 重算 → anticheat → 寫 D1 + R2 → kana_stats upsert → KV 失效（分數 ≥ 第 100 名才刪）→ 回 rank；課程與計時賽結束都會送
 - ✅ Anticheat 規則（§9.5 六條，單元測試）
 - 🔨 計時賽 `/timed`：pool（平假名全 / 片假名全 / 全部）× 30/60/120 秒，第一鍵起算，時間到自動結算 ✅；結束自動送分（登入者）待 ③ API
-- ⬜ `GET /api/leaderboard`（KV 快取 60 s）、`/leaderboard` 週榜 / 總榜
+- ✅ `GET /api/leaderboard`（KV 快取 60 s、回自己名次）、`/leaderboard` pool × 秒數 × 週榜 / 總榜、首頁本週前 5
 - ⬜ Cron：週榜結算快照、刪 90 天前 R2 keylog（需 `scheduled` handler，見 DECISIONS）
 - ⬜ `GET /api/me/stats`、`/me`：統計、錯字熱圖、streak、歷史
 - ⬜ 弱項練習（errors/attempts > 0.2 且 attempts ≥ 3）

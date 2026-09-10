@@ -151,3 +151,21 @@ Workers 的綁定（D1、secrets）只在 request 時可得，所以 `getAuth(en
 ### 名次
 
 回應的 `rank` = 本週該 mode 中「最佳分 > 此分」的使用者數 + 1，只給未 flagged 的登入者；被 flag 的人拿到分數但沒有名次，不透露原因。
+
+## 2026-09-10 M2 ④ 排行榜
+
+### 只有計時賽進榜
+
+`/leaderboard` 與首頁前 5 只列 `timed:*` 模式（3 pool × 3 秒數 = 9 個榜）。課程模式的成績仍存 D1（給 `/me` 用），但 `/leaderboard?mode=lesson:*` 回 404。
+
+### 排行榜查詢
+
+規格 §4 的 SQL：每人取最佳分，`ORDER BY best DESC, accuracy DESC LIMIT 100`，join `user` 拿名稱與頭像。SQLite 的 bare-column 規則保證 `kpm` / `accuracy` 來自 `max(score)` 那一列。被 flag 的場次不進榜、不算自己名次。
+
+### KV 快取
+
+key `lb:{mode}:{week|all}`，TTL 60 秒，內容含 `computedAt`。`POST /api/runs` 在分數可能進前 100 時刪 key。自己的名次不快取：在前 100 內直接讀清單，否則另外 COUNT。
+
+### 頁面走 server load，不走 API
+
+`/leaderboard` 與首頁在 `+page.server.ts` 直接呼叫 `getLeaderboard`（同一份 KV 快取），省一次 HTTP；`/api/leaderboard` 留給之後的客戶端刷新或外部使用。

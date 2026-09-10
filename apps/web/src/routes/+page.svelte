@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
+
+	let { data } = $props();
+	const boardHref = $derived(
+		`${resolve('/leaderboard')}?${new URLSearchParams({ mode: data.mode, period: 'week' })}`
+	);
 </script>
 
 <section class="container hero stack">
@@ -23,6 +28,23 @@
 		<p class="muted">{m.home_benefit_3_body()}</p>
 	</div>
 </section>
+
+{#if data.top.length > 0}
+	<section class="container top stack" aria-labelledby="top-title">
+		<h2 id="top-title">{m.home_top_title()}</h2>
+		<ol class="top-list card">
+			{#each data.top as e (e.userId)}
+				<li>
+					<span class="rank muted">{e.rank}</span>
+					<span class="name">{e.name}</span>
+					<span class="score">{e.best}</span>
+				</li>
+			{/each}
+		</ol>
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- boardHref is resolve('/leaderboard') + query -->
+		<p><a href={boardHref}>{m.home_top_more()}</a></p>
+	</section>
+{/if}
 
 <style>
 	.hero {
@@ -48,5 +70,29 @@
 	}
 	.benefits h3 {
 		margin-bottom: var(--space-2);
+	}
+	.top {
+		margin-top: var(--space-24);
+		gap: var(--space-4);
+	}
+	.top-list {
+		list-style: none;
+		margin: 0;
+		padding: var(--space-2) var(--space-4);
+	}
+	.top-list li {
+		display: grid;
+		grid-template-columns: 2em 1fr auto;
+		gap: var(--space-3);
+		padding: var(--space-3) 0;
+		border-bottom: 1px solid var(--border);
+		font-variant-numeric: tabular-nums;
+	}
+	.top-list li:last-child {
+		border-bottom: 0;
+	}
+	.score {
+		font-weight: 700;
+		color: var(--accent);
 	}
 </style>

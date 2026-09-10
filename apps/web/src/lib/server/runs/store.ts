@@ -1,8 +1,17 @@
 import { and, count, desc, eq, gt, isNotNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/index.ts';
-import { kanaStats, runs, type NewRun } from '../db/schema.ts';
+import { kanaStats, runs, user, type NewRun } from '../db/schema.ts';
 
-/** Persistence needed by submitRun(); implemented on D1, faked in tests. */
+export interface LeaderboardRow {
+	userId: string;
+	name: string;
+	image: string | null;
+	best: number;
+	kpm: number;
+	accuracy: number;
+}
+
+/** Persistence needed by submitRun() / leaderboards; implemented on D1, faked in tests. */
 export interface RunStore {
 	insertRun(run: NewRun): Promise<void>;
 	/** Runs by `userId` with createdAt > since. */
@@ -16,6 +25,19 @@ export interface RunStore {
 	hundredthScore(mode: string, week: string | null): Promise<number | null>;
 	/** 1-based rank of `score` among users' best scores for mode/week. */
 	rankOf(mode: string, week: string | null, score: number): Promise<number>;
+	/** Spec §4 leaderboard query: best score per user, top 100. `week` null → all-time. */
+	top100(mode: string, week: string | null): Promise<LeaderboardRow[]>;
+	/** A user's best unflagged score for mode/week (null when none). */
+	userBest(mode: string, week: string | null, userId: string): Promise<number | null>;
+}
+
+function rankedFilter(mode: string, week: string | null) {
+	return and(
+		eq(runs.mode, mode),
+		eq(runs.flagged, 0),
+		isNotNull(runs.userId),
+		week === null ? undefined : eq(runs.week, week)
+	);
 }
 
 export function d1RunStore(db: Db): RunStore {
@@ -60,14 +82,7 @@ export function d1RunStore(db: Db): RunStore {
 			const rows = await db
 				.select({ best: sql<number>`max(${runs.score})`.as('best') })
 				.from(runs)
-				.where(
-					and(
-						eq(runs.mode, mode),
-						eq(runs.flagged, 0),
-						isNotNull(runs.userId),
-						week === null ? undefined : eq(runs.week, week)
-					)
-				)
+				.where(rankedFilter(mode, week))
 				.groupBy(runs.userId)
 				.orderBy(desc(sql`best`))
 				.limit(1)
@@ -79,18 +94,39 @@ export function d1RunStore(db: Db): RunStore {
 			const bests = db
 				.select({ best: sql<number>`max(${runs.score})`.as('best') })
 				.from(runs)
-				.where(
-					and(
-						eq(runs.mode, mode),
-						eq(runs.flagged, 0),
-						isNotNull(runs.userId),
-						week === null ? undefined : eq(runs.week, week)
-					)
-				)
+				.where(rankedFilter(mode, week))
 				.groupBy(runs.userId)
 				.as('bests');
 			const [row] = await db.select({ n: count() }).from(bests).where(gt(bests.best, score));
 			return (row?.n ?? 0) + 1;
+		},
+
+		async top100(mode, week) {
+			// SQLite returns the kpm/accuracy of the row that holds max(score) (bare-column rule).
+			const rows = await db
+				.select({
+					userId: sql<string>`${runs.userId}`,
+					name: user.name,
+					image: user.image,
+					best: sql<number>`max(${runs.score})`.as('best'),
+					kpm: runs.kpm,
+					accuracy: runs.accuracy
+				})
+				.from(runs)
+				.innerJoin(user, eq(user.id, runs.userId))
+				.where(rankedFilter(mode, week))
+				.groupBy(runs.userId)
+				.orderBy(desc(sql`best`), desc(runs.accuracy))
+				.limit(100);
+			return rows.map((r) => ({ ...r, image: r.image ?? null }));
+		},
+
+		async userBest(mode, week, userId) {
+			const [row] = await db
+				.select({ best: sql<number | null>`max(${runs.score})` })
+				.from(runs)
+				.where(and(rankedFilter(mode, week), eq(runs.userId, userId)));
+			return row?.best ?? null;
 		}
 	};
 }

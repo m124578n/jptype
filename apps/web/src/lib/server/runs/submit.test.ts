@@ -23,6 +23,8 @@ function fakeStore(over: Partial<RunStore> = {}) {
 		},
 		hundredthScore: async () => null,
 		rankOf: async () => 3,
+		top100: async () => [],
+		userBest: async () => null,
 		...over
 	};
 	return { store, inserted, kanaCalls };

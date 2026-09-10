@@ -73,5 +73,22 @@
 	"login_with_line": "使用 LINE 登入",
 	"login_failed": "登入失敗，請再試一次。",
 	"login_note": "我們只取得你的名稱與頭像，不會發文或讀取聯絡人。",
-	"login_already": "你已經以 {name} 登入。"
+	"login_already": "你已經以 {name} 登入。",
+
+	"home_top_title": "本週排行榜前 5",
+	"home_top_more": "看完整排行榜 →",
+
+	"leaderboard_title": "排行榜",
+	"leaderboard_lead": "計時賽成績，每人取最佳一場。週榜每週一 00:00 重置。",
+	"leaderboard_filters": "篩選",
+	"leaderboard_period": "期間",
+	"leaderboard_week": "週榜",
+	"leaderboard_all": "總榜",
+	"leaderboard_week_label": "本週：{week}",
+	"leaderboard_empty": "還沒有人上榜，去計時賽打一場吧。",
+	"leaderboard_col_user": "玩家",
+	"leaderboard_me": "你目前第 {rank} 名，最佳 {score} 分。",
+	"leaderboard_me_in_top": "（在上方名單中）",
+	"leaderboard_me_none": "你在這個榜還沒有成績。",
+	"leaderboard_login_hint": "登入後計時賽成績會進榜。"
 }

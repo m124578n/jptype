@@ -10,6 +10,7 @@
 	let { children, data } = $props();
 	const isLearn = $derived(page.url.pathname.startsWith('/learn'));
 	const isTimed = $derived(page.url.pathname.startsWith('/timed'));
+	const isBoard = $derived(page.url.pathname.startsWith('/leaderboard'));
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	async function logout() {
@@ -28,7 +29,9 @@
 		<a class="brand" href={resolve('/')}>{m.app_name()}</a>
 		<a href={resolve('/learn')} aria-current={isLearn ? 'page' : undefined}>{m.nav_learn()}</a>
 		<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
-		<span class="muted soon" title={m.nav_coming_soon()}>{m.nav_leaderboard()}</span>
+		<a href={resolve('/leaderboard')} aria-current={isBoard ? 'page' : undefined}
+			>{m.nav_leaderboard()}</a
+		>
 		<span class="spacer"></span>
 		{#if data.user}
 			<span class="user">

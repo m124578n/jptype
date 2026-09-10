@@ -379,3 +379,44 @@ App 端**不會 fetch 任何歌詞網站**（先前決策的著作權結論不�
 ### Admin
 
 `ADMIN_EMAILS`、`PUBLIC_CONTACT_EMAIL` 放在 `wrangler.jsonc` 的 vars（`wrangler types` 會產生到 `Env`，不需要手動加進 `app.d.ts`）。`lib/server/admin.ts` 的 `isAdmin(user, env)` 做小寫比對。`+layout.server.ts` 只吐一個 `isAdmin` boolean 給 nav 用；`/admin` 的 load 與每一支 `/api/admin/*` 都各自再檢查一次。
+
+## 2026-09-10 M4-1 實作：統一內容模型、瀏覽器端匯入管線、Line Editor
+
+ROADMAP M4-1 / M4-4 Line Editor / M4-3 每內容排行榜的實作。migration `0003_contents` **只新增兩張表**（`contents`、`content_lines`），沒有動 `runs` / `kana_stats` / `songs`，所以不會踩到 drizzle-kit 重建 sqlite 表時寫壞 `` `score` DESC `` 索引的 bug。
+
+### 兩張新表
+
+- **`contents`**：`id`(ulid)、`type`（song｜anime｜news｜novel｜jlpt｜free）、`title`、`description`、`videoId`（可為 null，11 碼 YouTube id）、`jlptLevel`（N5…N1｜unknown）、`difficulty`（easy｜normal｜hard｜expert）、`status`（draft｜published，預設 draft）、權利欄位 `sourceType`（original｜licensed｜public_domain｜user_provided｜other）/ `sourceUrl` / `sourceName` / `license` / `rightsStatus`（cleared｜unknown）、`createdBy`→`user.id`(set null)、`createdAt`、`updatedAt`；索引 `(status, type, updatedAt DESC)`、`(status, jlptLevel)`。
+- **`content_lines`**：`id`、`contentId`→`contents.id`(cascade)、`order`、`startTime` / `endTime`（秒，real，可為 null）、`originalText`、`kanaText`、`romajiText`、`metadata`（JSON，可為 null）；`unique(contentId, order)`。
+
+平台本身**不附任何內容**（一行台詞、新聞、歌詞都沒有），全部由 admin 匯入；測試用的日文短句是自己寫的。
+
+### 發布規則
+
+`setContentStatus(id, 'published')` 只有在 `rightsStatus === 'cleared'` **且**至少一句 `kanaText` 打得出來（用 `validateLines` 的同一套判斷：假名 / `SYMBOLS` / 空白 / ASCII，漢字不算）時才成功，否則回 409 `rights not cleared` / `no typeable line`，admin 頁把這兩個字串翻成中文顯示。下架不檢查。已發布的內容若被改成「全部都打不出來」，`setContentLines` 會自動把它退回 draft。草稿對外是 404（不透露存在），也拿不到排行榜。
+
+### 漢字→假名在瀏覽器，字典由自己的網域提供
+
+規格 §1「runtime 不呼叫任何外部 AI/TTS API」，所以讀音分析不走服務，改成 admin 的瀏覽器跑 kuromoji（MeCab IPADIC）。
+
+- 字典（12 個 `.dat.gz`，約 17 MB）**不進 git**：`vite-plugin-static-copy` 在 dev / client build 時從 `node_modules/kuromoji/dict/*.dat.gz` 複製到 `dict/kuromoji/`，線上就是 Workers 的 static assets，路徑 `/dict/kuromoji`（`lib/ja/kana.ts` 的 `DICT_PATH`）。`.gz` 必須原樣送出（loader 自己 gunzip），不要另外加 `Content-Encoding`。
+- 匯入時載入的是 `kuromoji/build/kuromoji.js`（browserify 的 UMD bundle），不是 package 的 `main`：`src/` 進入點 `require('path')`，Vite 不會幫 node 內建模組做 polyfill。只在按下「斷句並轉假名」時動態 import，載一次就快取（失敗會清掉 cache 讓使用者重試）；`optimizeDeps.include` 先 pre-bundle，避免 dev 在匯入途中重新優化並重載頁面。
+- `toKana(text, tokenizer?)` 可注入 tokenizer，所以單元測試用假 token 覆蓋「reading（片假名）→ 平假名」那一步，不必載字典。**surface 本身就打得出來時保留 surface**（`は` 不會變成讀音 `ワ`、`ハート` 保持片假名）；查不到讀音的未知詞也保留 surface，讓 admin 看見還要修哪裡。
+
+### 斷句與羅馬字
+
+- `segment(text)`：在 `。！？!?` 之後與每個換行切開，終止符號留在句尾（引擎打得出 `。！？`），連續的 `！？` 與右括號跟著同一句，空行與多餘空白丟掉。ASCII 的 `.` **不**當句尾（`1.5`、`U.S.A.`）。
+- `toRomaji(kana)`：顯示用的讀音提示，不是引擎接受的拼法（引擎仍由 `@jptype/engine` 決定）。每個假名取 `@jptype/data` 的第一個拼法，另加三條：っ 讓下一個子音加倍（がっこう → gakkou，後面沒有子音就丟掉）、ん 在母音或 y 前是 `n'`（きんようび → kin'youbi）其餘是 `n`（しんぶん → shinbun、こんにちは → konnichiha）、ー 重複前一個母音（コーヒー → koohii）。不是假名的字元走 `SYMBOLS`（、。？！）或原樣保留，admin 可直接改。
+
+### 內容模式 `content:{id}` 與每內容排行榜
+
+- `parseMode` 加 `kind: 'content'`（id 只做形狀檢查，`@jptype/data` 不可能知道 D1 裡有什麼），`poolForMode('content:…')` 回 undefined。
+- `submitRun` 多一個可選的 async `poolForMode` dep；`server/mode.ts` 的 `contentPoolResolver` 只回答 content 模式（已發布內容的 `kanaText` 陣列），其他模式 fallback 回 `@jptype/data` 的靜態 pool。草稿 / 不存在的內容沒有 pool → 當成 unknown mode 擋掉，所以未發布的匯入不能用來刷榜。
+- 排行榜本來就以 mode 字串為 key，所以每內容一個榜不需要新程式：`/leaderboard?mode=content:{id}`（顯示內容標題，計時賽仍是預設 UI）。
+- 同步模式的成績**只有 `replayable` 時才送後端**：跳過或被 seek 重打的句子會讓 `text` 與 `log` 對不上，伺服器的 `replay()` 必然拒絕。`SongSyncRun` 因此多一個 `replayable` getter（有跳過或回到已經走過的句子就是 false），UI 會說明這次只留在本機。逐句模式（`PracticeRun` + `sequence`）一律可送。
+
+### 誰在 client、誰在 server
+
+- **server**：`lib/server/contents/{store,service,route}.ts`。`store.ts` 是介面 + D1 實作（`setLines` 用 D1 batch：一個 delete + 分批 insert，整張表一次換掉），`service.ts` 是純函式（`ContentDeps = { store, now?, newId? }`）加 `parse*` 驗證，用 fake store 單元測試，跟 `runs/submit.ts`、`songs/service.ts` 同一套；`route.ts` 只做 bindings→deps，session / admin / JSON / `Result`→回應的 helper 直接沿用 `songs/route.ts`（不另外寫一份）。
+- **client**：`lib/ja/*`（斷句、kuromoji、羅馬字）、`lib/contents-api.ts`（唯一的 fetch 層，永遠 resolve 不 throw，失敗時 Line Editor 的狀態不動，可以直接重試）、`lib/contents.ts` 與 `lib/contents-labels.ts`（同構的型別 / 常數 / 標籤）。
+- Admin 判定沿用 `ADMIN_EMAILS`（沒有加 `user.role`）：`/admin/contents*` 的 load 與每一支 `/api/admin/contents/*` 都各自檢查一次。

@@ -3,8 +3,22 @@
 	let {
 		name,
 		size = 20
-	}: { name: 'keyboard' | 'volume' | 'volume-off' | 'text' | 'check' | 'speaker'; size?: number } =
-		$props();
+	}: {
+		name:
+			| 'keyboard'
+			| 'volume'
+			| 'volume-off'
+			| 'text'
+			| 'check'
+			| 'speaker'
+			| 'music'
+			| 'film'
+			| 'newspaper'
+			| 'book'
+			| 'clipboard'
+			| 'pen';
+		size?: number;
+	} = $props();
 </script>
 
 <svg
@@ -32,5 +46,23 @@
 		<path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" />
 	{:else if name === 'check'}
 		<path d="m5 12 5 5L20 7" />
+	{:else if name === 'music'}
+		<path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+	{:else if name === 'film'}
+		<rect x="2" y="4" width="20" height="16" rx="2" /><path
+			d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"
+		/>
+	{:else if name === 'newspaper'}
+		<path d="M4 4h13v16H5a2 2 0 0 1-2-2V6" /><path d="M17 8h3a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2" /><path
+			d="M7 8h6M7 12h6M7 16h4"
+		/>
+	{:else if name === 'book'}
+		<path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z" /><path d="M9 3v18" />
+	{:else if name === 'clipboard'}
+		<rect x="8" y="3" width="8" height="4" rx="1" /><path
+			d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"
+		/><path d="M9 13h6M9 17h4" />
+	{:else if name === 'pen'}
+		<path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
 	{/if}
 </svg>

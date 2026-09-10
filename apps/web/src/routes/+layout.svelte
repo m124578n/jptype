@@ -12,6 +12,7 @@
 	const isTimed = $derived(page.url.pathname.startsWith('/timed'));
 	const isListen = $derived(page.url.pathname.startsWith('/listen'));
 	const isSongs = $derived(page.url.pathname.startsWith('/songs'));
+	const isContents = $derived(page.url.pathname.startsWith('/contents'));
 	const isBoard = $derived(page.url.pathname.startsWith('/leaderboard'));
 	const isMe = $derived(page.url.pathname.startsWith('/me'));
 	const isAdminPage = $derived(page.url.pathname.startsWith('/admin'));
@@ -35,6 +36,9 @@
 		<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
 		<a href={resolve('/listen')} aria-current={isListen ? 'page' : undefined}>{m.nav_listen()}</a>
 		<a href={resolve('/songs')} aria-current={isSongs ? 'page' : undefined}>{m.nav_songs()}</a>
+		<a href={resolve('/contents')} aria-current={isContents ? 'page' : undefined}>
+			{m.nav_contents()}
+		</a>
 		<a href={resolve('/leaderboard')} aria-current={isBoard ? 'page' : undefined}
 			>{m.nav_leaderboard()}</a
 		>

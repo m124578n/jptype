@@ -187,4 +187,24 @@ describe('SongSyncRun – finish and result', () => {
 		expect(run.index).toBe(0);
 		expect(run.skippedLines).toBe(skipped);
 	});
+	it('is replayable only while every line was typed once, in order', () => {
+		const run = new SongSyncRun(LINES);
+		expect(run.replayable).toBe(true);
+
+		const now = type(run, 'a', 0);
+		run.timeUpdate(10); // line 1 finished, the song moves on
+		expect(run.replayable).toBe(true);
+
+		type(run, 'i', now);
+		run.timeUpdate(20);
+		run.seek(20); // re-entering a line leaves its keys in the log twice over
+		expect(run.replayable).toBe(false);
+	});
+
+	it('is not replayable once a line was skipped', () => {
+		const run = new SongSyncRun(LINES);
+		run.timeUpdate(10); // the first line was never typed
+		expect(run.skippedLines).toBe(1);
+		expect(run.replayable).toBe(false);
+	});
 });

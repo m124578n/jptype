@@ -1,4 +1,4 @@
-import { parseMode, poolForMode } from '@jptype/data';
+import { parseMode, poolForMode, type ParsedMode } from '@jptype/data';
 import { analyze, BOUNDARY, type KeyEvent } from '@jptype/engine';
 import { anticheatReasons } from '../anticheat.ts';
 import { ulid } from '../ulid.ts';
@@ -30,6 +30,11 @@ export interface SubmitDeps {
 	putLog(runId: string, log: readonly KeyEvent[]): Promise<void>;
 	/** KV-like: drop cached leaderboards (spec §9.8). */
 	invalidateLeaderboard(mode: string, week: string): Promise<void>;
+	/**
+	 * Pools that `@jptype/data` cannot supply, i.e. `content:{id}` whose lines live in D1
+	 * (`server/mode.ts`). Returning undefined falls back to the static pool of the mode.
+	 */
+	poolForMode?(mode: string, parsed: ParsedMode): Promise<readonly string[] | undefined>;
 	now?: () => number;
 	newId?: (nowMs: number) => string;
 }
@@ -76,8 +81,9 @@ export async function submitRun(
 ): Promise<SubmitResult> {
 	const now = deps.now?.() ?? Date.now();
 	const parsed = parseMode(sub.mode);
-	const pool = poolForMode(sub.mode);
-	if (!parsed || !pool) return { ok: false, status: 400, error: 'unknown mode' };
+	if (!parsed) return { ok: false, status: 400, error: 'unknown mode' };
+	const pool = (await deps.poolForMode?.(sub.mode, parsed)) ?? poolForMode(sub.mode);
+	if (!pool || pool.length === 0) return { ok: false, status: 400, error: 'unknown mode' };
 	if (!textMatchesPool(sub.text, pool)) {
 		return { ok: false, status: 400, error: 'text does not belong to mode' };
 	}

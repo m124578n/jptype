@@ -14,6 +14,7 @@ export {
 	TIMED_POOLS,
 	TIMED_SECONDS,
 	WEAK_MODE,
+	contentMode,
 	lessonMode,
 	parseMode,
 	poolForMode,

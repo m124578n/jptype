@@ -18,6 +18,15 @@
 		return `${resolve('/leaderboard')}?${q}`;
 	}
 
+	/** A content board has no pool / seconds of its own; the chips keep the timed defaults. */
+	const pool = $derived(data.pool ?? 'allhira');
+	const seconds = $derived(data.seconds ?? 60);
+
+	function periodHref(period: string) {
+		const q = new URLSearchParams({ mode: data.mode, period });
+		return `${resolve('/leaderboard')}?${q}`;
+	}
+
 	const inTop = $derived(!!data.me && data.board?.entries.some((e) => e.userId === data.user?.id));
 </script>
 
@@ -26,18 +35,25 @@
 <div class="container container--wide stack lb">
 	<header class="stack head">
 		<h1>{m.leaderboard_title()}</h1>
-		<p class="muted">{m.leaderboard_lead()}</p>
+		{#if data.contentTitle && data.contentId}
+			<p class="muted">
+				{m.leaderboard_content_board({ title: data.contentTitle })}
+				<a href={resolve('/contents/[id]', { id: data.contentId })}>{m.contents_open()}</a>
+			</p>
+		{:else}
+			<p class="muted">{m.leaderboard_lead()}</p>
+		{/if}
 	</header>
 
 	<!-- eslint-disable svelte/no-navigation-without-resolve -- href() applies resolve(); only a query string is appended -->
 	<nav class="stack filters" aria-label={m.leaderboard_filters()}>
 		<div class="row" role="group" aria-label={m.timed_pool_label()}>
-			{#each TIMED_POOL_IDS as pool (pool)}
+			{#each TIMED_POOL_IDS as chip (chip)}
 				<a
 					class="btn"
-					href={href(pool, data.seconds, data.period)}
-					aria-current={data.pool === pool ? 'true' : undefined}
-					data-sveltekit-noscroll>{poolLabel[pool]()}</a
+					href={href(chip, seconds, data.period)}
+					aria-current={data.pool === chip ? 'true' : undefined}
+					data-sveltekit-noscroll>{poolLabel[chip]()}</a
 				>
 			{/each}
 		</div>
@@ -45,7 +61,7 @@
 			{#each TIMED_SECONDS as s (s)}
 				<a
 					class="btn"
-					href={href(data.pool, s, data.period)}
+					href={href(pool, s, data.period)}
 					aria-current={data.seconds === s ? 'true' : undefined}
 					data-sveltekit-noscroll>{m.timed_seconds_option({ seconds: s })}</a
 				>
@@ -54,13 +70,13 @@
 		<div class="row" role="group" aria-label={m.leaderboard_period()}>
 			<a
 				class="btn"
-				href={href(data.pool, data.seconds, 'week')}
+				href={periodHref('week')}
 				aria-current={data.period === 'week' ? 'true' : undefined}
 				data-sveltekit-noscroll>{m.leaderboard_week()}</a
 			>
 			<a
 				class="btn"
-				href={href(data.pool, data.seconds, 'all')}
+				href={periodHref('all')}
 				aria-current={data.period === 'all' ? 'true' : undefined}
 				data-sveltekit-noscroll>{m.leaderboard_all()}</a
 			>

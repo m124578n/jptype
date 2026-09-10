@@ -18,6 +18,14 @@
 	import { TypewriterSound } from '$lib/practice/sound';
 	import { submitPracticeRun } from '$lib/practice/submit';
 	import {
+		loadReview,
+		missedLines,
+		recordLineOutcomes,
+		reviewErrorCount,
+		type LineOutcome,
+		type ReviewStore
+	} from '$lib/review';
+	import {
 		DEFAULT_SETTINGS,
 		loadSettings,
 		recordKanaStats,
@@ -52,7 +60,9 @@
 		return out;
 	});
 
-	let practiceMode = $state<'sync' | 'free'>('free');
+	/** Sync (follow the video) / Free (line by line) / Review (only the lines you got wrong). */
+	type Mode = 'sync' | 'free' | 'review';
+	let practiceMode = $state<Mode>('free');
 	let run = $state.raw<PracticeRun | null>(null);
 	let sync = $state.raw<SongSyncRun | null>(null);
 	let result = $state<ScoreResult | null>(null);
@@ -61,6 +71,28 @@
 	let rank = $state<number | null>(null);
 	/** A sync run with skipped or replayed lines cannot be verified server-side; it stays local. */
 	let localOnly = $state(false);
+
+	/** Per-line review records for this content (ROADMAP M4-2), read after mount. */
+	let review = $state<ReviewStore>({});
+	const missed = $derived(missedLines(review, mode, texts));
+	const reviewTexts = $derived(missed.map((line) => line.text));
+	/**
+	 * Wrong keys per line of the run in progress, keyed by the line text (a repeated line is one
+	 * record), plus the lines actually reached — lines the user never got to must not be recorded
+	 * as clean when a sync run is stopped early.
+	 */
+	let lineErrors: Record<string, number> = {};
+	let lineSeen: Record<string, boolean> = {};
+
+	function noteKey(text: string, ok: boolean) {
+		if (text === '') return;
+		lineSeen[text] = true;
+		if (!ok) lineErrors[text] = (lineErrors[text] ?? 0) + 1;
+	}
+
+	function outcomes(): LineOutcome[] {
+		return Object.keys(lineSeen).map((text) => ({ text, errors: lineErrors[text] ?? 0 }));
+	}
 
 	/** idle → countdown (3-2-1-START) → running; free mode stays 'running'. */
 	let phase = $state<'idle' | 'countdown' | 'running'>('idle');
@@ -81,10 +113,15 @@
 	const COUNTDOWN_MS = 700;
 
 	const active = $derived<PracticeRun | SongSyncRun | null>(practiceMode === 'sync' ? sync : run);
+	/** Errors the stored record has for the line being typed now; 0 hides the note. */
+	const lineNote = $derived(
+		practiceMode === 'review' && active ? reviewErrorCount(review, mode, active.current) : 0
+	);
 
 	onMount(() => {
 		settings = loadSettings();
 		coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+		review = loadReview();
 		practiceMode = syncable ? 'sync' : 'free';
 		reset();
 	});
@@ -106,7 +143,7 @@
 		countdownTimer = null;
 	}
 
-	function chooseMode(next: 'sync' | 'free') {
+	function chooseMode(next: Mode) {
 		if (practiceMode === next) return;
 		practiceMode = next;
 		reset();
@@ -120,6 +157,10 @@
 		rank = null;
 		localOnly = false;
 		lastTime = Number.NaN;
+		lineErrors = {};
+		lineSeen = {};
+		// Nothing left to review (the last run was clean): fall back to the whole content.
+		if (practiceMode === 'review' && reviewTexts.length === 0) practiceMode = 'free';
 		if (practiceMode === 'sync') {
 			run = null;
 			sync = new SongSyncRun(timedLines);
@@ -127,7 +168,8 @@
 			controller?.pause();
 		} else {
 			sync = null;
-			run = new PracticeRun(texts, { sequence: texts });
+			const questions = practiceMode === 'review' ? reviewTexts : texts;
+			run = new PracticeRun(questions, { sequence: questions });
 			phase = 'running';
 		}
 	}
@@ -159,9 +201,11 @@
 		result = score;
 		newBest = recordResult(mode, score);
 		recordKanaStats(finished.unitOutcomes);
+		review = recordLineOutcomes(mode, outcomes(), { title: data.content.title });
 		sound.play('bell');
-		localOnly = !replayable;
-		if (!replayable) return;
+		// A review run only covers the lines this typist missed, so it is never ranked.
+		localOnly = !replayable || practiceMode === 'review';
+		if (!replayable || practiceMode === 'review') return;
 		const response = await submitPracticeRun(finished, mode, {
 			loggedIn: data.user !== null,
 			turnstileSiteKey: data.turnstileSiteKey
@@ -236,8 +280,10 @@
 			if (playerState !== 'playing') return; // paused: the video is not moving
 			if (e.key.length !== 1) return;
 			e.preventDefault();
+			const line = s.current;
 			const res = s.press(e.key, performance.now());
 			if (!res) return;
+			noteKey(line, res.ok);
 			sound.play(res.ok ? 'key' : 'error');
 			if (s.finished) finishSync();
 			return;
@@ -247,8 +293,10 @@
 		if (!r || r.finished) return;
 		if (e.key.length !== 1) return;
 		e.preventDefault();
+		const line = r.current;
 		const res = r.press(e.key, performance.now());
 		if (!res) return;
+		noteKey(line, res.ok);
 		sound.play(res.ok ? 'key' : 'error');
 		if (r.finished) void finish(r, r.result(), true);
 	}
@@ -302,10 +350,25 @@
 			>
 				{m.contents_mode_free()}
 			</button>
+			<button
+				type="button"
+				class="btn"
+				class:btn--primary={practiceMode === 'review'}
+				aria-pressed={practiceMode === 'review'}
+				disabled={missed.length === 0}
+				title={missed.length === 0 ? m.review_none() : m.review_mode_hint()}
+				onclick={() => chooseMode('review')}
+			>
+				{m.review_mode()}
+			</button>
 		</div>
 		<p class="muted small">
 			{#if practiceMode === 'sync'}
 				{m.contents_mode_sync_hint()}
+			{:else if practiceMode === 'review'}
+				{m.review_mode_hint()} · {m.review_available({ count: missed.length })}
+			{:else if missed.length > 0}
+				{m.contents_mode_free_hint()} · {m.review_available({ count: missed.length })}
 			{:else}
 				{m.contents_mode_free_hint()}
 			{/if}
@@ -410,6 +473,11 @@
 				{m.contents_progress({ current: run.index + 1, total: run.questions.length })}
 			</p>
 			<p class="muted line" lang="ja">{previous ?? ''}</p>
+			{#if lineNote > 0}
+				<p class="review-note small" aria-live="polite">
+					{m.review_line_note({ count: lineNote })}
+				</p>
+			{/if}
 			<TypingArea {run} showHint={settings.showHint} {hints} />
 			<p class="muted line" lang="ja">{upcoming ?? ''}</p>
 			{#if settings.showKeyboard}
@@ -465,7 +533,11 @@
 		{#if practiceMode === 'sync' && skippedLines > 0}
 			<p class="center muted">{m.contents_skipped({ count: skippedLines })}</p>
 		{/if}
-		{#if localOnly}
+		{#if practiceMode === 'review'}
+			<p class="center muted small">
+				{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+			</p>
+		{:else if localOnly}
 			<p class="center muted small">{m.contents_local_only()}</p>
 		{:else if rank !== null}
 			<p class="center muted">{m.contents_rank({ rank })}</p>
@@ -551,6 +623,10 @@
 	}
 	.status {
 		min-height: 1.4rem;
+	}
+	.review-note {
+		margin: 0;
+		color: var(--fg-muted);
 	}
 	.tools {
 		justify-content: center;

@@ -21,7 +21,7 @@
 
 - ⬜ 部署到 Cloudflare Workers（owner 指示：地端驗證完再部署；`pnpm preview` 地端已可開）
 - ✅ 課程定義（`packages/data` lessons）：28 課，あ行…わ行・ん → 平假名綜合 → 濁音・半濁音 → 拗音 → 促音・長音 → 片假名 13 課 → 外來語音
-- ✅ `/learn` 課程地圖（完成打勾、每課最佳成績）
+- ✅ `/learn` 課程地圖（完成打勾、每課最佳成績、整體完成度 `x / y 課完成` 與「繼續上次」）
 - ✅ `/learn/[lessonId]`：認識頁（卡片、標準拼法、鍵盤高亮）→ 練習（20 題）→ 結果頁（KPM、準確率、錯字列表、加強練習）；TTS 播放鈕留 M3
 - ✅ `TypingArea` 元件：逐鍵判定、目前 unit 高亮、羅馬字提示（可關）、錯鍵閃紅震動 160ms、`keydown` 全域監聽
 - ✅ 打字音效：打字機「答答答」（Web Audio 合成、不用音檔），正確/錯誤音不同，可關閉、記憶設定（owner 2026-09-10）
@@ -84,7 +84,7 @@
 - ✅ YouTube IFrame Player API：play / pause / seek / currentTime / duration（`lib/components/YouTubePlayer.svelte`）— **songs only**；音量與速度沿用播放器自己的控制列
 - ✅ `startTime <= currentTime` 決定目前句；打完就顯示 ✓ 等下一句，不用按 Next — **songs only**（只有 start，沒有 endTime）
 - ✅ 影片暫停 → 打字暫停；Seek → 重新定位句子並清空暫存輸入 — **songs only**
-- 🔨 三種模式：Sync（跟影片）✅、Typing（不受時間限制）✅ = 自由模式 — 兩者 **songs only**；Review（只練曾錯的句子）⬜
+- ✅ 三種模式：Sync（跟影片）、Typing（不受時間限制）= 自由模式 — 兩者 **songs only**；Review（只練曾錯的句子）— **contents & songs**：每次跑完把每句「這次錯幾鍵」記進 `lib/review.ts`（localStorage `jptype:review`，行文字雜湊為 key），上次有錯的句子才進複習清單，打對就移出；複習時句子上方顯示「你之前在這句錯了 N 次」，成績只留本機不進榜
 - ✅ 倒數 3-2-1 START；鍵盤快捷：Space 播放/暫停、Esc 離開、Ctrl+R 重來 — **songs only**
 - ✅ 對時（tap-to-sync）：使用者自己邊播邊打點產生時間軸，±0.5 秒微調 — **songs only**（M4-1 的 Line Editor 之後接手）
 
@@ -100,8 +100,8 @@
 
 ### M4-4 內容探索與後台
 
-- ✅ 內容列表 `/contents`：搜尋、類型、JLPT、難度篩選；卡片顯示 YouTube 縮圖（沒有影片就用類型圖示）、標籤、個人最佳（localStorage `content:{id}`）
-- ⬜ 首頁改版：Hero + 熱門類型 + 你的進度
+- ✅ 內容列表 `/contents`：搜尋、類型、JLPT、難度篩選（可疊加、全部寫在網址 `?type=&jlpt=&difficulty=&q=&page=`）；卡片顯示 YouTube 縮圖（沒有影片就用類型圖示）、標籤、個人最佳（localStorage `content:{id}`）；空狀態可一鍵清除篩選；「最近練過」帶出本機最近 6 筆 `content:*` / `song:*`
+- ✅ 首頁改版：Hero（未登入加「不用帳號也能開始練習」）+ 五張分類入口卡（課程 / 計時賽 / 內容 / 聽打 / 歌詞）+ 你的進度（未登入讀 localStorage：今天練了幾項、跨模式最佳分數、課程完成數；已登入導向 `/me`）+ 本週前 5
 - 🔨 Admin：內容 CRUD、發布 / 下架 ✅（`/admin/contents`，沿用 `ADMIN_EMAILS`，沒有新增 `user.role`）；使用者與練習紀錄管理 ⬜
 - ✅ Line Editor：`/admin/contents/[id]` 播放器旁逐句設定 start / end（「用目前時間填入」）、改假名與羅馬字（打不出來的字會標紅）、上移下移刪除新增
 - ⬜ 分析事件：內容瀏覽、開始練習、完成練習（核心指標 = 開始 → 完成的轉換率）

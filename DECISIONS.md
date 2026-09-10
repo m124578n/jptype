@@ -424,3 +424,42 @@ ROADMAP M4-1 / M4-4 Line Editor / M4-3 每內容排行榜的實作。migration `
 ### 補充（合併 M4-1 時）：kuromoji 字典的服務方式
 
 `vite-plugin-static-copy` 在 Windows 上不論 `structured: false` 或目錄 + `rename` 都會把來源路徑整段重建（`dict/kuromoji/node_modules/kuromoji/dict/…`），字典 404。改為 `apps/web/scripts/copy-kuromoji-dict.mjs` 在 `prepare` / `dev` / `build` 前把 12 個 `.dat.gz` 複製到 `static/dict/kuromoji/`（git 忽略），由 SvelteKit 靜態資源服務。Production（Workers static assets）回 `application/gzip` 且無 `Content-Encoding`；dev 的 sirv 會加 `Content-Encoding: gzip` 讓瀏覽器先解壓、kuromoji 再解壓就失敗，所以 `vite.config.ts` 有一個排在 `sveltekit()` 之前的 dev-only middleware `kuromojiDictRaw` 原樣送出。
+
+## 2026-09-10 M4-2/4 實作：複習模式、內容探索與首頁
+
+ROADMAP M4-2 的第三個模式（Review）與 M4-4 的列表 / 首頁項目。沒有新的資料表、沒有新的 API：全部靠既有的 `POST /api/runs` 與瀏覽器儲存。
+
+### 複習紀錄 `lib/review.ts`（localStorage `jptype:review`）
+
+`jptype:results` 是「每個模式的最佳成績」，粒度到不了句子，所以複習模式另開一個 key，不動 `storage.ts`。格式：
+
+```
+{ 'content:{id}' | 'song:{id}': { title, updatedAt, lines: [{ hash, errors, totalErrors, attempts, lastAt }] } }
+```
+
+- `hash` 是行文字的 FNV-1a 32-bit（`crypto.subtle` 是非同步的，判定要同步）。用**文字**而不是 index 當 key，所以內容被 admin 改順序或增刪句子時，只有真的被改掉的那幾句會失去紀錄；重複出現的副歌算同一句。
+- `errors` 是**最近一次**跑到這句時的錯鍵數，`totalErrors` / `attempts` 是累計。`errors > 0` 就進複習清單，打對一次就掉出來（所以複習模式會自己收斂）。
+- 只有真的打到的句子會被寫入：同步模式中途結束時，後面沒跑到的句子維持原紀錄，不會被當成「這次都對」。
+- `title` 存在 entry 上，讓 `/contents` 的「最近練過」不必為了顯示名字去打伺服器（`jptype:results` 只有 id）。
+- 純函式（`applyOutcomes` / `missedLines` / `reviewErrorCount` / `recentSubjects`）吃 store 回 store，用 in-memory `Storage` 做單元測試，和 `storage.test.ts` 同一套。上限：40 個內容 × 每個 500 句，超過先丟乾淨的行、再丟最舊的。
+
+計數在頁面而不是在 run controller 裡：按鍵前先記下 `run.current`，`press()` 回 `ok: false` 就把那一句加一。`PracticeRun` / `SongSyncRun` 因此完全沒有改動。
+
+### 複習模式怎麼跑
+
+`/contents/[id]` 與 `/songs/[id]` 的模式列多一顆「複習錯過的句子」，沒有錯過的句子時 disabled。按下去就是 `PracticeRun({ sequence: 錯過的句子 })`（維持內容原順序），句子上方多一行「你之前在這句錯了 N 次」——`TypingArea` 沒有改，只是在它上面多一個 `<p>`。
+
+**複習成績不送後端**：它只涵蓋這個人漏掉的句子，拿去和完整內容的成績排在同一個榜上沒有意義，所以 `recordResult` + `recordKanaStats` 照記，`submitPracticeRun` 直接跳過（UI 明說只留本機）。歌曲本來就不送。複習清單清空後，「再打一次」自動退回自由模式。歌曲的模式記憶（`jptype:songMode`）只記同步 / 自由兩種，複習是一次性的。
+
+### 篩選寫在網址
+
+`/contents` 的搜尋與三個篩選本來就各自是連結，這次確認四個條件會互相疊加、並且全部留在網址上（`?type=&jlpt=&difficulty=&q=&page=`），所以列表狀態可以分享、可以上一頁；篩不到東西時空狀態給一顆「清除篩選」回到乾淨列表。
+
+### 首頁的資料來源
+
+`+page.server.ts` 維持只查一個東西（本週 `timed:allhira:60` 前 5），沒有為了「你的進度」加任何伺服器查詢：
+
+- **未登入**：進度區塊在 mount 後讀 `jptype:results` 算三個數字——今天有紀錄的項目數、跨模式最佳分數、`LESSONS` 有紀錄的課數；並在 Hero 下方寫明「不用帳號也能開始練習」。
+- **已登入**：不重算，直接用 layout 已經給的 `data.user` 打招呼並連到 `/me`（那裡才有伺服器端的完整統計）。
+
+分類入口卡（課程 / 計時賽 / 內容 / 聽打 / 歌詞）與 `/learn` 的「x / y 課完成 + 繼續上次」都只是既有資料的重新排版；`繼續上次` 指向第一個沒有成績的課，全部練過就指向最近練的那一課。

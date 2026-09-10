@@ -12,15 +12,42 @@
 		type ContentSummary
 	} from '$lib/contents';
 	import { difficultyLabel, jlptLabel, typeIcon, typeLabel } from '$lib/contents-labels';
+	import { loadReview, recentSubjects, type RecentSubject } from '$lib/review';
 	import { loadResults, type LessonResults } from '$lib/storage';
 
 	let { data } = $props();
 
 	/** Personal bests live in this browser (`content:{id}`), so they are read after mount. */
 	let results = $state<LessonResults>({});
+	/** 最近練過: the last few contents / songs practised on this device, newest first. */
+	let recent = $state<RecentSubject[]>([]);
 	onMount(() => {
 		results = loadResults();
+		recent = recentSubjects(loadReview(), results);
 	});
+
+	/**
+	 * The review store remembers the title of everything practised since M4-2; anything older is
+	 * named from the current listing when it happens to be on this page, and otherwise skipped —
+	 * a bare id would tell the reader nothing.
+	 */
+	const recentShown = $derived(
+		recent
+			.map((item) => ({
+				...item,
+				title:
+					item.title !== ''
+						? item.title
+						: (data.list.contents.find((c) => c.id === item.id)?.title ?? '')
+			}))
+			.filter((item) => item.title !== '')
+	);
+
+	function recentHref(item: RecentSubject): string {
+		return item.kind === 'song'
+			? resolve('/songs/[id]', { id: item.id })
+			: resolve('/contents/[id]', { id: item.id });
+	}
 
 	// Seeded from the URL, then owned by the input until the next navigation.
 	let search = $derived(data.query.q);
@@ -66,6 +93,12 @@
 	}
 
 	const lastPage = $derived(Math.max(1, Math.ceil(data.list.total / data.list.pageSize)));
+	const filtered = $derived(
+		data.query.type !== undefined ||
+			data.query.jlptLevel !== undefined ||
+			data.query.difficulty !== undefined ||
+			data.query.q !== ''
+	);
 
 	function tags(content: ContentSummary): string[] {
 		const out = [typeLabel[content.type](), difficultyLabel[content.difficulty]()];
@@ -82,6 +115,23 @@
 		<h1>{m.contents_title()}</h1>
 		<p class="muted">{m.contents_lead()}</p>
 	</header>
+
+	{#if recentShown.length > 0}
+		<section class="stack recent" aria-labelledby="recent-title">
+			<h2 id="recent-title" class="recent-title">{m.contents_recent_title()}</h2>
+			<ul class="recent-list">
+				{#each recentShown as item (item.subject)}
+					<li>
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- recentHref() applies resolve() -->
+						<a class="card recent-item" href={recentHref(item)}>
+							<span class="recent-name">{item.title}</span>
+							<span class="muted small">{m.contents_best({ score: item.best })}</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
 
 	<form class="row search" onsubmit={submitSearch}>
 		<label class="visually-hidden" for="content-search">{m.contents_search_label()}</label>
@@ -147,7 +197,12 @@
 	</nav>
 
 	{#if data.list.contents.length === 0}
-		<p class="card empty muted">{m.contents_empty()}</p>
+		<div class="card empty stack">
+			<p class="muted">{m.contents_empty()}</p>
+			{#if filtered}
+				<p><a class="btn" href={resolve('/contents')}>{m.contents_clear_filters()}</a></p>
+			{/if}
+		</div>
 	{:else}
 		<ul class="cards">
 			{#each data.list.contents as content (content.id)}
@@ -321,6 +376,38 @@
 	.empty {
 		padding: var(--space-8);
 		text-align: center;
+		align-items: center;
+		gap: var(--space-4);
+	}
+	.empty p {
+		margin: 0;
+	}
+	.recent {
+		gap: var(--space-3);
+	}
+	.recent-title {
+		font-size: 1rem;
+		font-weight: 500;
+		margin: 0;
+	}
+	.recent-list {
+		list-style: none;
+		margin: 0;
+		padding: 0 0 var(--space-1);
+		display: flex;
+		gap: var(--space-3);
+		overflow-x: auto;
+	}
+	.recent-item {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-3) var(--space-4);
+		min-width: 12rem;
+		text-decoration: none;
+	}
+	.recent-name {
+		font-weight: 500;
 	}
 	.pager {
 		justify-content: center;

@@ -12,6 +12,14 @@
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { SongSyncRun } from '$lib/practice/song-sync.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
+	import {
+		loadReview,
+		missedLines,
+		recordLineOutcomes,
+		reviewErrorCount,
+		type LineOutcome,
+		type ReviewStore
+	} from '$lib/review';
 	import { hasSync, loadSongMode, saveSongMode, type Song, type SongMode } from '$lib/songs';
 	import { loadOne, setVisibility, toSong, type SongVisibility } from '$lib/songs-api';
 	import {
@@ -29,7 +37,9 @@
 	// from the public API; either way it is fetched after mount so SSR and hydration agree.
 	let song = $state.raw<Song | null>(null);
 	let loaded = $state(false);
-	let mode = $state<SongMode>('free');
+	/** The two persisted modes plus Review, which only practises the lines you got wrong. */
+	type Mode = SongMode | 'review';
+	let mode = $state<Mode>('free');
 
 	/** Publishing state, only meaningful for a song that lives on the server. */
 	let isOwner = $state(false);
@@ -45,6 +55,30 @@
 	let result = $state<ScoreResult | null>(null);
 	let newBest = $state(false);
 	let skippedLines = $state(0);
+
+	/** Per-line review records for this song (ROADMAP M4-2), read after mount. */
+	let review = $state<ReviewStore>({});
+	const subject = $derived(`song:${data.id}`);
+	const texts = $derived(song ? song.lines.map((l) => l.text) : []);
+	const missed = $derived(missedLines(review, subject, texts));
+	const reviewTexts = $derived(missed.map((line) => line.text));
+	/**
+	 * Wrong keys per line of the run in progress, keyed by the line text (a repeated chorus line is
+	 * one record), plus the lines actually reached — a line the song never got to must not be
+	 * recorded as clean.
+	 */
+	let lineErrors: Record<string, number> = {};
+	let lineSeen: Record<string, boolean> = {};
+
+	function noteKey(text: string, ok: boolean) {
+		if (text === '') return;
+		lineSeen[text] = true;
+		if (!ok) lineErrors[text] = (lineErrors[text] ?? 0) + 1;
+	}
+
+	function outcomes(): LineOutcome[] {
+		return Object.keys(lineSeen).map((text) => ({ text, errors: lineErrors[text] ?? 0 }));
+	}
 
 	/** idle → countdown (3-2-1-START) → running; free mode stays 'running'. */
 	let phase = $state<'idle' | 'countdown' | 'running'>('idle');
@@ -67,6 +101,10 @@
 
 	const syncable = $derived(song !== null && hasSync(song));
 	const active = $derived<PracticeRun | SongSyncRun | null>(mode === 'sync' ? sync : run);
+	/** Errors the stored record has for the line being typed now; 0 hides the note. */
+	const lineNote = $derived(
+		mode === 'review' && active ? reviewErrorCount(review, subject, active.current) : 0
+	);
 
 	async function load() {
 		const found = await loadOne(data.id, data.user !== null);
@@ -82,6 +120,7 @@
 
 	onMount(() => {
 		settings = loadSettings();
+		review = loadReview();
 		coarsePointer = window.matchMedia('(pointer: coarse)').matches;
 		void load();
 	});
@@ -123,10 +162,11 @@
 		countdownTimer = null;
 	}
 
-	function chooseMode(next: SongMode) {
+	function chooseMode(next: Mode) {
 		if (mode === next) return;
 		mode = next;
-		saveSongMode(next);
+		// Review is a one-off pass over the missed lines, so it is not remembered as *the* mode.
+		if (next !== 'review') saveSongMode(next);
 		reset();
 	}
 
@@ -137,6 +177,10 @@
 		newBest = false;
 		skippedLines = 0;
 		lastTime = Number.NaN;
+		lineErrors = {};
+		lineSeen = {};
+		// Nothing left to review (the last run was clean): fall back to the whole song.
+		if (mode === 'review' && reviewTexts.length === 0) mode = 'free';
 		if (!song) return;
 		if (mode === 'sync') {
 			run = null;
@@ -145,9 +189,9 @@
 			controller?.pause();
 		} else {
 			sync = null;
-			// Lyric lines are typed in order, one line per question.
-			const texts = song.lines.map((l) => l.text);
-			run = new PracticeRun(texts, { sequence: texts });
+			// Lyric lines are typed in order, one line per question; review takes the missed ones.
+			const questions = mode === 'review' ? reviewTexts : texts;
+			run = new PracticeRun(questions, { sequence: questions });
 			phase = 'running';
 		}
 	}
@@ -169,7 +213,8 @@
 	function finish(score: ScoreResult, skipped: number) {
 		result = score;
 		skippedLines = skipped;
-		newBest = recordResult(`song:${data.id}`, score);
+		newBest = recordResult(subject, score);
+		review = recordLineOutcomes(subject, outcomes(), { title: song?.title ?? '' });
 		sound.play('bell');
 	}
 
@@ -240,8 +285,10 @@
 			if (playerState !== 'playing') return; // paused: the song is not moving, ignore typing
 			if (e.key.length !== 1) return;
 			e.preventDefault();
+			const line = s.current;
 			const res = s.press(e.key, performance.now());
 			if (!res) return;
+			noteKey(line, res.ok);
 			sound.play(res.ok ? 'key' : 'error');
 			if (s.finished) finishSync();
 			return;
@@ -251,8 +298,10 @@
 		if (!r || r.finished) return;
 		if (e.key.length !== 1) return;
 		e.preventDefault();
+		const line = r.current;
 		const res = r.press(e.key, performance.now());
 		if (!res) return;
+		noteKey(line, res.ok);
 		sound.play(res.ok ? 'key' : 'error');
 		if (r.finished) finish(r.result(), 0);
 	}
@@ -298,8 +347,23 @@
 				>
 					{m.songs_mode_free()}
 				</button>
+				<button
+					type="button"
+					class="btn"
+					class:btn--primary={mode === 'review'}
+					aria-pressed={mode === 'review'}
+					disabled={missed.length === 0}
+					title={missed.length === 0 ? m.review_none() : m.review_mode_hint()}
+					onclick={() => chooseMode('review')}
+				>
+					{m.review_mode()}
+				</button>
 			</div>
-			{#if !syncable}
+			{#if mode === 'review'}
+				<p class="muted small">
+					{m.review_mode_hint()} · {m.review_available({ count: missed.length })}
+				</p>
+			{:else if !syncable}
 				<p class="muted small">
 					{m.songs_sync_unavailable()}
 					{#if isOwner}
@@ -310,6 +374,9 @@
 				<p class="muted small">{m.songs_mode_sync_hint()}</p>
 			{:else}
 				<p class="muted small">{m.songs_mode_free_hint()}</p>
+			{/if}
+			{#if mode !== 'review' && missed.length > 0}
+				<p class="muted small">{m.review_available({ count: missed.length })}</p>
 			{/if}
 			{#if !isOwner}
 				<p class="muted small">{m.songs_public_owner()}</p>
@@ -443,12 +510,17 @@
 					<p class="muted small center">{m.songs_sync_keys()}</p>
 				{/if}
 			</section>
-		{:else if mode === 'free' && run && result === null}
+		{:else if mode !== 'sync' && run && result === null}
 			<section class="stack practice">
 				<p class="muted small" aria-live="polite">
 					{m.songs_progress({ current: run.index + 1, total: run.questions.length })}
 				</p>
 				<p class="muted line" lang="ja">{previous ?? ''}</p>
+				{#if lineNote > 0}
+					<p class="review-note small" aria-live="polite">
+						{m.review_line_note({ count: lineNote })}
+					</p>
+				{/if}
 				<TypingArea {run} showHint={settings.showHint} />
 				<p class="muted line" lang="ja">{upcoming ?? ''}</p>
 				{#if settings.showKeyboard}
@@ -503,6 +575,10 @@
 			/>
 			{#if mode === 'sync'}
 				<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>
+			{:else if mode === 'review'}
+				<p class="center muted small">
+					{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+				</p>
 			{/if}
 			<p class="center">
 				<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
@@ -580,6 +656,10 @@
 	}
 	.status {
 		min-height: 1.4rem;
+	}
+	.review-note {
+		margin: 0;
+		color: var(--fg-muted);
 	}
 	.tools {
 		justify-content: center;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { LESSON_GROUPS, findLesson } from '@jptype/data';
+	import { LESSONS, LESSON_GROUPS, findLesson } from '@jptype/data';
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import Icon from '$lib/components/Icon.svelte';
@@ -11,6 +11,25 @@
 	onMount(() => {
 		results = loadResults();
 	});
+
+	const doneCount = $derived(LESSONS.filter((lesson) => results[lesson.id] !== undefined).length);
+
+	/** 繼續上次: the first lesson without a result, or — once every lesson has one — the newest. */
+	const nextLessonId = $derived.by(() => {
+		const ids = LESSON_GROUPS.flatMap((group) => group.lessonIds);
+		const untouched = ids.find((id) => results[id] === undefined);
+		if (untouched !== undefined) return untouched;
+		let latest = ids[0] ?? '';
+		let latestAt = -1;
+		for (const id of ids) {
+			const at = results[id]?.lastAt ?? -1;
+			if (at > latestAt) {
+				latestAt = at;
+				latest = id;
+			}
+		}
+		return latest;
+	});
 </script>
 
 <svelte:head><title>{m.learn_title()} · {m.app_name()}</title></svelte:head>
@@ -19,6 +38,14 @@
 	<header class="stack intro">
 		<h1>{m.learn_title()}</h1>
 		<p class="muted">{m.learn_lead()}</p>
+		<p class="row progress">
+			<span class="muted">{m.learn_progress({ done: doneCount, total: LESSONS.length })}</span>
+			{#if nextLessonId !== ''}
+				<a class="btn btn--small" href={resolve('/learn/[lessonId]', { lessonId: nextLessonId })}>
+					{doneCount === 0 ? m.learn_start() : m.learn_continue()}
+				</a>
+			{/if}
+		</p>
 	</header>
 
 	{#each LESSON_GROUPS as group (group.id)}
@@ -59,6 +86,18 @@
 	}
 	.intro {
 		gap: var(--space-2);
+	}
+	.progress {
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-4);
+		margin: 0;
+		font-variant-numeric: tabular-nums;
+	}
+	.btn--small {
+		min-height: 36px;
+		padding-inline: var(--space-4);
+		font-size: 0.875rem;
 	}
 	.group {
 		gap: var(--space-4);

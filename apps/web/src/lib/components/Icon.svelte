@@ -16,7 +16,8 @@
 			| 'newspaper'
 			| 'book'
 			| 'clipboard'
-			| 'pen';
+			| 'pen'
+			| 'clock';
 		size?: number;
 	} = $props();
 </script>
@@ -64,5 +65,7 @@
 		/><path d="M9 13h6M9 17h4" />
 	{:else if name === 'pen'}
 		<path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+	{:else if name === 'clock'}
+		<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
 	{/if}
 </svg>

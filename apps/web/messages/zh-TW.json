@@ -123,7 +123,6 @@
 	"login_title": "登入",
 	"login_lead": "登入後計時賽成績會進排行榜，練習紀錄也會跨裝置同步。",
 	"login_with_google": "使用 Google 登入",
-	"login_with_line": "使用 LINE 登入",
 	"login_failed": "登入失敗，請再試一次。",
 	"login_note": "我們只取得你的名稱與頭像，不會發文或讀取聯絡人。",
 	"login_already": "你已經以 {name} 登入。",

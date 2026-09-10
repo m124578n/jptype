@@ -29,8 +29,6 @@ declare global {
 		BETTER_AUTH_SECRET: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
-		LINE_CHANNEL_ID: string;
-		LINE_CHANNEL_SECRET: string;
 		TURNSTILE_SECRET_KEY: string;
 	}
 }

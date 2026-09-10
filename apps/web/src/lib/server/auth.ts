@@ -8,8 +8,6 @@ export interface AuthEnv {
 	BETTER_AUTH_SECRET: string;
 	GOOGLE_CLIENT_ID: string;
 	GOOGLE_CLIENT_SECRET: string;
-	LINE_CHANNEL_ID: string;
-	LINE_CHANNEL_SECRET: string;
 }
 
 /** Build the Better Auth options for one deployment origin. Exported for tests. */
@@ -30,8 +28,8 @@ export function authOptions(env: AuthEnv, origin: string) {
 			}
 		}),
 		socialProviders: {
-			google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
-			line: { clientId: env.LINE_CHANNEL_ID, clientSecret: env.LINE_CHANNEL_SECRET }
+			// LINE login is out of scope for the short/mid term (owner, 2026-09-10).
+			google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
 		},
 		user: {
 			additionalFields: {

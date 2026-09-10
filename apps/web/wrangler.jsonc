@@ -1,7 +1,7 @@
 // Cloudflare Workers config (spec §3). Lives next to the SvelteKit app because
 // `wrangler types` / `wrangler dev` resolve paths relative to this file.
 // Secrets (never here): BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID/SECRET,
-// LINE_CHANNEL_ID/SECRET, TURNSTILE_SECRET_KEY → `wrangler secret put` / .dev.vars
+// TURNSTILE_SECRET_KEY → `wrangler secret put` / .dev.vars
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "jptype",

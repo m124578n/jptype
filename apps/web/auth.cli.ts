@@ -7,8 +7,7 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 export const auth = betterAuth({
 	database: drizzleAdapter({} as never, { provider: 'sqlite' }),
 	socialProviders: {
-		google: { clientId: 'x', clientSecret: 'x' },
-		line: { clientId: 'x', clientSecret: 'x' }
+		google: { clientId: 'x', clientSecret: 'x' }
 	},
 	user: {
 		additionalFields: {

@@ -39,7 +39,7 @@ packages/data/     @jptype/data    假名表、課程、驗證
 
 1. 建 Cloudflare 資源並把 ID 填進 `apps/web/wrangler.jsonc`：
    `wrangler d1 create jptype`、`wrangler kv namespace create KV`、`wrangler r2 bucket create jptype`
-2. `wrangler secret put` 設定 `BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID/SECRET`、`LINE_CHANNEL_ID/SECRET`、`TURNSTILE_SECRET_KEY`
+2. `wrangler secret put` 設定 `BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID/SECRET`、`TURNSTILE_SECRET_KEY`
 3. GitHub repo secrets：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`；push `main` 觸發 `deploy.yml`
 
 ## 里程碑

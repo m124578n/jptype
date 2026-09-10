@@ -69,6 +69,32 @@ describe('parseSubmission', () => {
 		expect(parseSubmission({ ...HONEST, log: [] })).toMatch(/log/);
 		expect(parseSubmission({ ...HONEST, log: [{ t: 'a', key: 'a', ok: true }] })).toMatch(/event/);
 	});
+
+	it('accepts an optional maxCombo within 0..log.length and rejects the rest', () => {
+		expect(parseSubmission({ ...HONEST, maxCombo: 3 })).toMatchObject({ maxCombo: 3 });
+		expect(parseSubmission({ ...HONEST, maxCombo: 0 })).toMatchObject({ maxCombo: 0 });
+		expect(parseSubmission({ ...HONEST, maxCombo: 4 })).toMatch(/maxCombo/);
+		expect(parseSubmission({ ...HONEST, maxCombo: -1 })).toMatch(/maxCombo/);
+		expect(parseSubmission({ ...HONEST, maxCombo: 1.5 })).toMatch(/maxCombo/);
+		expect(parseSubmission({ ...HONEST, maxCombo: '3' })).toMatch(/maxCombo/);
+	});
+});
+
+describe('submitRun – maxCombo', () => {
+	it('recomputes it from the log and ignores whatever the client claimed', async () => {
+		const { store, inserted } = fakeStore();
+		const { d } = deps(store);
+		const wrongThenRight = record(HONEST.text, 'xaiu');
+		const sub = {
+			...HONEST,
+			log: wrongThenRight,
+			durationMs: (wrongThenRight.at(-1)?.t ?? 0) - (wrongThenRight[0]?.t ?? 0),
+			maxCombo: 0
+		};
+		const r = await submitRun(null, sub, d);
+		if (!r.ok) throw new Error(r.error);
+		expect(inserted[0]?.maxCombo).toBe(3);
+	});
 });
 
 describe('textMatchesPool', () => {
@@ -95,7 +121,8 @@ describe('submitRun', () => {
 			week: '2026-W37',
 			flagged: 0,
 			correctKeys: 3,
-			wrongKeys: 0
+			wrongKeys: 0,
+			maxCombo: 3
 		});
 		expect(logs).toEqual(['RUN1']);
 		expect(kanaCalls).toEqual([]);

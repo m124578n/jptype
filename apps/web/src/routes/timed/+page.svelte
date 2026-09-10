@@ -16,6 +16,7 @@
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
 	import TypingArea from '$lib/components/TypingArea.svelte';
+	import type { ErrorAnalysis } from '$lib/practice/errors';
 	import { PracticeRun } from '$lib/practice/run.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
 	import { submitPracticeRun } from '$lib/practice/submit';
@@ -53,6 +54,7 @@
 	let run = $state.raw<PracticeRun | null>(null);
 	let result = $state<ScoreResult | null>(null);
 	let newBest = $state(false);
+	let errors = $state<ErrorAnalysis | null>(null);
 	let remainingMs = $state(0);
 	let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -103,7 +105,8 @@
 		r.stop(nowMs);
 		const s = r.result();
 		result = s;
-		newBest = recordResult(mode, s);
+		errors = r.errorAnalysis();
+		newBest = recordResult(mode, s, { durationMs: r.durationMs, maxCombo: r.maxCombo });
 		recordKanaStats(r.unitOutcomes);
 		sound.play('bell');
 		phase = 'result';
@@ -246,6 +249,9 @@
 			wrongUnits={run.wrongUnits}
 			{newBest}
 			{rank}
+			durationMs={run.durationMs}
+			maxCombo={run.maxCombo}
+			errors={errors ?? undefined}
 			onpracticeWrong={start}
 			onretry={start}
 			retryLabel={m.timed_again()}

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	DEFAULT_SETTINGS,
+	HISTORY_LIMIT,
+	loadHistory,
 	loadKanaStats,
 	loadResults,
 	loadSettings,
@@ -55,15 +57,56 @@ describe('settings', () => {
 
 describe('results', () => {
 	it('records attempts and keeps the best score', () => {
-		expect(recordResult('hira-a', result, 1000)).toBe(true);
-		expect(recordResult('hira-a', { ...result, score: 50 }, 2000)).toBe(false);
+		expect(recordResult('hira-a', result, { now: 1000 })).toBe(true);
+		expect(recordResult('hira-a', { ...result, score: 50 }, { now: 2000 })).toBe(false);
 		expect(loadResults()['hira-a']).toEqual({
 			best: { score: 97, kpm: 120, accuracy: 0.9 },
 			attempts: 2,
 			lastAt: 2000
 		});
-		expect(recordResult('hira-a', { ...result, score: 150 }, 3000)).toBe(true);
+		expect(recordResult('hira-a', { ...result, score: 150 }, { now: 3000 })).toBe(true);
 		expect(loadResults()['hira-a']?.best.score).toBe(150);
+	});
+});
+
+describe('run history', () => {
+	it('appends one entry per run, oldest first', () => {
+		recordResult('hira-a', result, { now: 1000, durationMs: 30_000, maxCombo: 42 });
+		recordResult('timed:all:60', result, { now: 2000, durationMs: 60_000 });
+		expect(loadHistory()).toEqual([
+			{
+				mode: 'hira-a',
+				score: 97,
+				kpm: 120,
+				accuracy: 0.9,
+				durationMs: 30_000,
+				keys: 100,
+				maxCombo: 42,
+				at: 1000
+			},
+			{
+				mode: 'timed:all:60',
+				score: 97,
+				kpm: 120,
+				accuracy: 0.9,
+				durationMs: 60_000,
+				keys: 100,
+				maxCombo: 0,
+				at: 2000
+			}
+		]);
+	});
+
+	it('keeps at most HISTORY_LIMIT entries, dropping the oldest', () => {
+		for (let i = 0; i < HISTORY_LIMIT + 5; i++) recordResult('x', result, { now: i });
+		const history = loadHistory();
+		expect(history).toHaveLength(HISTORY_LIMIT);
+		expect(history[0]?.at).toBe(5);
+	});
+
+	it('ignores a corrupted history instead of throwing', () => {
+		localStorage.setItem('jptype:history', '{"not":"an array"}');
+		expect(loadHistory()).toEqual([]);
 	});
 });
 

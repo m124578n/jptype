@@ -1,0 +1,1 @@
+ALTER TABLE `runs` ADD `max_combo` integer;

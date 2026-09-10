@@ -463,3 +463,56 @@ ROADMAP M4-2 的第三個模式（Review）與 M4-4 的列表 / 首頁項目。�
 - **已登入**：不重算，直接用 layout 已經給的 `data.user` 打招呼並連到 `/me`（那裡才有伺服器端的完整統計）。
 
 分類入口卡（課程 / 計時賽 / 內容 / 聽打 / 歌詞）與 `/learn` 的「x / y 課完成 + 繼續上次」都只是既有資料的重新排版；`繼續上次` 指向第一個沒有成績的課，全部練過就指向最近練的那一課。
+
+## 2026-09-10 M4-3 實作：Combo、錯誤分析、練習時間統計、成就
+
+### Combo = 連續「被接受的按鍵」，不是連續假名
+
+`PracticeRun` 與 `SongSyncRun` 各自維護 `combo` / `maxCombo` / `milestone` / `milestoneAt`（四個 `$state`，共用 `lib/practice/combo.ts` 的 `applyComboKey`）。規則：
+
+- 引擎忽略的鍵（Shift、Backspace…）不進 log，也不進 combo，兩個方向都不算。
+- 打完一題 / 一句**不**中斷連段，連段只被錯鍵打斷。
+- 同步模式另有兩個中斷點：被歌曲追過去（該句計入 `skippedLines`）與使用者 seek / 倒帶。打完的句子被推進不算中斷。
+- 里程碑 10 / 20 / 50 / 100：`milestone` 記最後跨過的門檻、`milestoneAt` 記時間戳（跟 `lastWrongAt` 同一套做法），UI 用它重觸發動畫，不需要 callback 或事件匯流排。
+- `TypingArea` 連段 ≥ 5 才顯示（小字、muted），里程碑時閃一下主色 + 500ms 微放大；`prefers-reduced-motion` 關掉。不放彩帶（MASTER.md「不要遊戲化」）。
+
+### 錯誤分析在按鍵當下記錄，不從 log 反推
+
+`lib/practice/errors.ts` 吃 `KeyError[]`（`{ kana, romaji, typed, key }`，每個被拒絕的鍵一筆），由兩個 run 類別在 `press()` 裡記下來——錯鍵不會進 buffer，所以 `press` 之後的 `typed` 就是當下已接受的前綴。
+不用 `text` + `log` 重跑的理由：只有 `text` 與 `log` 對得起來的場次才重播得出來，同步模式會跳句、重打，計時賽最後一題打到一半，這些都會讓重播位移。逐鍵記錄每個錯鍵多一個小物件，永遠正確。
+
+拼法的判定（`describeError`，故意寫得很笨以求可重現）：
+
+- `expected` = 引擎當下還在等的拼法，也就是畫面上的提示（第一個與已打前綴相容的拼法）。
+- `attempt` = 已接受前綴 + 被拒絕的鍵。`attempt` 若是**任何**假名拼法的前綴（表由 `@jptype/data` 的 `KANA` + `SYMBOLS` 展開），視為使用者在拼另一種羅馬字，整串報出來（ち 期待 `ti`、打成 `tu`）；否則只報那一個鍵（`shi → q`）。
+- 會被接受的鍵永遠走不到這裡，所以 `attempt` 不可能是 `expected` 的合法延續。
+- 聚合鍵是 `unit|expected|typed`，排序穩定（同次數保持首次出錯順序），各取前 5。
+
+### `runs.max_combo` 一律由伺服器從 log 重算
+
+migration `0004_achievements` 只有 `ALTER TABLE runs ADD max_combo integer`（nullable，舊資料沒有連段），drizzle-kit 這次沒有重建 `runs`，所以 `runs_lb` / `runs_user` 兩條 `DESC` 索引沒有被寫壞（見 M2 ②那條）；本機 `wrangler d1 migrations apply DB --local` 已驗證。
+`POST /api/runs` 接受可選的 `maxCombo`（驗證 0..log.length，超出就 400），但**寫進 D1 的值是 `maxComboFromLog(log)`**：log 已經被 `analyze()` 重播驗證過，連段是它的函數，沒有理由相信前端的數字。`lib/practice/combo.ts` 是純 TS，伺服器直接 import，不複製一份。
+
+### 練習時間與 30 天平均：兩邊共用 `lib/stats.ts`
+
+`summarize(samples, now)` 吃 `{ at, durationMs, kpm, accuracy }[]`，回今日 / 本週練習時間與近 30 天平均 Accuracy / KPM。今日與本週都用台北曆（`lib/time.ts`，週的定義跟 `runs.week` 一致）。
+`taipeiDate` / `weekOf` 從 `lib/server/*` 搬到 `lib/time.ts`（server 端只留 re-export，既有 import 不用改），因為未登入的 `/me` 也要用同一套定義，而 `$lib/server` 在瀏覽器端不可 import。
+
+- 登入：`UserStore` 多 `runSamples(userId, since)` 與 `achievementTotals(userId)`，`getMyStats` 多回 `summary` 與 `achievements`。
+- 未登入：`storage.ts` 多一份滾動紀錄 `jptype:history`（`{ mode, score, kpm, accuracy, durationMs, keys, maxCombo, at }`，上限 200 筆）。`recordResult(mode, result, opts)` 第三個參數改成 `{ now?, durationMs?, maxCombo? }` 物件，舊的兩參數呼叫端照舊能編（那些場次的練習時間記 0，之後補傳即可）。`keys` 與 `maxCombo` 是成就規則要的，規格裡的欄位是它的子集。
+
+### 成就用推導的，不開表
+
+`lib/achievements.ts` 五條規則都是門檻，輸入是 `/me` 本來就有的數字（`totalRuns` / `maxCombo` / `bestKpm` / `perfectRuns`），所以沒有 `user_achievements` 表要同步，也不可能出現徽章跟旁邊的統計對不上。
+
+- First Practice：`totalRuns >= 1`
+- Perfect：準確率 100% 且該場 ≥ 20 鍵（太短的場次不算）
+- 10 次練習：`totalRuns >= 10`
+- CPM > 100：引擎量的是 KPM，所以規則是 `bestKpm >= 100`
+- 100 Combo：`maxCombo >= 100`
+
+未登入者從本機的 200 筆滾動紀錄推導（門檻都 ≤ 100，200 筆綽綽有餘）。`/me` 已達成用主色圓底圖示，未達成用虛線框 + muted 圖示，狀態另有 visually-hidden 文字給螢幕閱讀器。
+
+### 沒有動的東西
+
+分數公式維持 §6.5 的 `kpm × accuracy²`，沒有加 Combo 係數；「Accuracy ≥ 90% 才算有效成績」仍未做（兩項都還在 ROADMAP M4-3 待確認）。

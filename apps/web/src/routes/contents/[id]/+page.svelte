@@ -199,7 +199,10 @@
 		replayable: boolean
 	) {
 		result = score;
-		newBest = recordResult(mode, score);
+		newBest = recordResult(mode, score, {
+			durationMs: finished.durationMs,
+			maxCombo: finished.maxCombo
+		});
 		recordKanaStats(finished.unitOutcomes);
 		review = recordLineOutcomes(mode, outcomes(), { title: data.content.title });
 		sound.play('bell');
@@ -529,6 +532,9 @@
 			onretry={reset}
 			retryLabel={m.contents_again()}
 			showPracticeWrong={false}
+			durationMs={active.durationMs}
+			maxCombo={active.maxCombo}
+			errors={active.errorAnalysis()}
 		/>
 		{#if practiceMode === 'sync' && skippedLines > 0}
 			<p class="center muted">{m.contents_skipped({ count: skippedLines })}</p>

@@ -1,6 +1,6 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-10。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-10（M4-3、M4-2/4 合併後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
@@ -38,10 +38,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
-### 正在由 Opus agent 實作、需要合併驗證的（若本文件更新時已合併，ROADMAP 會標 ✅）
+### 2026-09-10 最後一輪已合併（M4-3 與 M4-2/4）
 
-- M4-3：Combo / Max Combo、錯誤分析（最常錯的假名與拼法）、結果頁補 Time / Errors、/me 的今日與本週練習時間、簡單成就。
-- M4-2 Review 模式（內容與歌曲只複習錯過的句子）、M4-4 內容探索與首頁改版、課程地圖完成度。
+- M4-3：Combo / Max Combo（`runs.max_combo`，migration `0004_achievements`，伺服器從 log 重算）、錯誤分析（最常錯假名與拼法，結果頁前 5）、結果頁 Time / Errors、`/me` 今日與本週練習時間、30 天平均、五個成就（由既有資料推導，無新表）。
+- M4-2 Review 模式（內容與歌曲只複習錯過的句子，紀錄在 localStorage `jptype:review`，不送伺服器）、`/contents` 最近練過與空狀態、首頁分類卡與「你的進度」、`/learn` 完成度與「繼續上次」。
+- 這輪全部只做了型別檢查、單元測試、build 與路由冒煙；互動流程沒有在瀏覽器實測。
 
 ### 明確還沒做
 

@@ -208,3 +208,43 @@ describe('SongSyncRun – finish and result', () => {
 		expect(run.replayable).toBe(false);
 	});
 });
+
+describe('SongSyncRun – combo and error analysis (M4-3)', () => {
+	it('keeps the streak across lines the user finished in time', () => {
+		const run = new SongSyncRun(LINES);
+		const now = type(run, 'a', 0);
+		run.timeUpdate(10);
+		type(run, 'i', now);
+		expect(run.combo).toBe(2);
+		expect(run.maxCombo).toBe(2);
+	});
+
+	it('breaks the streak when the song runs away with a line', () => {
+		const run = new SongSyncRun(LINES);
+		type(run, 'a', 0);
+		run.timeUpdate(10);
+		expect(run.combo).toBe(1);
+		run.timeUpdate(20); // line 2 was never typed
+		expect(run.skippedLines).toBe(1);
+		expect(run.combo).toBe(0);
+		expect(run.maxCombo).toBe(1);
+	});
+
+	it('breaks the streak on a seek', () => {
+		const run = new SongSyncRun(LINES);
+		type(run, 'a', 0);
+		run.seek(0);
+		expect(run.combo).toBe(0);
+	});
+
+	it('collects rejected keys for the result page', () => {
+		const run = new SongSyncRun(LINES);
+		run.press('x', 100);
+		run.press('a', 200);
+		expect(run.keyErrors).toEqual([{ kana: 'あ', romaji: ['a'], typed: '', key: 'x' }]);
+		expect(run.errorAnalysis()).toEqual({
+			units: [{ kana: 'あ', count: 1 }],
+			spellings: [{ kana: 'あ', expected: 'a', typed: 'x', count: 1 }]
+		});
+	});
+});

@@ -2,14 +2,25 @@
 	import { onMount } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
-	import KanaHeatmap from '$lib/components/KanaHeatmap.svelte';
-	import { formatAccuracy, formatDateTime, formatKpm } from '$lib/format';
 	import {
+		achievementStatsFromHistory,
+		ACHIEVEMENT_IDS,
+		EMPTY_ACHIEVEMENT_STATS,
+		isUnlocked,
+		type AchievementId
+	} from '$lib/achievements';
+	import Icon from '$lib/components/Icon.svelte';
+	import KanaHeatmap from '$lib/components/KanaHeatmap.svelte';
+	import { formatAccuracy, formatDateTime, formatDuration, formatKpm } from '$lib/format';
+	import { EMPTY_PRACTICE_SUMMARY, summarize } from '$lib/stats';
+	import {
+		loadHistory,
 		loadKanaStats,
 		loadResults,
 		weakKana,
 		type KanaStats,
-		type LessonResults
+		type LessonResults,
+		type RunHistoryEntry
 	} from '$lib/storage';
 
 	let { data } = $props();
@@ -17,10 +28,15 @@
 	// Anonymous fallback: whatever this browser has recorded.
 	let localStats: KanaStats = $state({});
 	let localResults: LessonResults = $state({});
+	let localHistory: RunHistoryEntry[] = $state([]);
+	/** Only read after mount, so SSR and hydration agree. */
+	let localNow = $state(0);
 	onMount(() => {
 		if (!data.stats) {
 			localStats = loadKanaStats();
 			localResults = loadResults();
+			localHistory = loadHistory();
+			localNow = Date.now();
 		}
 	});
 
@@ -34,6 +50,57 @@
 	});
 	const weak = $derived(data.stats ? data.stats.weak : weakKana(localStats));
 	const localAttempts = $derived(Object.values(localResults).reduce((a, r) => a + r.attempts, 0));
+
+	// M4-3: practice time + 30-day averages, from D1 when signed in and from this browser's
+	// rolling history otherwise (both go through the same `summarize`).
+	const summary = $derived.by(() => {
+		if (data.stats) return data.stats.summary;
+		if (localNow === 0) return EMPTY_PRACTICE_SUMMARY;
+		return summarize(
+			localHistory.map((h) => ({
+				at: h.at,
+				durationMs: h.durationMs,
+				kpm: h.kpm,
+				accuracy: h.accuracy
+			})),
+			localNow
+		);
+	});
+
+	const achievementStats = $derived.by(() => {
+		if (data.stats) return data.stats.achievements;
+		if (localNow === 0) return EMPTY_ACHIEVEMENT_STATS;
+		return achievementStatsFromHistory(localHistory);
+	});
+
+	const achievementLabel: Record<AchievementId, () => string> = {
+		first_practice: m.achv_first_practice,
+		perfect: m.achv_perfect,
+		lessons_10: m.achv_lessons_10,
+		kpm_100: m.achv_kpm_100,
+		combo_100: m.achv_combo_100
+	};
+	const achievementHint: Record<AchievementId, () => string> = {
+		first_practice: m.achv_first_practice_hint,
+		perfect: m.achv_perfect_hint,
+		lessons_10: m.achv_lessons_10_hint,
+		kpm_100: m.achv_kpm_100_hint,
+		combo_100: m.achv_combo_100_hint
+	};
+	const achievementIcon: Record<
+		AchievementId,
+		'sparkles' | 'target' | 'list-checks' | 'zap' | 'flame'
+	> = {
+		first_practice: 'sparkles',
+		perfect: 'target',
+		lessons_10: 'list-checks',
+		kpm_100: 'zap',
+		combo_100: 'flame'
+	};
+	const achievements = $derived(
+		ACHIEVEMENT_IDS.map((id) => ({ id, unlocked: isUnlocked(id, achievementStats) }))
+	);
+	const unlockedCount = $derived(achievements.filter((a) => a.unlocked).length);
 
 	function modeLabel(mode: string): string {
 		if (mode === 'weak') return m.me_mode_weak();
@@ -122,6 +189,51 @@
 		<div class="card stat">
 			<span class="muted">{m.me_weak_count()}</span><strong>{weak.length}</strong>
 		</div>
+		<div class="card stat">
+			<span class="muted">{m.stats_today_time()}</span><strong
+				>{formatDuration(summary.todayMs)}</strong
+			>
+		</div>
+		<div class="card stat">
+			<span class="muted">{m.stats_week_time()}</span><strong
+				>{formatDuration(summary.weekMs)}</strong
+			>
+		</div>
+		<div class="card stat">
+			<span class="muted">{m.stats_avg_accuracy_30()}</span><strong
+				>{summary.runs30 === 0 ? '—' : formatAccuracy(summary.avgAccuracy30)}</strong
+			>
+		</div>
+		<div class="card stat">
+			<span class="muted">{m.stats_avg_kpm_30()}</span><strong
+				>{summary.runs30 === 0 ? '—' : formatKpm(summary.avgKpm30)}</strong
+			>
+		</div>
+	</section>
+
+	<section class="stack" aria-labelledby="achv-title">
+		<div class="row between">
+			<h2 id="achv-title">{m.achv_title()}</h2>
+			<span class="muted"
+				>{m.achv_progress({ unlocked: unlockedCount, total: achievements.length })}</span
+			>
+		</div>
+		<ul class="badges">
+			{#each achievements as a (a.id)}
+				<li class="card badge" class:locked={!a.unlocked}>
+					<span class="badge-icon" aria-hidden="true"
+						><Icon name={achievementIcon[a.id]} size={22} /></span
+					>
+					<span class="badge-text">
+						<strong>{achievementLabel[a.id]()}</strong>
+						<span class="muted small">{achievementHint[a.id]()}</span>
+					</span>
+					<span class="visually-hidden">
+						{a.unlocked ? m.achv_state_unlocked() : m.achv_state_locked()}
+					</span>
+				</li>
+			{/each}
+		</ul>
 	</section>
 
 	<section class="stack" aria-labelledby="weak-title">
@@ -224,6 +336,60 @@
 	}
 	.between {
 		justify-content: space-between;
+	}
+	.badges {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		gap: var(--space-3);
+	}
+	.badge {
+		padding: var(--space-4);
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+	.badge-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		flex: 0 0 auto;
+		border-radius: 999px;
+		background: var(--accent-soft);
+		color: var(--accent);
+	}
+	.badge-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.badge-text .small {
+		font-size: 0.8125rem;
+	}
+	.badge.locked {
+		border-style: dashed;
+	}
+	.badge.locked .badge-icon {
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--fg-muted);
+	}
+	.badge.locked .badge-text strong {
+		color: var(--fg-muted);
+		font-weight: 500;
+	}
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
 	}
 	.chips {
 		list-style: none;

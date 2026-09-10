@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { KanaEntry, Lesson } from '@jptype/data';
 	import type { ScoreResult } from '@jptype/engine';
+	import type { ErrorAnalysis } from '$lib/practice/errors';
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import Icon from '$lib/components/Icon.svelte';
@@ -43,6 +44,7 @@
 	let run = $state.raw<PracticeRun | null>(null);
 	let result = $state<ScoreResult | null>(null);
 	let newBest = $state(false);
+	let errors = $state<ErrorAnalysis | null>(null);
 	let selected = $state<KanaEntry | null>(null);
 
 	let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
@@ -79,7 +81,8 @@
 	function finish(r: PracticeRun) {
 		const s = r.result();
 		result = s;
-		newBest = recordResult(lesson.id, s);
+		errors = r.errorAnalysis();
+		newBest = recordResult(lesson.id, s, { durationMs: r.durationMs, maxCombo: r.maxCombo });
 		recordKanaStats(r.unitOutcomes);
 		sound.play('bell');
 		phase = 'result';
@@ -190,6 +193,9 @@
 			{result}
 			wrongUnits={run.wrongUnits}
 			{newBest}
+			durationMs={run.durationMs}
+			maxCombo={run.maxCombo}
+			errors={errors ?? undefined}
 			onpracticeWrong={() => run && start(weakPool(run.wrongUnits, lesson.units))}
 			onretry={() => start(lesson.units)}
 		/>

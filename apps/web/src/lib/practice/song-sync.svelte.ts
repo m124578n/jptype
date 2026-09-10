@@ -6,6 +6,8 @@ import {
 	type PressResult,
 	type ScoreResult
 } from '@jptype/engine';
+import { applyComboKey } from './combo.ts';
+import { analyzeErrors, type ErrorAnalysis, type KeyError } from './errors.ts';
 import type { TypingRun, UnitOutcome } from './run.svelte.ts';
 
 /**
@@ -49,6 +51,10 @@ export class SongSyncRun implements TypingRun {
 	tick = $state(0);
 	finished = $state(false);
 	lastWrongAt = $state(0);
+	combo = $state(0);
+	maxCombo = $state(0);
+	milestone = $state(0);
+	milestoneAt = $state(0);
 	/** Lines the song moved past before the user finished them. */
 	skippedLines = $state(0);
 
@@ -58,6 +64,7 @@ export class SongSyncRun implements TypingRun {
 	private maxIndex = 0;
 	private readonly events: KeyEvent[] = [];
 	private readonly outcomes: UnitOutcome[] = [];
+	private readonly errors: KeyError[] = [];
 	private currentUnitErrored = false;
 	/** A line was re-entered (seek / rewind), so `text` and `log` no longer correspond. */
 	private replayBroken = false;
@@ -146,7 +153,15 @@ export class SongSyncRun implements TypingRun {
 		const target = this.lineIndexAt(seconds);
 		if (target === this.index) return;
 		if (target > this.index) {
-			for (let i = this.index; i < target; i++) if (!this.done[i]) this.skipped[i] = true;
+			for (let i = this.index; i < target; i++) {
+				if (!this.done[i]) {
+					this.skipped[i] = true;
+					// A line the song ran away with breaks the streak; a line finished in time does not.
+					this.combo = 0;
+				}
+			}
+		} else {
+			this.combo = 0; // rewind
 		}
 		this.jumpTo(target);
 	}
@@ -157,6 +172,7 @@ export class SongSyncRun implements TypingRun {
 	 */
 	seek(seconds: number): void {
 		if (this.finished) return;
+		this.combo = 0;
 		this.jumpTo(this.lineIndexAt(seconds));
 	}
 
@@ -193,9 +209,19 @@ export class SongSyncRun implements TypingRun {
 		this.startedAt = startedAt;
 		this.lastKeyAt = nowMs;
 		const unit = this.session.units[result.unitIndex];
+		applyComboKey(this, result.ok, nowMs);
 		if (!result.ok) {
 			this.currentUnitErrored = true;
 			this.lastWrongAt = nowMs;
+			// A rejected key never enters the buffer, so `typed` still holds the accepted prefix.
+			if (unit) {
+				this.errors.push({
+					kana: unit.kana,
+					romaji: unit.romaji,
+					typed: this.session.progress.typed,
+					key: this.session.log[this.session.log.length - 1]?.key ?? ''
+				});
+			}
 		}
 		if (result.unitDone && unit) {
 			this.outcomes.push({ kana: unit.kana, error: this.currentUnitErrored });
@@ -240,6 +266,17 @@ export class SongSyncRun implements TypingRun {
 
 	get unitOutcomes(): readonly UnitOutcome[] {
 		return this.outcomes;
+	}
+
+	/** One record per rejected key, in order; input to `analyzeErrors`. */
+	get keyErrors(): readonly KeyError[] {
+		void this.tick;
+		return this.errors;
+	}
+
+	/** Most-often-wrong kana and spellings for the result page (M4-3). */
+	errorAnalysis(limit = 5): ErrorAnalysis {
+		return analyzeErrors(this.errors, limit);
 	}
 
 	/** Lines reached so far, joined for scoring; see the class comment about `replay()`. */

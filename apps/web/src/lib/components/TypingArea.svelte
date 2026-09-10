@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { LessonHint } from '@jptype/data';
 	import { m } from '$lib/paraglide/messages';
+	import { COMBO_VISIBLE_AT } from '$lib/practice/combo';
 	import type { TypingRun } from '$lib/practice/run.svelte';
 
 	let {
@@ -28,6 +29,17 @@
 		if (run.lastWrongAt === 0) return;
 		shaking = true;
 		const id = setTimeout(() => (shaking = false), 160);
+		return () => clearTimeout(id);
+	});
+
+	// Combo (M4-3): a quiet counter once the streak is worth mentioning, with a short accent
+	// flash when a milestone is crossed. No confetti — MASTER.md「不要遊戲化」.
+	const showCombo = $derived(run.combo >= COMBO_VISIBLE_AT);
+	let flashing = $state(false);
+	$effect(() => {
+		if (run.milestoneAt === 0) return;
+		flashing = true;
+		const id = setTimeout(() => (flashing = false), 500);
 		return () => clearTimeout(id);
 	});
 </script>
@@ -60,6 +72,14 @@
 		{:else}
 			<span class="typed">{run.typed}</span>
 		{/if}
+	</p>
+	<p
+		class="combo muted"
+		class:on={showCombo}
+		class:flash={showCombo && flashing}
+		aria-hidden="true"
+	>
+		{m.stats_combo({ count: run.combo })}
 	</p>
 </div>
 
@@ -115,6 +135,42 @@
 	}
 	.typed {
 		color: var(--fg);
+	}
+	.combo {
+		font-size: 0.875rem;
+		letter-spacing: 0.08em;
+		font-variant-numeric: tabular-nums;
+		min-height: 1.25rem;
+		opacity: 0;
+		transition:
+			opacity var(--dur-fast) var(--ease-out),
+			color var(--dur-fast) var(--ease-out);
+	}
+	.combo.on {
+		opacity: 1;
+	}
+	.combo.flash {
+		color: var(--accent);
+		animation: combo-pop 500ms var(--ease-out);
+	}
+	@keyframes combo-pop {
+		0% {
+			transform: scale(1);
+		}
+		25% {
+			transform: scale(1.18);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.combo {
+			transition: none;
+		}
+		.combo.flash {
+			animation: none;
+		}
 	}
 	.shake {
 		animation: shake 160ms var(--ease-out);

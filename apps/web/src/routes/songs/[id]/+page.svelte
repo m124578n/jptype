@@ -213,7 +213,10 @@
 	function finish(score: ScoreResult, skipped: number) {
 		result = score;
 		skippedLines = skipped;
-		newBest = recordResult(subject, score);
+		newBest = recordResult(subject, score, {
+			durationMs: active?.durationMs,
+			maxCombo: active?.maxCombo
+		});
 		review = recordLineOutcomes(subject, outcomes(), { title: song?.title ?? '' });
 		sound.play('bell');
 	}
@@ -572,6 +575,9 @@
 				onretry={reset}
 				retryLabel={m.songs_again()}
 				showPracticeWrong={false}
+				durationMs={active.durationMs}
+				maxCombo={active.maxCombo}
+				errors={active.errorAnalysis()}
 			/>
 			{#if mode === 'sync'}
 				<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>

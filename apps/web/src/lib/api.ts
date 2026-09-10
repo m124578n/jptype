@@ -5,6 +5,8 @@ export interface RunSubmissionBody {
 	text: string;
 	durationMs: number;
 	log: KeyEvent[];
+	/** Longest streak of correct keys; the server re-derives it from `log` anyway (M4-3). */
+	maxCombo?: number;
 	turnstileToken?: string;
 }
 

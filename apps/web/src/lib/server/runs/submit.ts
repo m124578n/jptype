@@ -1,5 +1,6 @@
 import { parseMode, poolForMode, type ParsedMode } from '@jptype/data';
 import { analyze, BOUNDARY, type KeyEvent } from '@jptype/engine';
+import { maxComboFromLog } from '../../practice/combo.ts';
 import { anticheatReasons } from '../anticheat.ts';
 import { ulid } from '../ulid.ts';
 import { weekOf } from '../week.ts';
@@ -10,6 +11,11 @@ export interface RunSubmission {
 	text: string;
 	durationMs: number;
 	log: KeyEvent[];
+	/**
+	 * The client's own combo count (M4-3). Validated but **not stored**: the value written to
+	 * `runs.max_combo` is recomputed from `log`, which the replay already proved genuine.
+	 */
+	maxCombo?: number;
 }
 
 export interface RunResponse {
@@ -64,7 +70,25 @@ export function parseSubmission(raw: unknown): RunSubmission | string {
 		}
 		log.push({ t, key, ok });
 	}
-	return { mode: b.mode, text: b.text, durationMs: Math.round(b.durationMs), log };
+	// Optional; a combo cannot exceed the number of keys pressed.
+	if (b.maxCombo !== undefined) {
+		if (
+			typeof b.maxCombo !== 'number' ||
+			!Number.isInteger(b.maxCombo) ||
+			b.maxCombo < 0 ||
+			b.maxCombo > log.length
+		) {
+			return 'maxCombo invalid';
+		}
+	}
+	const sub: RunSubmission = {
+		mode: b.mode,
+		text: b.text,
+		durationMs: Math.round(b.durationMs),
+		log
+	};
+	if (b.maxCombo !== undefined) sub.maxCombo = b.maxCombo;
+	return sub;
 }
 
 /** Spec §9.3: every question in `text` must come from the mode's pool. */
@@ -114,6 +138,8 @@ export async function submitRun(
 		correctKeys: result.correctKeys,
 		wrongKeys: result.wrongKeys,
 		durationMs: sub.durationMs,
+		// Recomputed, never the client's number (DECISIONS「M4-3 實作」).
+		maxCombo: maxComboFromLog(sub.log),
 		week,
 		flagged: flagged ? 1 : 0,
 		createdAt: now

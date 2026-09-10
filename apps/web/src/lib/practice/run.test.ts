@@ -137,3 +137,66 @@ describe('PracticeRun – sequence (song lines)', () => {
 		expect(new PracticeRun([], { sequence: [] }).finished).toBe(true);
 	});
 });
+
+describe('PracticeRun – combo and error analysis (M4-3)', () => {
+	it('counts consecutive correct keys across questions and resets on a wrong key', () => {
+		const run = new PracticeRun(['か'], { count: 3, rng: fixedRng });
+		let now = 0;
+		run.press('k', (now += 10));
+		run.press('a', (now += 10));
+		run.press('k', (now += 10));
+		expect(run.combo).toBe(3); // finishing a question does not break the streak
+		expect(run.maxCombo).toBe(3);
+		run.press('x', (now += 10));
+		expect(run.combo).toBe(0);
+		expect(run.maxCombo).toBe(3);
+		run.press('a', now + 10);
+		expect(run.combo).toBe(1);
+	});
+
+	it('ignored keys leave the combo alone', () => {
+		const run = new PracticeRun(['か'], { count: 2, rng: fixedRng });
+		run.press('k', 10);
+		run.press('Shift', 20);
+		expect(run.combo).toBe(1);
+	});
+
+	it('records the 10-key milestone with its timestamp', () => {
+		const run = new PracticeRun(['か'], { count: 6, rng: fixedRng });
+		let now = 0;
+		for (let i = 0; i < 5; i++) {
+			run.press('k', (now += 100));
+			run.press('a', (now += 100));
+		}
+		expect(run.maxCombo).toBe(10);
+		expect(run.milestone).toBe(10);
+		expect(run.milestoneAt).toBe(now);
+	});
+
+	it('describes wrong spellings from the keys that were actually rejected', () => {
+		const run = new PracticeRun(['し'], { count: 1, rng: fixedRng });
+		run.press('s', 0);
+		run.press('a', 10); // `sa` is a kana spelling → reported as a whole attempt
+		run.press('h', 20);
+		run.press('q', 30); // `shq` spells nothing → reported as a stray key
+		run.press('i', 40);
+		expect(run.finished).toBe(true);
+		expect(run.keyErrors).toEqual([
+			{ kana: 'し', romaji: ['shi', 'si', 'ci'], typed: 's', key: 'a' },
+			{ kana: 'し', romaji: ['shi', 'si', 'ci'], typed: 'sh', key: 'q' }
+		]);
+		expect(run.errorAnalysis()).toEqual({
+			units: [{ kana: 'し', count: 2 }],
+			spellings: [
+				{ kana: 'し', expected: 'shi', typed: 'sa', count: 1 },
+				{ kana: 'し', expected: 'shi', typed: 'q', count: 1 }
+			]
+		});
+	});
+
+	it('lowercases the rejected key the way the engine logs it', () => {
+		const run = new PracticeRun(['か'], { count: 1, rng: fixedRng });
+		run.press('X', 0);
+		expect(run.keyErrors[0]?.key).toBe('x');
+	});
+});

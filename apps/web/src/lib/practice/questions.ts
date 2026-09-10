@@ -38,3 +38,22 @@ export function weakPool(wrong: readonly string[], lessonPool: readonly string[]
 	const fillers = lessonPool.filter((u) => !uniqueWrong.includes(u));
 	return [...uniqueWrong, ...uniqueWrong, ...uniqueWrong, ...fillers];
 }
+
+/**
+ * Spec §7.3 弱項練習: the weak units plus random others until the pool holds 20 units
+ * (or all weak units when there are more than 20).
+ */
+export function weakPracticePool(
+	weak: readonly string[],
+	all: readonly string[],
+	rng: Rng = Math.random,
+	size = QUESTIONS_PER_RUN
+): string[] {
+	const pool = weak.filter((u, i) => weak.indexOf(u) === i);
+	const others = all.filter((u) => !pool.includes(u));
+	while (pool.length < size && others.length > 0) {
+		const idx = Math.min(others.length - 1, Math.floor(rng() * others.length));
+		pool.push(others.splice(idx, 1)[0] as string);
+	}
+	return pool;
+}

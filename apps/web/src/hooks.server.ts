@@ -5,6 +5,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getTextDirection } from '$lib/paraglide/runtime';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getAuth } from '$lib/server/auth';
+import { platformEnv } from '$lib/server/platform';
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -23,9 +24,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.session = null;
 
-	// No bindings while prerendering / building, and none in unit tests.
-	const env = event.platform?.env;
-	if (building || !env?.DB) return resolve(event);
+	// No bindings while prerendering / building, in unit tests, or on prerenderable routes in dev.
+	const env = building ? undefined : platformEnv(event);
+	if (!env) return resolve(event);
 
 	const auth = getAuth(env, event.url.origin);
 	const session = await auth.api.getSession({ headers: event.request.headers });

@@ -11,6 +11,7 @@
 	const isLearn = $derived(page.url.pathname.startsWith('/learn'));
 	const isTimed = $derived(page.url.pathname.startsWith('/timed'));
 	const isBoard = $derived(page.url.pathname.startsWith('/leaderboard'));
+	const isMe = $derived(page.url.pathname.startsWith('/me'));
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	async function logout() {
@@ -34,6 +35,7 @@
 		>
 		<span class="spacer"></span>
 		{#if data.user}
+			<a href={resolve('/me')} aria-current={isMe ? 'page' : undefined}>{m.nav_me()}</a>
 			<span class="user">
 				{#if data.user.image}
 					<img class="avatar" src={data.user.image} alt="" width="28" height="28" />

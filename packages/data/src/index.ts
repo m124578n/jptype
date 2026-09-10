@@ -5,6 +5,7 @@ export {
 	TIMED_POOL_IDS,
 	TIMED_POOLS,
 	TIMED_SECONDS,
+	WEAK_MODE,
 	lessonMode,
 	parseMode,
 	poolForMode,

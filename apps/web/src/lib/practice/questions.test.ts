@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickQuestions, weakPool } from './questions.ts';
+import { pickQuestions, weakPool, weakPracticePool } from './questions.ts';
 
 function seeded(seed: number) {
 	let s = seed;
@@ -42,5 +42,20 @@ describe('weakPool', () => {
 
 	it('falls back to the lesson pool when nothing was wrong', () => {
 		expect(weakPool([], ['あ', 'い'])).toEqual(['あ', 'い']);
+	});
+});
+
+describe('weakPracticePool', () => {
+	it('keeps every weak unit and tops up to 20 with distinct others', () => {
+		const all = Array.from({ length: 50 }, (_, i) => `k${i}`);
+		const pool = weakPracticePool(['k1', 'k2', 'k1'], all, seeded(5));
+		expect(pool).toHaveLength(20);
+		expect(pool.slice(0, 2)).toEqual(['k1', 'k2']);
+		expect(new Set(pool).size).toBe(20);
+	});
+
+	it('returns all weak units when there are more than 20', () => {
+		const weak = Array.from({ length: 25 }, (_, i) => `w${i}`);
+		expect(weakPracticePool(weak, ['x'], seeded(1))).toHaveLength(25);
 	});
 });

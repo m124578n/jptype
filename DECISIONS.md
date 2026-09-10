@@ -187,3 +187,29 @@ key `lb:{mode}:{week|all}`，TTL 60 秒，內容含 `computedAt`。`POST /api/ru
 ### 本機測 cron
 
 `wrangler dev --test-scheduled` 後 `GET /__scheduled?cron=0+16+*+*+0`。
+
+## 2026-09-10 M2 ⑥ `/me` 與弱項練習
+
+### 新增 `weak` 模式字串
+
+弱項練習的題庫跨所有假名，不屬於任何課程，所以 `POST /api/runs` 多接受 `mode = "weak"`（pool = 全部假名）。不進排行榜（只有 `timed:*` 上榜），但登入者的 kana_stats 會更新。
+
+### 課程頁流程抽成 `LessonFlow` 元件
+
+`/learn/[lessonId]` 與 `/learn/weak` 共用同一套「認識 → 練習 → 結果」；弱項練習用合成的 `Lesson`（intro = 弱項假名卡片、units = 弱項 + 隨機補足到 20）。
+
+### 熱圖的歸戶
+
+kana_stats 的 key 是實際打的 unit（可能是片假名、可能帶 っ 前綴如 `っか`）。熱圖顯示時折算到平假名基底（`ッチ` → `ち`），拗音獨立一格；促音本身不單獨計。
+
+### 連續天數
+
+以台北日期計；今天還沒練不算中斷（連到昨天為止）。近 400 天的場次時間拉回計算，不另存 streak 欄位。
+
+### 未登入的 `/me`
+
+仍可看：用 localStorage 的 kana_stats / results 顯示熱圖與弱項，並提示登入後同步。歷史場次表只有登入者有。
+
+### 補充：adapter-cloudflare 會把 bundle 寫到 wrangler config 的 `main`
+
+`@sveltejs/adapter-cloudflare` 讀到 `main` 就把輸出寫到那個路徑，先前把 `main` 指向 `src/worker/index.ts` 時，`pnpm build` 直接覆蓋了原始碼（commit `da53142` 內的 entry 其實是被覆蓋後的 bundle，沒有 `scheduled`）。修正：adapter 改讀 `wrangler.adapter.jsonc`（`main` = `.svelte-kit/cloudflare/_worker.js`），真正的 `wrangler.jsonc` 保持 `main` = `src/worker/index.ts`；dev 綁定仍由 `platformProxy.configPath: wrangler.jsonc` 提供。兩個檔的 `assets` 必須一致。

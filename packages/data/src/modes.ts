@@ -20,9 +20,13 @@ export const TIMED_POOLS: Readonly<Record<TimedPoolId, readonly string[]>> = {
 	all: [...ALL_HIRA, ...ALL_KATA]
 };
 
+/** Mode string for 弱項練習 (spec §7.3): questions may be any kana, so its pool is `all`. */
+export const WEAK_MODE = 'weak';
+
 export type ParsedMode =
 	| { kind: 'timed'; pool: TimedPoolId; seconds: TimedSeconds }
-	| { kind: 'lesson'; lessonId: string };
+	| { kind: 'lesson'; lessonId: string }
+	| { kind: 'weak' };
 
 export function timedMode(pool: TimedPoolId, seconds: TimedSeconds): string {
 	return `timed:${pool}:${seconds}`;
@@ -32,8 +36,9 @@ export function lessonMode(lessonId: string): string {
 	return `lesson:${lessonId}`;
 }
 
-/** Parse a `mode` string (`timed:{pool}:{seconds}` | `lesson:{id}`); undefined when malformed. */
+/** Parse a `mode` string (`timed:{pool}:{seconds}` | `lesson:{id}` | `weak`); undefined when malformed. */
 export function parseMode(mode: string): ParsedMode | undefined {
+	if (mode === WEAK_MODE) return { kind: 'weak' };
 	const parts = mode.split(':');
 	if (parts[0] === 'timed' && parts.length === 3) {
 		const pool = parts[1] as TimedPoolId;
@@ -51,5 +56,7 @@ export function parseMode(mode: string): ParsedMode | undefined {
 export function poolForMode(mode: string): readonly string[] | undefined {
 	const parsed = parseMode(mode);
 	if (!parsed) return undefined;
-	return parsed.kind === 'timed' ? TIMED_POOLS[parsed.pool] : findLesson(parsed.lessonId)?.units;
+	if (parsed.kind === 'timed') return TIMED_POOLS[parsed.pool];
+	if (parsed.kind === 'weak') return TIMED_POOLS.all;
+	return findLesson(parsed.lessonId)?.units;
 }

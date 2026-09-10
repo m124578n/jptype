@@ -33,16 +33,16 @@
 
 ## M2 — 帳號、計時賽、排行榜
 
-- 🔨 Better Auth + Drizzle/D1 adapter，Google、LINE OAuth；`/login`、header 登入/登出 ✅；端到端登入待 owner 提供 Google / LINE 的 client ID / secret（見 DECISIONS）
+- ✅ Better Auth + Drizzle/D1 adapter，Google、LINE OAuth；`/login`、header 登入/登出。端到端登入待 owner 提供 Google / LINE 憑證（見 DECISIONS）
 - ✅ Better Auth 四張表（CLI 產生）+ `runs.userId` / `kana_stats.userId` FK，migration `0001_auth`
 - ✅ `POST /api/runs`：session → Turnstile（有 secret 且已登入才要求）→ text 合法性 → `analyze` 重算 → anticheat → 寫 D1 + R2 → kana_stats upsert → KV 失效（分數 ≥ 第 100 名才刪）→ 回 rank；課程與計時賽結束都會送
 - ✅ Anticheat 規則（§9.5 六條，單元測試）
-- 🔨 計時賽 `/timed`：pool（平假名全 / 片假名全 / 全部）× 30/60/120 秒，第一鍵起算，時間到自動結算 ✅；結束自動送分（登入者）待 ③ API
+- ✅ 計時賽 `/timed`：pool（平假名全 / 片假名全 / 全部）× 30/60/120 秒，第一鍵起算，時間到自動結算、自動送分、顯示本週名次
 - ✅ `GET /api/leaderboard`（KV 快取 60 s、回自己名次）、`/leaderboard` pool × 秒數 × 週榜 / 總榜、首頁本週前 5
 - ✅ Cron（週一 00:00 台北）：上週 9 個計時榜前 100 快照到 KV `lbsnap:*`、刪 90 天前 R2 keylog；自訂 worker entry 包住 SvelteKit `_worker.js`
-- ⬜ `GET /api/me/stats`、`/me`：統計、錯字熱圖、streak、歷史
-- ⬜ 弱項練習（errors/attempts > 0.2 且 attempts ≥ 3）
-- ⬜ 無提示加成（關閉羅馬字提示 ×1.1）
+- ✅ `GET /api/me/stats`、`/me`：總場次、連續天數、近 30 天、弱項清單、五十音錯字熱圖（清音 / 濁音 / 拗音）、最近 20 場；未登入顯示本機 localStorage 版本
+- ✅ 弱項練習 `/learn/weak`（errors/attempts > 0.2 且 attempts ≥ 3，隨機補足到 20 題；mode `weak` 可送分）
+- ⬜ 無提示加成（關閉羅馬字提示 ×1.1）— 規格允許第一版不做，留到 review 後決定
 
 ## M3 — 內容擴充（第二階段，另開規格）
 

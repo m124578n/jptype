@@ -6,7 +6,8 @@ import {
 	TIMED_POOLS,
 	timedMode,
 	toKatakana,
-	findLesson
+	findLesson,
+	WEAK_MODE
 } from '../src/index.ts';
 
 describe('TIMED_POOLS', () => {
@@ -34,6 +35,11 @@ describe('mode strings', () => {
 		expect(timedMode('allhira', 60)).toBe('timed:allhira:60');
 		expect(parseMode('timed:allhira:60')).toEqual({ kind: 'timed', pool: 'allhira', seconds: 60 });
 		expect(parseMode('timed:all:120')).toEqual({ kind: 'timed', pool: 'all', seconds: 120 });
+	});
+
+	it('parses the weak-practice mode with the full pool', () => {
+		expect(parseMode(WEAK_MODE)).toEqual({ kind: 'weak' });
+		expect(poolForMode('weak')).toBe(TIMED_POOLS.all);
 	});
 
 	it('round-trips lesson modes', () => {

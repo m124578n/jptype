@@ -11,7 +11,12 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			// The adapter writes its bundle to the `main` of the config it reads; give it a config whose
+			// main is the generated _worker.js so it never overwrites src/worker/index.ts (our real entry).
+			adapter: adapter({
+				config: 'wrangler.adapter.jsonc',
+				platformProxy: { configPath: 'wrangler.jsonc' }
+			})
 		}),
 
 		paraglideVitePlugin({

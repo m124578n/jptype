@@ -19,15 +19,17 @@
 
 ## M1 — 可練習（無帳號）
 
-- ⬜ 部署到 Cloudflare Workers，preview URL 可開（需先建 D1 / KV / R2 並填 ID）
-- ⬜ 課程定義（`packages/data` lessons）：あ行…わ行・ん → 平假名綜合 → 濁音・半濁音 → 拗音 → 促音・長音 → 片假名 → 外來語音
-- ⬜ `/learn` 課程地圖（完成打勾、每課最佳成績）
-- ⬜ `/learn/[lessonId]`：認識頁（卡片、標準拼法、鍵盤高亮）→ 練習（20 題）→ 結果頁（KPM、準確率、錯字列表、加強練習）
-- ⬜ `TypingArea` 元件：逐鍵判定、目前 unit 高亮、羅馬字提示、錯鍵閃紅震動、`keydown` 全域監聯
-- ⬜ 螢幕鍵盤（QWERTY）高亮下一鍵，可收合
-- ⬜ 練習結果存 localStorage
-- ⬜ 手機提示「建議使用實體鍵盤」
-- ⬜ 設計系統：單一主色、大量留白、Noto Sans JP、深色模式跟系統
+- ⬜ 部署到 Cloudflare Workers（owner 指示：地端驗證完再部署；`pnpm preview` 地端已可開）
+- ✅ 課程定義（`packages/data` lessons）：28 課，あ行…わ行・ん → 平假名綜合 → 濁音・半濁音 → 拗音 → 促音・長音 → 片假名 13 課 → 外來語音
+- ✅ `/learn` 課程地圖（完成打勾、每課最佳成績）
+- ✅ `/learn/[lessonId]`：認識頁（卡片、標準拼法、鍵盤高亮）→ 練習（20 題）→ 結果頁（KPM、準確率、錯字列表、加強練習）；TTS 播放鈕留 M3
+- ✅ `TypingArea` 元件：逐鍵判定、目前 unit 高亮、羅馬字提示（可關）、錯鍵閃紅震動 160ms、`keydown` 全域監聽
+- ✅ 打字音效：打字機「答答答」（Web Audio 合成、不用音檔），正確/錯誤音不同，可關閉、記憶設定（owner 2026-09-10）
+- 🔨 打字手感（待 owner 地端試打回饋）：零延遲判定、動畫輕、鍵盤與提示同步（owner 2026-09-10 強調 UX 舒服）
+- ✅ 螢幕鍵盤（QWERTY）高亮下一鍵，可收合
+- ✅ 練習結果存 localStorage（每課最佳 / 次數、每假名 attempts / errors、設定）
+- ✅ 手機提示「建議使用實體鍵盤」（pointer: coarse）
+- ✅ 設計系統：`design-system/jptype/MASTER.md`（ui-ux-pro-max 產生後依規格校正）、單一 teal 主色、Noto Sans JP、深色跟系統
 
 ## M2 — 帳號、計時賽、排行榜
 
@@ -59,4 +61,5 @@
 
 （owner 提出、尚未排程的想法。格式：日期 · 一句話 · 備註）
 
+- 2026-09-10 · 打字音效可選不同機種（機械鍵盤 / 打字機 / 靜音）· 先做打字機一種
 - 2026-09-10 · 若批次腳本改用 Python，用 uv 管 `scripts/py/` 獨立專案 · 目前全 TS，不需要

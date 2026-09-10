@@ -25,5 +25,6 @@ Read `jp-typing-spec.md` first; §1 is a list of hard decisions, do not change t
 - Relative imports inside packages use explicit `.ts` extensions (Node type-stripping + `rewriteRelativeImportExtensions`).
 
 ## Deploy policy
+
 - Never run `wrangler deploy`, create Cloudflare resources, or put secrets from a Claude session. The owner verifies locally first and says when to deploy.
 - The GitHub Actions `deploy.yml` (push to `main`) is intentionally left enabled.

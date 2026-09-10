@@ -1,6 +1,51 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"app_name": "jptype",
+	"nav_learn": "課程",
+	"nav_timed": "計時賽",
+	"nav_leaderboard": "排行榜",
+	"nav_coming_soon": "即將推出",
+	"footer_note": "羅馬字輸入練習・全部判定在瀏覽器完成",
+
 	"home_tagline": "給台灣日文初學者的日文打字練習",
-	"home_cta_start": "開始學五十音"
+	"home_lead": "從五十音開始，一個假名一個假名，把羅馬字輸入練成反射動作。",
+	"home_cta_start": "開始學五十音",
+	"home_benefit_1_title": "模擬日文 IME",
+	"home_benefit_1_body": "shi / si、chi / ti、ん 的 n 與 nn，怎麼打都對，就像真的輸入法。",
+	"home_benefit_2_title": "逐鍵回饋",
+	"home_benefit_2_body": "打錯不會吃進去，畫面閃一下、鍵盤指給你看下一個鍵。",
+	"home_benefit_3_title": "從認識到熟練",
+	"home_benefit_3_body": "每課先看卡片，再練二十題，最後只練你錯過的。",
+
+	"learn_title": "課程",
+	"learn_lead": "依序完成，每課約三分鐘。",
+	"learn_best": "最佳 {score} 分",
+	"learn_not_started": "尚未練習",
+	"learn_completed": "已完成",
+	"learn_lesson_count": "{count} 題",
+
+	"lesson_not_found": "找不到這個課程",
+	"lesson_back_to_map": "回課程地圖",
+	"lesson_intro_title": "認識",
+	"lesson_intro_lead": "點一下卡片，鍵盤會標出要按的鍵。",
+	"lesson_start_practice": "開始練習",
+	"lesson_practice_progress": "第 {current} 題 / 共 {total} 題",
+	"lesson_practice_hint_off": "提示已關閉",
+	"lesson_restart": "重新開始",
+
+	"typing_hint_toggle": "羅馬字提示",
+	"typing_keyboard_toggle": "螢幕鍵盤",
+	"typing_sound_toggle": "打字音效",
+	"typing_status": "第 {current} 題，共 {total} 題，目前 {kana}",
+	"typing_mobile_notice": "建議使用實體鍵盤練習，手機觸控鍵盤體驗未最佳化。",
+
+	"result_title": "結果",
+	"result_kpm": "每分鐘按鍵",
+	"result_accuracy": "準確率",
+	"result_score": "分數",
+	"result_wrong_title": "打錯的假名",
+	"result_wrong_none": "全部一次打對，漂亮。",
+	"result_practice_wrong": "加強練習錯字",
+	"result_retry": "再練一次",
+	"result_new_best": "新紀錄"
 }

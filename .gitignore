@@ -36,3 +36,6 @@ Thumbs.db
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# kuromoji dictionary copied from node_modules by apps/web/scripts/copy-kuromoji-dict.mjs
+apps/web/static/dict/

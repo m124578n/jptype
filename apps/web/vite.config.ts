@@ -2,10 +2,39 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+import type { Plugin } from 'vite';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/**
+ * Dev only: Vite's static middleware tags `.gz` files with `Content-Encoding: gzip`, so the
+ * browser would inflate the kuromoji dictionary before kuromoji inflates it itself (and fail).
+ * Serve /dict/kuromoji/*.dat.gz as opaque bytes instead. Production (Workers static assets)
+ * already serves them as `application/gzip` without a Content-Encoding header.
+ */
+function kuromojiDictRaw(): Plugin {
+	return {
+		name: 'kuromoji-dict-raw',
+		apply: 'serve',
+		enforce: 'pre',
+		configureServer(server) {
+			server.middlewares.use((req, res, next) => {
+				const url = req.url?.split('?')[0] ?? '';
+				if (!url.startsWith('/dict/kuromoji/') || !url.endsWith('.dat.gz')) return next();
+				const file = path.join(process.cwd(), 'static', url);
+				if (!fs.existsSync(file)) return next();
+				res.setHeader('Content-Type', 'application/gzip');
+				res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+				fs.createReadStream(file).pipe(res);
+			});
+		}
+	};
+}
 
 export default defineConfig({
 	plugins: [
+		// Must come before sveltekit(): its dev server serves `static/` with sirv, which would win.
+		kuromojiDictRaw(),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
@@ -24,15 +53,9 @@ export default defineConfig({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
 			emitTsDeclarations: true
-		}),
+		})
 
 		// 漢字→かな runs in the admin's browser (spec §1: no external API at runtime), so kuromoji's
-		// IPADIC has to come from our own origin. ~17 MB of .dat.gz is served at /dict/kuromoji/ —
-		// copied out of node_modules on dev/build and never committed. The files must be served
-		// **as-is**: the loader gunzips them itself.
-		viteStaticCopy({
-			targets: [{ src: 'node_modules/kuromoji/dict/*.dat.gz', dest: 'dict/kuromoji' }]
-		})
 	],
 	// The tokenizer is imported dynamically from the admin import step; pre-bundling it keeps dev
 	// from re-optimizing (and reloading the page) in the middle of an import.

@@ -420,3 +420,7 @@ ROADMAP M4-1 / M4-4 Line Editor / M4-3 每內容排行榜的實作。migration `
 - **server**：`lib/server/contents/{store,service,route}.ts`。`store.ts` 是介面 + D1 實作（`setLines` 用 D1 batch：一個 delete + 分批 insert，整張表一次換掉），`service.ts` 是純函式（`ContentDeps = { store, now?, newId? }`）加 `parse*` 驗證，用 fake store 單元測試，跟 `runs/submit.ts`、`songs/service.ts` 同一套；`route.ts` 只做 bindings→deps，session / admin / JSON / `Result`→回應的 helper 直接沿用 `songs/route.ts`（不另外寫一份）。
 - **client**：`lib/ja/*`（斷句、kuromoji、羅馬字）、`lib/contents-api.ts`（唯一的 fetch 層，永遠 resolve 不 throw，失敗時 Line Editor 的狀態不動，可以直接重試）、`lib/contents.ts` 與 `lib/contents-labels.ts`（同構的型別 / 常數 / 標籤）。
 - Admin 判定沿用 `ADMIN_EMAILS`（沒有加 `user.role`）：`/admin/contents*` 的 load 與每一支 `/api/admin/contents/*` 都各自檢查一次。
+
+### 補充（合併 M4-1 時）：kuromoji 字典的服務方式
+
+`vite-plugin-static-copy` 在 Windows 上不論 `structured: false` 或目錄 + `rename` 都會把來源路徑整段重建（`dict/kuromoji/node_modules/kuromoji/dict/…`），字典 404。改為 `apps/web/scripts/copy-kuromoji-dict.mjs` 在 `prepare` / `dev` / `build` 前把 12 個 `.dat.gz` 複製到 `static/dict/kuromoji/`（git 忽略），由 SvelteKit 靜態資源服務。Production（Workers static assets）回 `application/gzip` 且無 `Content-Encoding`；dev 的 sirv 會加 `Content-Encoding: gzip` 讓瀏覽器先解壓、kuromoji 再解壓就失敗，所以 `vite.config.ts` 有一個排在 `sveltekit()` 之前的 dev-only middleware `kuromojiDictRaw` 原樣送出。

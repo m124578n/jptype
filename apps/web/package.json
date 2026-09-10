@@ -4,10 +4,10 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "wrangler types && vite build",
+		"dev": "node scripts/copy-kuromoji-dict.mjs && vite dev",
+		"build": "node scripts/copy-kuromoji-dict.mjs && wrangler types && vite build",
 		"preview": "wrangler dev --port 4173",
-		"prepare": "pnpm i18n:compile && svelte-kit sync || echo ''",
+		"prepare": "node scripts/copy-kuromoji-dict.mjs && pnpm i18n:compile && svelte-kit sync || echo ''",
 		"check": "wrangler types && pnpm i18n:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run --passWithNoTests",
@@ -41,7 +41,6 @@
 		"svelte-check": "^4.6.0",
 		"typescript": "catalog:",
 		"vite": "^8.0.16",
-		"vite-plugin-static-copy": "^4.1.1",
 		"vitest": "catalog:",
 		"wrangler": "^4.97.0"
 	}

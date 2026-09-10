@@ -23,3 +23,7 @@ Read `jp-typing-spec.md` first; §1 is a list of hard decisions, do not change t
 - Any change to `packages/engine` or `packages/data` ships with tests.
 - No external API calls in the Worker runtime except OAuth and Turnstile.
 - Relative imports inside packages use explicit `.ts` extensions (Node type-stripping + `rewriteRelativeImportExtensions`).
+
+## Deploy policy
+- Never run `wrangler deploy`, create Cloudflare resources, or put secrets from a Claude session. The owner verifies locally first and says when to deploy.
+- The GitHub Actions `deploy.yml` (push to `main`) is intentionally left enabled.

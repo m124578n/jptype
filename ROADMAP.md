@@ -46,7 +46,7 @@
 
 ## M3 — 內容擴充（2026-09-10 開工，三塊平行由 Opus agent 實作）
 
-- 🔨 A. N5 單字 100 個 + 短句 20 句（`@jptype/data`，含振假名與中文）→ 課程 8、9 與計時賽 pool `n5`
+- ✅ A. N5 單字 100 個 + 短句 20 句（`@jptype/data`，原創內容，含漢字與中文）→ 課程 `n5-words`、`sentences`（練習時顯示漢字與中文提示）與計時賽 pool `n5`（排行榜與 cron 因此變 12 個榜）
 - ✅ B. 瀏覽器 TTS（`lib/speech.ts`，Web Speech API 本機 ja-JP 語音，零網路零 assets）：認識頁卡片播放鈕 + 聽打模式 `/listen`（計時賽題庫 × 20 題、自動念題、Tab 重播、答對或連錯兩鍵才短暫揭曉；成績只存本機）
 - ✅ C. 歌詞打字 `/songs`：嵌 youtube-nocookie 官方播放器（只存 11 字元影片 id）+ 使用者自貼假名歌詞（漢字會被擋下並指出行號），只存 localStorage、不送伺服器、不進榜；`/songs/[id]` 逐行打（前後行淡顯）
 - ⬜ Azure Speech 批次音檔 → R2（需要 owner 的 Azure key；瀏覽器 TTS 先頂著）

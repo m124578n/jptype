@@ -142,7 +142,7 @@
 			<p class="muted progress">
 				{m.lesson_practice_progress({ current: run.index + 1, total: run.total })}
 			</p>
-			<TypingArea {run} showHint={settings.showHint} />
+			<TypingArea {run} showHint={settings.showHint} hints={lesson.hints} />
 			{#if settings.showKeyboard}
 				<Keyboard next={run.nextKey} />
 			{/if}

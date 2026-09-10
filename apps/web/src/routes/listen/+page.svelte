@@ -29,7 +29,8 @@
 	const poolLabel: Record<TimedPoolId, () => string> = {
 		allhira: m.timed_pool_allhira,
 		allkata: m.timed_pool_allkata,
-		all: m.timed_pool_all
+		all: m.timed_pool_all,
+		n5: m.timed_pool_n5
 	};
 
 	type Phase = 'setup' | 'run' | 'result';

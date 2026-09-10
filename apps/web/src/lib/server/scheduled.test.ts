@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TIMED_POOL_IDS, TIMED_SECONDS } from '@jptype/data';
 import type { KvLike } from './leaderboard.ts';
 import type { RunStore } from './runs/store.ts';
 import { allTimedModes, deleteOldLogs, snapshotLastWeek, type R2Like } from './scheduled.ts';
@@ -6,7 +7,7 @@ import { allTimedModes, deleteOldLogs, snapshotLastWeek, type R2Like } from './s
 const MONDAY_0000_TAIPEI = Date.parse('2026-09-13T16:00:00Z'); // start of 2026-W38
 
 describe('snapshotLastWeek', () => {
-	it('freezes the previous ISO week for all 9 timed modes without a TTL', async () => {
+	it('freezes the previous ISO week for every timed mode without a TTL', async () => {
 		const asked: string[] = [];
 		const store = {
 			top100: async (mode: string, week: string | null) => {
@@ -22,8 +23,8 @@ describe('snapshotLastWeek', () => {
 			}
 		};
 		const r = await snapshotLastWeek({ store, kv }, MONDAY_0000_TAIPEI);
-		expect(r).toEqual({ week: '2026-W37', modes: 9 });
-		expect(allTimedModes()).toHaveLength(9);
+		expect(r).toEqual({ week: '2026-W37', modes: 12 });
+		expect(allTimedModes()).toHaveLength(TIMED_POOL_IDS.length * TIMED_SECONDS.length);
 		expect(asked.every((a) => a.endsWith('@2026-W37'))).toBe(true);
 		expect(puts.map((p) => p.key)).toContain('lbsnap:timed:allhira:60:2026-W37');
 		expect(puts.every((p) => p.ttl === undefined)).toBe(true);

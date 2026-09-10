@@ -5,6 +5,8 @@
 		TIMED_POOLS,
 		TIMED_SECONDS,
 		timedMode,
+		WORDS_N5,
+		type LessonHint,
 		type TimedPoolId,
 		type TimedSeconds
 	} from '@jptype/data';
@@ -29,8 +31,17 @@
 	const poolLabel: Record<TimedPoolId, () => string> = {
 		allhira: m.timed_pool_allhira,
 		allkata: m.timed_pool_allkata,
-		all: m.timed_pool_all
+		all: m.timed_pool_all,
+		n5: m.timed_pool_n5
 	};
+
+	/** Kanji + 繁體中文 shown above the target in the N5 word pool. */
+	const N5_HINTS: Record<string, LessonHint> = Object.fromEntries(
+		WORDS_N5.map((w) => [
+			w.kana,
+			w.kanji === undefined ? { zh: w.zh } : { kanji: w.kanji, zh: w.zh }
+		])
+	);
 
 	let { data } = $props();
 
@@ -63,6 +74,7 @@
 	}
 
 	const mode = $derived(timedMode(pool, seconds));
+	const hints = $derived(pool === 'n5' ? N5_HINTS : undefined);
 
 	function start() {
 		clearTimer();
@@ -177,7 +189,7 @@
 				{#if run.started}{remainingLabel}{:else}{seconds}.0{/if}
 				<span class="muted unit-s">s</span>
 			</p>
-			<TypingArea {run} showHint={settings.showHint} />
+			<TypingArea {run} showHint={settings.showHint} {hints} />
 			{#if settings.showKeyboard}
 				<Keyboard next={run.nextKey} />
 			{/if}

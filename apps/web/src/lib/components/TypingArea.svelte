@@ -1,8 +1,20 @@
 <script lang="ts">
+	import type { LessonHint } from '@jptype/data';
 	import { m } from '$lib/paraglide/messages';
 	import type { PracticeRun } from '$lib/practice/run.svelte';
 
-	let { run, showHint = true }: { run: PracticeRun; showHint?: boolean } = $props();
+	let {
+		run,
+		showHint = true,
+		hints
+	}: {
+		run: PracticeRun;
+		showHint?: boolean;
+		/** Kanji + 繁體中文 for word/sentence questions, keyed by the question's kana. */
+		hints?: Record<string, LessonHint>;
+	} = $props();
+
+	const meaning = $derived(hints?.[run.current]);
 
 	const units = $derived.by(() => {
 		void run.tick;
@@ -24,6 +36,12 @@
 	class="typing"
 	aria-label={m.typing_status({ current: run.index + 1, total: run.total, kana: currentKana })}
 >
+	{#if meaning}
+		<p class="meaning muted">
+			{#if meaning.kanji}<span lang="ja">{meaning.kanji}</span>{/if}
+			<span class="zh">{meaning.zh}</span>
+		</p>
+	{/if}
 	<p class="target" lang="ja" class:shake={shaking}>
 		{#each units as unit, i (i)}
 			<span
@@ -52,6 +70,17 @@
 		align-items: center;
 		gap: var(--space-3);
 		min-height: 9rem;
+	}
+	.meaning {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: var(--space-2);
+		font-size: 1rem;
+		text-align: center;
+	}
+	.zh {
+		font-size: 0.875rem;
 	}
 	.target {
 		font-size: clamp(3rem, 12vw, 6rem);

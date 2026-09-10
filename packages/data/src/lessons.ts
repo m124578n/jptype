@@ -1,6 +1,8 @@
 import { KANA } from './kana.ts';
 import { toKatakana } from './script.ts';
-import type { KanaEntry, Lesson } from './types.ts';
+import { SENTENCES } from './sentences.ts';
+import type { KanaEntry, Lesson, LessonHint, WordEntry } from './types.ts';
+import { WORDS_N5 } from './words-n5.ts';
 
 /** A titled section of the lesson map (spec §7.1 numbering). */
 export interface LessonGroup {
@@ -44,6 +46,18 @@ function kanaLesson(id: string, title: string, entries: KanaEntry[], katakana = 
 
 function wordLesson(id: string, title: string, units: string[], intro: KanaEntry[]): Lesson {
 	return { id, title, mode: 'word', units, intro };
+}
+
+/**
+ * Word/sentence lesson (spec §7.1 items 8–9): no intro cards, but every question carries a
+ * kanji + 繁體中文 hint. `SentenceEntry` is assignable to `WordEntry` (its `kanji` is required).
+ */
+function contentLesson(id: string, title: string, entries: readonly WordEntry[]): Lesson {
+	const hints: Record<string, LessonHint> = {};
+	for (const e of entries) {
+		hints[e.kana] = e.kanji === undefined ? { zh: e.zh } : { kanji: e.kanji, zh: e.zh };
+	}
+	return { id, title, mode: 'word', units: entries.map((e) => e.kana), intro: [], hints };
 }
 
 /** 促音・長音 practice words (spec §7.1 item 5). */
@@ -105,12 +119,14 @@ function script(prefix: 'hira' | 'kata'): Lesson[] {
 	];
 }
 
-/** All lessons in spec §7.1 order (items 1–7; N5 words and sentences are M3). */
+/** All lessons in spec §7.1 order (items 1–9). */
 export const LESSONS: readonly Lesson[] = [
 	...script('hira'),
 	wordLesson('sokuon-chouon', '促音・長音', SOKUON_CHOUON_WORDS, SOKUON),
 	...script('kata'),
-	wordLesson('foreign', '外來語音', FOREIGN_WORDS, FOREIGN)
+	wordLesson('foreign', '外來語音', FOREIGN_WORDS, FOREIGN),
+	contentLesson('n5-words', 'N5 單字', WORDS_N5),
+	contentLesson('sentences', '短句', SENTENCES)
 ];
 
 export const LESSON_GROUPS: readonly LessonGroup[] = [
@@ -127,7 +143,8 @@ export const LESSON_GROUPS: readonly LessonGroup[] = [
 		title: '片假名進階',
 		lessonIds: ['kata-all', 'kata-dakuon', 'kata-youon']
 	},
-	{ id: 'foreign', title: '外來語音', lessonIds: ['foreign'] }
+	{ id: 'foreign', title: '外來語音', lessonIds: ['foreign'] },
+	{ id: 'content', title: '單字與短句', lessonIds: ['n5-words', 'sentences'] }
 ];
 
 const byId = new Map(LESSONS.map((l) => [l.id, l]));

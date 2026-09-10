@@ -1,6 +1,6 @@
 # jptype — working agreements for Claude Code
 
-Read `jp-typing-spec.md` first; §1 is a list of hard decisions, do not change them. Product questions go to `DECISIONS.md`.
+Read `HANDOFF.md` first (current state, what is pending, what the owner must provide), then `jp-typing-spec.md`; §1 is a list of hard decisions, do not change them. Product questions go to `DECISIONS.md`; feature status lives in `ROADMAP.md`.
 
 ## Layout
 

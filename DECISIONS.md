@@ -213,3 +213,23 @@ kana_stats 的 key 是實際打的 unit（可能是片假名、可能帶 っ 前
 ### 補充：adapter-cloudflare 會把 bundle 寫到 wrangler config 的 `main`
 
 `@sveltejs/adapter-cloudflare` 讀到 `main` 就把輸出寫到那個路徑，先前把 `main` 指向 `src/worker/index.ts` 時，`pnpm build` 直接覆蓋了原始碼（commit `da53142` 內的 entry 其實是被覆蓋後的 bundle，沒有 `scheduled`）。修正：adapter 改讀 `wrangler.adapter.jsonc`（`main` = `.svelte-kit/cloudflare/_worker.js`），真正的 `wrangler.jsonc` 保持 `main` = `src/worker/index.ts`；dev 綁定仍由 `platformProxy.configPath: wrangler.jsonc` 提供。兩個檔的 `assets` 必須一致。
+
+## 2026-09-10 M3 B — TTS 與聽打模式
+
+### 發音用瀏覽器 Web Speech API，不用音檔、不用 Azure
+
+規格 §1 明訂「網站 runtime 不呼叫任何外部 AI/TTS API」，而預先用 Azure Speech 批次產生 141 個假名的 mp3 再放 R2，需要金鑰、批次腳本與額外流量，第一版不值得。改用瀏覽器內建的 `speechSynthesis`（`apps/web/src/lib/speech.ts`）：挑一個本機 `ja-JP` 語音直接念，**零網路請求、零 assets**，Worker 完全沒參與。Azure 批次管線延後（要念單字 / 短句，或要保證每台裝置聽起來一樣時再做）。
+
+代價：語音品質與是否存在都看使用者的系統。沒有日文語音時 `speak()` 回 `false`，認識頁的播放鈕直接隱藏（`speechAvailable()` 在 `onMount` 判斷，避免 SSR 與首次 client render 不一致），`/listen` 顯示說明並導回 `/learn`。
+
+### `getVoices()` 的 Chrome 時序
+
+Chrome 第一次呼叫 `getVoices()` 會回空陣列，語音載入完才發 `voiceschanged`。`loadVoices()` 因此在空陣列時等這個事件，最多 1 秒後放棄。單元測試用假的 `window.speechSynthesis` / `SpeechSynthesisUtterance`（vitest 跑在 node）驗證選聲、cancel 順序與這段等待；**實際有沒有聲音只能在瀏覽器手動驗**。
+
+### 聽打模式的出題與揭曉規則
+
+`/listen` 重用計時賽的 `TIMED_POOLS`（平假名全 / 片假名全 / 全部）與 `PracticeRun`，但固定 20 題、不計時。題目不顯示假名（只顯示 ● 遮罩），進題自動念一次，「再聽一次」按鈕或 `Tab` 可重播（`Shift+Tab` 保留給焦點移動，頁面仍可用鍵盤操作）。答對該 unit、或**連續錯兩鍵**時，才把假名以 muted 短暫顯示 1.4 秒；連錯兩鍵同時打開羅馬字提示與螢幕鍵盤的下一鍵高亮，讓人能繼續。
+
+### 聽打成績不送後端
+
+`POST /api/runs` 的 `parseMode()` 只認得 `timed:*` / `lesson:*` / `weak`，沒有 listening 模式，後端也無從重算「聽到什麼」。所以聽打只寫 localStorage：`recordResult('listen:{pool}', result)` + `recordKanaStats()`（弱項統計照樣受惠），不進排行榜。要送分得先在 `packages/data` 定義 mode 字串並補後端驗證。

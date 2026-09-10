@@ -47,9 +47,9 @@
 ## M3 — 內容擴充（第二階段，另開規格）
 
 - ⬜ N5 單字 100 個（`words-n5.json`，含振假名與中文）、短句 20 句
-- ⬜ TTS 音檔批次（Azure Speech ja-JP → R2），認識頁播放鈕
+- ✅ 發音改用瀏覽器 Web Speech API（`lib/speech.ts`，本機 ja-JP 語音、零網路零 assets），認識頁卡片加播放鈕；Azure → R2 批次延後（見 DECISIONS「M3 B」）
 - ⬜ AI 生成分級文章（離線 + 人工校對）
-- ⬜ 聽打模式（只聽不看）
+- ✅ 聽打模式 `/listen`（只聽不看）：計時賽題庫 × 20 題，自動念題、Tab 重播，答對或連錯兩鍵才短暫揭曉假名；成績只存 localStorage（`listen:{pool}`），不進排行榜
 - ⬜ 多人競速房（Durable Objects）
 - ⬜ 歌詞打字（公有領域 / 使用者自帶）
 

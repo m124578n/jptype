@@ -81,9 +81,6 @@
 		font-weight: 700;
 		margin-right: var(--space-4);
 	}
-	.soon {
-		cursor: default;
-	}
 	.spacer {
 		flex: 1;
 	}

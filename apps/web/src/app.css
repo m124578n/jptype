@@ -162,7 +162,8 @@ button {
 	width: 44px;
 	padding: 0;
 }
-.btn[aria-pressed='true'] {
+.btn[aria-pressed='true'],
+.btn[aria-current='true'] {
 	background: var(--accent-soft);
 	border-color: var(--accent);
 }

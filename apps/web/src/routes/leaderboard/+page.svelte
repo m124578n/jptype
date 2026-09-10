@@ -35,7 +35,7 @@
 				<a
 					class="btn"
 					href={href(pool, data.seconds, data.period)}
-					aria-pressed={data.pool === pool}
+					aria-current={data.pool === pool ? 'true' : undefined}
 					data-sveltekit-noscroll>{poolLabel[pool]()}</a
 				>
 			{/each}
@@ -45,7 +45,7 @@
 				<a
 					class="btn"
 					href={href(data.pool, s, data.period)}
-					aria-pressed={data.seconds === s}
+					aria-current={data.seconds === s ? 'true' : undefined}
 					data-sveltekit-noscroll>{m.timed_seconds_option({ seconds: s })}</a
 				>
 			{/each}
@@ -54,13 +54,13 @@
 			<a
 				class="btn"
 				href={href(data.pool, data.seconds, 'week')}
-				aria-pressed={data.period === 'week'}
+				aria-current={data.period === 'week' ? 'true' : undefined}
 				data-sveltekit-noscroll>{m.leaderboard_week()}</a
 			>
 			<a
 				class="btn"
 				href={href(data.pool, data.seconds, 'all')}
-				aria-pressed={data.period === 'all'}
+				aria-current={data.period === 'all' ? 'true' : undefined}
 				data-sveltekit-noscroll>{m.leaderboard_all()}</a
 			>
 		</div>

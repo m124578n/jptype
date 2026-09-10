@@ -5,7 +5,8 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "jptype",
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	// Custom entry: wraps .svelte-kit/cloudflare/_worker.js and adds the `scheduled` handler.
+	"main": "src/worker/index.ts",
 	"compatibility_date": "2026-09-10",
 	"compatibility_flags": ["nodejs_compat"],
 	"assets": {
@@ -32,9 +33,8 @@
 	"kv_namespaces": [{ "binding": "KV", "id": "0000000000000000000000000000000000" }],
 	"r2_buckets": [{ "binding": "R2", "bucket_name": "jptype" }],
 
-	// Weekly leaderboard settlement: Monday 00:00 Asia/Taipei = Sunday 16:00 UTC.
-	// Enabled in M2 together with a `scheduled` handler (see DECISIONS.md).
-	// "triggers": { "crons": ["0 16 * * 0"] },
+	// Weekly leaderboard settlement + R2 keylog cleanup: Monday 00:00 Asia/Taipei = Sunday 16:00 UTC.
+	"triggers": { "crons": ["0 16 * * 0"] },
 
 	"vars": {
 		"PUBLIC_TURNSTILE_SITE_KEY": ""

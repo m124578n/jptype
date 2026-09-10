@@ -169,3 +169,21 @@ key `lb:{mode}:{week|all}`，TTL 60 秒，內容含 `computedAt`。`POST /api/ru
 ### 頁面走 server load，不走 API
 
 `/leaderboard` 與首頁在 `+page.server.ts` 直接呼叫 `getLeaderboard`（同一份 KV 快取），省一次 HTTP；`/api/leaderboard` 留給之後的客戶端刷新或外部使用。
+
+## 2026-09-10 M2 ⑤ Cron
+
+### 自訂 worker entry
+
+`wrangler.jsonc` 的 `main` 改為 `src/worker/index.ts`：import build 出來的 `.svelte-kit/cloudflare/_worker.js`（只有 `fetch`），再加上 `scheduled`。`assets.directory` 不變，`.assetsignore` 已排除 `_worker.js`。**必須先 `pnpm build` 再 `wrangler dev` / `deploy`**（`pnpm preview` 已改成 `wrangler dev`）。這解掉先前 DECISIONS 的 [待確認]，不需要 cron → HTTP 的繞路。
+
+### 週榜快照存 KV，不另開 D1 表
+
+`lbsnap:{mode}:{week}` 無 TTL，內容格式同 `/api/leaderboard` 的回應。之後要做「歷史週榜」頁直接讀這些 key；規格沒定義快照表，先不加 schema。
+
+### R2 keylog 90 天清理
+
+列 `runs/` 前綴、以 `uploaded` 判斷、每頁最多 500、批次刪除。D1 的 `runs` 列保留（只有原始按鍵序列刪掉）。
+
+### 本機測 cron
+
+`wrangler dev --test-scheduled` 後 `GET /__scheduled?cron=0+16+*+*+0`。

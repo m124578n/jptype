@@ -1,10 +1,13 @@
 /**
- * User-owned song library for 歌詞打字 (M3 C + sync mode).
+ * User-owned song library for 歌詞打字 (M3 C + sync mode) — the **localStorage half**.
  *
- * Copyright: lyrics are **pasted by the user** and live only in this browser's
- * localStorage. Nothing here ever fetches, bundles or uploads lyrics, and the app
- * never ships lyrics of real songs (see DECISIONS.md「歌詞打字」). Only the YouTube
- * video id is stored so the official (nocookie) player can be embedded.
+ * Copyright: lyrics are **pasted by the user**. Nothing here ever fetches or bundles lyrics, and
+ * the app never ships lyrics of real songs (see DECISIONS.md「歌詞打字」). Only the YouTube video
+ * id is stored so the official (nocookie) player can be embedded.
+ *
+ * Since M4-1b a signed-in user's library lives in D1 instead (private by default, publishable by
+ * the owner alone — see `songs-api.ts` and `server/songs/`); this module stays the store for
+ * anonymous visitors and the source of the parsing / validation helpers both halves share.
  *
  * Every read is defensive, like `storage.ts`: storage may be missing, empty or corrupted.
  */

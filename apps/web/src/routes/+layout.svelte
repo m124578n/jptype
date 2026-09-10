@@ -14,6 +14,7 @@
 	const isSongs = $derived(page.url.pathname.startsWith('/songs'));
 	const isBoard = $derived(page.url.pathname.startsWith('/leaderboard'));
 	const isMe = $derived(page.url.pathname.startsWith('/me'));
+	const isAdminPage = $derived(page.url.pathname.startsWith('/admin'));
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	async function logout() {
@@ -40,6 +41,11 @@
 		<span class="spacer"></span>
 		{#if data.user}
 			<a href={resolve('/me')} aria-current={isMe ? 'page' : undefined}>{m.nav_me()}</a>
+			{#if data.isAdmin}
+				<a href={resolve('/admin')} aria-current={isAdminPage ? 'page' : undefined}>
+					{m.nav_admin()}
+				</a>
+			{/if}
 			<span class="user">
 				{#if data.user.image}
 					<img class="avatar" src={data.user.image} alt="" width="28" height="28" />
@@ -64,7 +70,11 @@
 </main>
 
 <footer class="site-footer container muted">
-	{m.footer_note()}
+	<p>{m.footer_note()}</p>
+	<p class="row links">
+		<a href={resolve('/terms')}>{m.footer_terms()}</a>
+		<a href={resolve('/copyright')}>{m.footer_copyright()}</a>
+	</p>
 </footer>
 
 <style>
@@ -118,5 +128,13 @@
 		padding: var(--space-6) 0;
 		font-size: 0.875rem;
 		text-align: center;
+	}
+	.site-footer p {
+		margin: 0;
+	}
+	.site-footer .links {
+		justify-content: center;
+		gap: var(--space-4);
+		margin-top: var(--space-2);
 	}
 </style>

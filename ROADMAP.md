@@ -70,13 +70,13 @@
 
 ### M4-1b 歌曲：歌詞私有、時間軸共享、可選公開（owner 2026-09-10 定案，第二個 Opus agent）
 
-- ⬜ D1 `songs`（私有：ownerId、videoId、title、lines[text,start]、visibility、publicConsentAt、status）與 `song_timings`（共享：videoId、lineCount、lineHashes、starts、createdBy、useCount）
-- ⬜ API：`GET/POST/PUT/DELETE /api/songs`（本人）、`GET /api/songs/public`、`GET/POST /api/timings?videoId=`；登入者歌單改存 D1 並跨裝置同步，未登入維持 localStorage
-- ⬜ 貼歌詞後比對雜湊，有一致的共享時間軸就提示「套用」
-- ⬜ 公開開關 + 權利聲明勾選；公開曲庫列表（不精選、不推薦）
-- ⬜ 通知取下：`/copyright` 政策頁（`PUBLIC_CONTACT_EMAIL`）、檢舉表單 → `takedown_requests`、admin 下架 + 上傳者通知、三次停權、紀錄
-- ⬜ Admin：`ADMIN_EMAILS` 比對、`/admin` 檢舉與歌曲管理頁、`/api/admin/*`
-- ⬜ 服務條款 `/terms`：使用者上傳內容責任條款
+- ✅ D1 `songs`（私有：ownerId、videoId、title、lines[text,start]、visibility、publicConsentAt、status）與 `song_timings`（共享：videoId、lineCount、lineHashes、starts、createdBy、useCount）；另加 `takedown_requests`、`user_strikes`、`notices`（migration `0002_songs`）
+- ✅ API：`GET/POST/PUT/DELETE /api/songs`（本人）、`GET /api/songs/public`、`GET/POST /api/timings?videoId=`、`POST /api/timings/[id]/use`；登入者歌單改存 D1 並跨裝置同步，未登入維持 localStorage，首次登入可一鍵搬移
+- ✅ 貼歌詞後比對雜湊，有一致的共享時間軸就提示「套用」；對時完可「分享時間軸」
+- ✅ 公開開關 + 權利聲明勾選（記錄同意時間）；公開曲庫列表（搜尋 + 依更新時間排序，不精選、不推薦）
+- ✅ 通知取下：`/copyright` 政策頁（`PUBLIC_CONTACT_EMAIL`）、檢舉表單 → `takedown_requests`、admin 下架 + 上傳者站內通知、三次停權（既有公開內容改回私有）、紀錄
+- ✅ Admin：`ADMIN_EMAILS` 比對、`/admin` 檢舉與歌曲管理頁、`/api/admin/*`
+- ✅ 服務條款 `/terms`：使用者上傳內容責任條款
 
 ### M4-2 YouTube 同步播放
 

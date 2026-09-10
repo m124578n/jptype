@@ -3,10 +3,9 @@
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
+	import { applyTiming, type TimingCandidate } from '$lib/song-hash';
 	import { timedCount } from '$lib/song-timing';
 	import {
-		deleteSong,
-		loadSongs,
 		lyricsSearchUrl,
 		newSongId,
 		parseLyrics,
@@ -14,64 +13,186 @@
 		saveSong,
 		validateLines,
 		type LineIssue,
-		type Song
+		type Song,
+		type SongLine
 	} from '$lib/songs';
+	import {
+		countTimingUse,
+		createSong,
+		fetchPublicSongs,
+		findSharedTiming,
+		importLocalSongs,
+		loadLibrary,
+		localEntry,
+		removeEntry,
+		type LibraryEntry,
+		type PublicList
+	} from '$lib/songs-api';
 	import { watchUrl } from '$lib/youtube';
 
-	// The library lives in localStorage only, so it is read after mount (SSR renders the shell).
-	let songs = $state<Song[]>([]);
+	let { data } = $props();
+	const loggedIn = $derived(data.user !== null);
+
+	// The library is read after mount: signed in it comes from the account, otherwise from
+	// localStorage — either way the server-rendered shell must not depend on it.
+	let entries = $state<LibraryEntry[]>([]);
 	let ready = $state(false);
-	onMount(() => {
-		songs = loadSongs();
+	let offline = $state(false);
+	let importable = $state<Song[]>([]);
+	let importing = $state(false);
+	let importDone = $state(0);
+	let importFailed = $state(0);
+	let saveFailed = $state(false);
+	/** Three takedowns and this account may no longer publish anything. */
+	let suspended = $state(false);
+
+	async function refresh() {
+		const library = await loadLibrary(data.user !== null);
+		entries = library.songs;
+		offline = library.offline;
+		importable = library.importable;
+		suspended = library.publish.suspended;
 		ready = true;
-	});
+	}
+
+	onMount(() => void refresh());
+	onMount(() => void loadPublic(1));
 
 	let title = $state('');
 	let url = $state('');
 	let lyrics = $state('');
 	let errors = $state<string[]>([]);
 	let issues = $state<LineIssue[]>([]);
+	let saving = $state(false);
 	/** Once the user edits the title themselves, YouTube must not overwrite it. */
 	let titleEdited = $state(false);
 
 	const videoId = $derived(parseYoutubeId(url));
 
-	/** YouTube reported the title: prefill, unless the user already typed one. */
+	// ── Shared timeline offered for this exact paste ────────────────────────────────────────────
+	let shared = $state.raw<TimingCandidate | null>(null);
+	let sharedStarts = $state.raw<number[] | null>(null);
+	let lookupTimer: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Ask the server whether somebody already timed this exact reading. Only hashes of the pasted
+	 * lines are compared (computed here in the browser); the lyrics never leave the page.
+	 */
+	async function lookupTiming() {
+		shared = null;
+		sharedStarts = null;
+		const video = videoId;
+		if (video === null) return;
+		const lines = parseLyrics(lyrics);
+		if (lines.length < 2) return;
+		const found = await findSharedTiming(video, lines);
+		if (found && found.starts.length === lines.length) shared = found;
+	}
+
+	function scheduleLookup() {
+		if (lookupTimer !== null) clearTimeout(lookupTimer);
+		lookupTimer = setTimeout(() => void lookupTiming(), 400);
+	}
+
+	function applyShared() {
+		if (!shared) return;
+		sharedStarts = shared.starts;
+	}
+
 	function playerReady(info: { title: string }) {
 		if (!titleEdited && title.trim() === '' && info.title !== '') title = info.title;
 	}
 
-	function submit(event: SubmitEvent) {
+	function withSharedStarts(lines: SongLine[]): SongLine[] {
+		const starts = sharedStarts;
+		return starts !== null && starts.length === lines.length ? applyTiming(lines, starts) : lines;
+	}
+
+	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		saveFailed = false;
 		const found: string[] = [];
 		const t = title.trim();
 		if (t === '') found.push(m.songs_error_title());
 		if (videoId === null) found.push(m.songs_error_url());
-		const lines = parseLyrics(lyrics);
-		if (lines.length === 0) found.push(m.songs_error_lyrics());
-		issues = lines.length === 0 ? [] : validateLines(lines);
+		const parsed = parseLyrics(lyrics);
+		if (parsed.length === 0) found.push(m.songs_error_lyrics());
+		issues = parsed.length === 0 ? [] : validateLines(parsed);
 		errors = found;
 		if (found.length > 0 || issues.length > 0 || videoId === null) return;
 
-		const now = Date.now();
-		songs = saveSong({
-			id: newSongId(),
-			title: t,
-			youtubeId: videoId,
-			lines,
-			createdAt: now,
-			updatedAt: now
-		});
+		const lines = withSharedStarts(parsed);
+		saving = true;
+		if (loggedIn && !offline) {
+			const created = await createSong({ title: t, videoId, lines });
+			saving = false;
+			if (!created) {
+				saveFailed = true;
+				return;
+			}
+			entries = [created, ...entries];
+		} else {
+			const now = Date.now();
+			const song: Song = {
+				id: newSongId(),
+				title: t,
+				youtubeId: videoId,
+				lines,
+				createdAt: now,
+				updatedAt: now
+			};
+			saveSong(song);
+			saving = false;
+			entries = [localEntry(song), ...entries.filter((e) => e.id !== song.id)];
+		}
+
+		if (shared && sharedStarts !== null) void countTimingUse(shared.id);
 		title = '';
 		url = '';
 		lyrics = '';
 		titleEdited = false;
+		shared = null;
+		sharedStarts = null;
 	}
 
-	function remove(song: Song) {
-		if (!window.confirm(m.songs_delete_confirm({ title: song.title }))) return;
-		songs = deleteSong(song.id);
+	async function remove(entry: LibraryEntry) {
+		if (!window.confirm(m.songs_delete_confirm({ title: entry.title }))) return;
+		const ok = await removeEntry(entry);
+		if (!ok) {
+			saveFailed = true;
+			return;
+		}
+		entries = entries.filter((e) => e.id !== entry.id);
 	}
+
+	async function runImport() {
+		importing = true;
+		const result = await importLocalSongs();
+		importing = false;
+		importDone = result.imported;
+		importFailed = result.failed;
+		await refresh();
+	}
+
+	// ── Public library (plain list, newest first, no curation) ──────────────────────────────────
+	let query = $state('');
+	let publicList = $state.raw<PublicList | null>(null);
+	let publicLoading = $state(false);
+
+	async function loadPublic(page: number) {
+		publicLoading = true;
+		publicList = await fetchPublicSongs(query.trim(), page);
+		publicLoading = false;
+	}
+
+	function searchPublic(event: SubmitEvent) {
+		event.preventDefault();
+		void loadPublic(1);
+	}
+
+	const publicPages = $derived(
+		publicList === null ? 1 : Math.max(1, Math.ceil(publicList.total / publicList.pageSize))
+	);
 </script>
 
 <svelte:head><title>{m.songs_title()} · {m.app_name()}</title></svelte:head>
@@ -80,39 +201,78 @@
 	<header class="stack head">
 		<h1>{m.songs_title()}</h1>
 		<p class="muted">{m.songs_lead()}</p>
-		<p class="muted small">{m.songs_privacy()}</p>
+		<p class="muted small">{loggedIn ? m.songs_privacy_account() : m.songs_privacy()}</p>
+		{#if !loggedIn}
+			<p class="muted small">
+				{m.songs_login_hint()}
+				<a href={resolve('/login')}>{m.nav_login()}</a>
+			</p>
+		{/if}
+		{#if offline}
+			<p class="error small" role="alert">{m.songs_offline()}</p>
+		{/if}
+		{#if suspended}
+			<p class="error small" role="alert">{m.songs_publish_suspended()}</p>
+		{/if}
 	</header>
+
+	{#if importable.length > 0}
+		<section class="card import stack">
+			<strong>{m.songs_import_title({ count: importable.length })}</strong>
+			<p class="muted small">{m.songs_import_body()}</p>
+			<p>
+				<button type="button" class="btn btn--primary" disabled={importing} onclick={runImport}>
+					{importing ? m.songs_importing() : m.songs_import_button()}
+				</button>
+			</p>
+		</section>
+	{/if}
+	{#if importDone > 0}
+		<p class="ok small" role="status">{m.songs_import_done({ count: importDone })}</p>
+	{/if}
+	{#if importFailed > 0}
+		<p class="error small" role="alert">{m.songs_import_failed({ count: importFailed })}</p>
+	{/if}
 
 	<section class="stack">
 		<h2>{m.songs_list_title()}</h2>
-		{#if ready && songs.length === 0}
+		{#if ready && entries.length === 0}
 			<p class="muted">{m.songs_empty()}</p>
-		{:else if songs.length > 0}
+		{:else if entries.length > 0}
 			<ul class="list">
-				{#each songs as song (song.id)}
+				{#each entries as entry (entry.id)}
 					<li class="card item">
 						<div class="stack info">
-							<span class="name">{song.title}</span>
+							<span class="name">{entry.title}</span>
 							<span class="muted small">
-								{m.songs_line_count({ count: song.lines.length })}
+								{m.songs_line_count({ count: entry.lines.length })}
 								·
-								{timedCount(song.lines) === 0
+								{timedCount(entry.lines) === 0
 									? m.songs_untimed()
-									: m.songs_timed_count({ count: timedCount(song.lines) })}
+									: m.songs_timed_count({ count: timedCount(entry.lines) })}
+								·
+								{entry.status === 'removed'
+									? m.songs_status_removed()
+									: entry.visibility === 'public'
+										? m.songs_visibility_public()
+										: m.songs_visibility_private()}
 							</span>
 						</div>
-						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: song.id })}>
+						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: entry.id })}>
 							{m.songs_practice()}
 						</a>
-						<a class="btn" href={resolve('/songs/[id]/timing', { id: song.id })}>
+						<a class="btn" href={resolve('/songs/[id]/timing', { id: entry.id })}>
 							{m.songs_timing_link()}
 						</a>
-						<button type="button" class="btn" onclick={() => remove(song)}>
+						<button type="button" class="btn" onclick={() => remove(entry)}>
 							{m.songs_delete()}
 						</button>
 					</li>
 				{/each}
 			</ul>
+		{/if}
+		{#if saveFailed}
+			<p class="error small" role="alert">{m.songs_save_failed()}</p>
 		{/if}
 	</section>
 
@@ -121,7 +281,14 @@
 		<form class="stack form" onsubmit={submit}>
 			<div class="stack field">
 				<label for="song-url">{m.songs_field_url()}</label>
-				<input id="song-url" type="text" bind:value={url} autocomplete="off" spellcheck="false" />
+				<input
+					id="song-url"
+					type="text"
+					bind:value={url}
+					oninput={scheduleLookup}
+					autocomplete="off"
+					spellcheck="false"
+				/>
 				<p class="muted small">{m.songs_field_url_hint()}</p>
 			</div>
 
@@ -170,11 +337,32 @@
 
 			<div class="stack field">
 				<label for="song-lyrics">{m.songs_field_lyrics()}</label>
-				<textarea id="song-lyrics" rows="10" bind:value={lyrics} lang="ja" spellcheck="false"
-				></textarea>
+				<textarea
+					id="song-lyrics"
+					rows="10"
+					bind:value={lyrics}
+					oninput={scheduleLookup}
+					lang="ja"
+					spellcheck="false"></textarea>
 				<p class="muted small">{m.songs_field_lyrics_hint()}</p>
 				<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
 			</div>
+
+			{#if shared !== null}
+				<div class="stack shared" role="status">
+					{#if sharedStarts === null}
+						<p>{m.songs_timing_apply_found()}</p>
+						<p>
+							<button type="button" class="btn" onclick={applyShared}>
+								{m.songs_timing_apply()}
+							</button>
+						</p>
+					{:else}
+						<p class="ok">{m.songs_timing_applied({ count: sharedStarts.length })}</p>
+					{/if}
+					<p class="muted small">{m.songs_timing_apply_hint()}</p>
+				</div>
+			{/if}
 
 			{#if errors.length > 0 || issues.length > 0}
 				<div class="stack problems" role="alert">
@@ -195,9 +383,67 @@
 			{/if}
 
 			<p>
-				<button type="submit" class="btn btn--primary">{m.songs_save()}</button>
+				<button type="submit" class="btn btn--primary" disabled={saving}>
+					{saving ? m.songs_saving() : m.songs_save()}
+				</button>
 			</p>
 		</form>
+	</section>
+
+	<section class="stack">
+		<h2>{m.songs_public_section_title()}</h2>
+		<p class="muted small">{m.songs_public_lead()}</p>
+		<form class="row" onsubmit={searchPublic}>
+			<label class="visually-hidden" for="public-q">{m.songs_public_search()}</label>
+			<input id="public-q" type="search" bind:value={query} />
+			<button type="submit" class="btn" disabled={publicLoading}>
+				{m.songs_public_search_button()}
+			</button>
+		</form>
+
+		{#if publicList !== null && publicList.songs.length === 0}
+			<p class="muted">{m.songs_public_empty()}</p>
+		{:else if publicList !== null}
+			<ul class="list">
+				{#each publicList.songs as song (song.id)}
+					<li class="card item">
+						<div class="stack info">
+							<span class="name">{song.title}</span>
+							<span class="muted small">
+								{m.songs_public_meta({ lines: song.lineCount, timed: song.timedCount })}
+							</span>
+						</div>
+						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: song.id })}>
+							{m.songs_practice()}
+						</a>
+						<a class="btn" href="{resolve('/copyright')}?song={song.id}">
+							{m.songs_public_report()}
+						</a>
+					</li>
+				{/each}
+			</ul>
+			<p class="row pager">
+				<button
+					type="button"
+					class="btn"
+					disabled={publicList.page <= 1 || publicLoading}
+					onclick={() => loadPublic((publicList?.page ?? 1) - 1)}
+				>
+					{m.songs_public_prev()}
+				</button>
+				<span class="muted small">
+					{m.songs_public_page({ page: publicList.page, total: publicList.total })}
+				</span>
+				<button
+					type="button"
+					class="btn"
+					disabled={publicList.page >= publicPages || publicLoading}
+					onclick={() => loadPublic((publicList?.page ?? 1) + 1)}
+				>
+					{m.songs_public_next()}
+				</button>
+			</p>
+		{/if}
 	</section>
 </div>
 
@@ -210,6 +456,14 @@
 	}
 	.small {
 		font-size: 0.875rem;
+	}
+	.import {
+		padding: var(--space-4) var(--space-6);
+		gap: var(--space-2);
+		border-color: var(--accent);
+	}
+	.import p {
+		margin: 0;
 	}
 	.list {
 		list-style: none;
@@ -244,6 +498,9 @@
 		flex-wrap: wrap;
 		gap: var(--space-3);
 	}
+	.pager {
+		justify-content: center;
+	}
 	label {
 		font-weight: 500;
 	}
@@ -260,9 +517,23 @@
 	input {
 		min-height: 44px;
 	}
+	input[type='search'] {
+		flex: 1;
+		width: auto;
+		min-width: 8rem;
+	}
 	textarea {
 		resize: vertical;
 		line-height: 1.8;
+	}
+	.shared {
+		gap: var(--space-2);
+		border: 1px solid var(--accent);
+		border-radius: var(--radius);
+		padding: var(--space-4);
+	}
+	.shared p {
+		margin: 0;
 	}
 	.problems {
 		gap: var(--space-2);
@@ -272,6 +543,9 @@
 	}
 	.error {
 		color: var(--danger);
+	}
+	.ok {
+		color: var(--accent);
 	}
 	.chips {
 		list-style: none;

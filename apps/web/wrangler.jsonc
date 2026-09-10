@@ -37,6 +37,10 @@
 	"triggers": { "crons": ["0 16 * * 0"] },
 
 	"vars": {
-		"PUBLIC_TURNSTILE_SITE_KEY": ""
+		"PUBLIC_TURNSTILE_SITE_KEY": "",
+		// Comma-separated e-mail allowlist for /admin and /api/admin/* (DECISIONS「歌曲功能定案」item 5).
+		"ADMIN_EMAILS": "m23568n@gmail.com",
+		// Shown on /copyright as the notice-and-takedown contact. The Worker never sends mail.
+		"PUBLIC_CONTACT_EMAIL": "m23568n@gmail.com"
 	}
 }

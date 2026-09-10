@@ -44,6 +44,108 @@ export const kanaStats = sqliteTable(
 	(t) => [primaryKey({ columns: [t.userId, t.kana] })]
 );
 
+/**
+ * One song in a signed-in user's library (M4-1b).
+ *
+ * `lines` is the user's own pasted reading of the lyrics, stored as JSON
+ * (`{ text, start? }[]`). It is **private by default**: only the owner reads it, unless they
+ * explicitly set `visibility = 'public'` after ticking the rights declaration, which is what
+ * `publicConsentAt` records. `status = 'removed'` is the notice-and-takedown outcome; the row is
+ * kept (with `removedReason`) so the handling stays on record. Anonymous visitors keep their
+ * library in localStorage and never reach this table.
+ */
+export const songs = sqliteTable(
+	'songs',
+	{
+		id: text('id').primaryKey(), // ulid
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		videoId: text('video_id').notNull(), // 11-char YouTube id, never a URL
+		title: text('title').notNull(),
+		lines: text('lines').notNull(), // JSON: { text: string; start?: number }[]
+		visibility: text('visibility').notNull().default('private'), // 'private' | 'public'
+		publicConsentAt: integer('public_consent_at'), // epoch ms of the rights declaration
+		status: text('status').notNull().default('active'), // 'active' | 'removed'
+		removedReason: text('removed_reason'),
+		createdAt: integer('created_at').notNull(), // epoch ms
+		updatedAt: integer('updated_at').notNull() // epoch ms
+	},
+	(t) => [
+		index('songs_owner').on(t.ownerId, sql`${t.updatedAt} DESC`),
+		index('songs_public').on(t.visibility, t.status, sql`${t.updatedAt} DESC`)
+	]
+);
+
+/**
+ * A shared timeline for a video: **no lyric text ever lands here**.
+ *
+ * Only the video id, the number of lines, a hex SHA-256 per line text (`lineHashes`) and the
+ * `start` seconds are stored, so a user who pasted the same reading can be offered the timings
+ * without the server ever holding or distributing the words (DECISIONS「歌曲功能定案」item 3).
+ */
+export const songTimings = sqliteTable(
+	'song_timings',
+	{
+		id: text('id').primaryKey(), // ulid
+		videoId: text('video_id').notNull(),
+		lineCount: integer('line_count').notNull(),
+		lineHashes: text('line_hashes').notNull(), // JSON: hex SHA-256 per line, in order
+		starts: text('starts').notNull(), // JSON: number[] (seconds), same length as lineHashes
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		useCount: integer('use_count').notNull().default(0),
+		createdAt: integer('created_at').notNull() // epoch ms
+	},
+	(t) => [index('song_timings_video').on(t.videoId)]
+);
+
+/** A rights holder's notice about a public song (著作權法 §90-4～§90-12 / notice-and-takedown). */
+export const takedownRequests = sqliteTable('takedown_requests', {
+	id: text('id').primaryKey(), // ulid
+	songId: text('song_id').references(() => songs.id, { onDelete: 'set null' }),
+	videoId: text('video_id').notNull().default(''),
+	reporterContact: text('reporter_contact').notNull(), // e-mail or any reply address they give
+	claim: text('claim').notNull(),
+	status: text('status').notNull().default('open'), // 'open' | 'removed' | 'rejected'
+	adminNote: text('admin_note'),
+	createdAt: integer('created_at').notNull(), // epoch ms
+	resolvedAt: integer('resolved_at')
+});
+
+/** Repeat-infringer record: three removals and the user may no longer publish. */
+export const userStrikes = sqliteTable('user_strikes', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	strikes: integer('strikes').notNull().default(0),
+	suspendedAt: integer('suspended_at') // epoch ms of the third strike
+});
+
+/** In-app notice for a user (no e-mail is ever sent from the Worker); shown on /me. */
+export const notices = sqliteTable(
+	'notices',
+	{
+		id: text('id').primaryKey(), // ulid
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		kind: text('kind').notNull(), // 'song_removed' | 'suspended'
+		message: text('message').notNull(),
+		createdAt: integer('created_at').notNull(), // epoch ms
+		readAt: integer('read_at')
+	},
+	(t) => [index('notices_user').on(t.userId, sql`${t.createdAt} DESC`)]
+);
+
 export type Run = typeof runs.$inferSelect;
 export type NewRun = typeof runs.$inferInsert;
 export type KanaStat = typeof kanaStats.$inferSelect;
+export type SongRow = typeof songs.$inferSelect;
+export type NewSongRow = typeof songs.$inferInsert;
+export type SongTimingRow = typeof songTimings.$inferSelect;
+export type NewSongTimingRow = typeof songTimings.$inferInsert;
+export type TakedownRow = typeof takedownRequests.$inferSelect;
+export type NewTakedownRow = typeof takedownRequests.$inferInsert;
+export type UserStrikeRow = typeof userStrikes.$inferSelect;
+export type NoticeRow = typeof notices.$inferSelect;
+export type NewNoticeRow = typeof notices.$inferInsert;

@@ -10,7 +10,12 @@
 		allhira: m.timed_pool_allhira,
 		allkata: m.timed_pool_allkata,
 		all: m.timed_pool_all,
-		n5: m.timed_pool_n5
+		n5: m.timed_pool_n5,
+		n4: m.timed_pool_n4,
+		n3: m.timed_pool_n3,
+		n2: m.timed_pool_n2,
+		n1: m.timed_pool_n1,
+		slang: m.timed_pool_slang
 	};
 
 	function href(pool: TimedPoolId, seconds: (typeof TIMED_SECONDS)[number], period: string) {

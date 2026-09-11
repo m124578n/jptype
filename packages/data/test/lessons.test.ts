@@ -44,7 +44,17 @@ describe('LESSONS', () => {
 			'kata-youon',
 			'foreign',
 			'n5-words',
-			'sentences'
+			'sentences',
+			'n4-words',
+			'sentences-n4',
+			'n3-words',
+			'sentences-n3',
+			'n2-words',
+			'sentences-n2',
+			'n1-words',
+			'sentences-n1',
+			'business',
+			'netslang'
 		]);
 	});
 

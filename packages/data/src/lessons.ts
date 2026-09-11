@@ -1,7 +1,17 @@
 import { KANA } from './kana.ts';
 import { toKatakana } from './script.ts';
+import { BUSINESS } from './business.ts';
+import { NETSLANG } from './netslang.ts';
 import { SENTENCES } from './sentences.ts';
+import { SENTENCES_N1 } from './sentences-n1.ts';
+import { SENTENCES_N2 } from './sentences-n2.ts';
+import { SENTENCES_N3 } from './sentences-n3.ts';
+import { SENTENCES_N4 } from './sentences-n4.ts';
 import type { KanaEntry, Lesson, LessonHint, WordEntry } from './types.ts';
+import { WORDS_N1 } from './words-n1.ts';
+import { WORDS_N2 } from './words-n2.ts';
+import { WORDS_N3 } from './words-n3.ts';
+import { WORDS_N4 } from './words-n4.ts';
 import { WORDS_N5 } from './words-n5.ts';
 
 /** A titled section of the lesson map (spec §7.1 numbering). */
@@ -119,14 +129,24 @@ function script(prefix: 'hira' | 'kata'): Lesson[] {
 	];
 }
 
-/** All lessons in spec §7.1 order (items 1–9). */
+/** All lessons in spec §7.1 order (items 1–9), then the 中高階 set (2026-09-11). */
 export const LESSONS: readonly Lesson[] = [
 	...script('hira'),
 	wordLesson('sokuon-chouon', '促音・長音', SOKUON_CHOUON_WORDS, SOKUON),
 	...script('kata'),
 	wordLesson('foreign', '外來語音', FOREIGN_WORDS, FOREIGN),
 	contentLesson('n5-words', 'N5 單字', WORDS_N5),
-	contentLesson('sentences', '短句', SENTENCES)
+	contentLesson('sentences', '短句', SENTENCES),
+	contentLesson('n4-words', 'N4 單字', WORDS_N4),
+	contentLesson('sentences-n4', 'N4 句子', SENTENCES_N4),
+	contentLesson('n3-words', 'N3 單字', WORDS_N3),
+	contentLesson('sentences-n3', 'N3 句子', SENTENCES_N3),
+	contentLesson('n2-words', 'N2 單字', WORDS_N2),
+	contentLesson('sentences-n2', 'N2 句子', SENTENCES_N2),
+	contentLesson('n1-words', 'N1 單字', WORDS_N1),
+	contentLesson('sentences-n1', 'N1 句子', SENTENCES_N1),
+	contentLesson('business', '商用・書信', BUSINESS),
+	contentLesson('netslang', '網路用語', NETSLANG)
 ];
 
 export const LESSON_GROUPS: readonly LessonGroup[] = [
@@ -144,7 +164,18 @@ export const LESSON_GROUPS: readonly LessonGroup[] = [
 		lessonIds: ['kata-all', 'kata-dakuon', 'kata-youon']
 	},
 	{ id: 'foreign', title: '外來語音', lessonIds: ['foreign'] },
-	{ id: 'content', title: '單字與短句', lessonIds: ['n5-words', 'sentences'] }
+	{ id: 'content', title: '單字與短句（N5）', lessonIds: ['n5-words', 'sentences'] },
+	{
+		id: 'advanced',
+		title: '中階（N4・N3）',
+		lessonIds: ['n4-words', 'sentences-n4', 'n3-words', 'sentences-n3']
+	},
+	{
+		id: 'expert',
+		title: '高階（N2・N1）',
+		lessonIds: ['n2-words', 'sentences-n2', 'n1-words', 'sentences-n1']
+	},
+	{ id: 'practical', title: '實用：商用・書信與網路用語', lessonIds: ['business', 'netslang'] }
 ];
 
 const byId = new Map(LESSONS.map((l) => [l.id, l]));

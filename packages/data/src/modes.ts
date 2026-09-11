@@ -1,9 +1,24 @@
 import { KANA } from './kana.ts';
 import { findLesson } from './lessons.ts';
+import { NETSLANG } from './netslang.ts';
+import { WORDS_N1 } from './words-n1.ts';
+import { WORDS_N2 } from './words-n2.ts';
+import { WORDS_N3 } from './words-n3.ts';
+import { WORDS_N4 } from './words-n4.ts';
 import { WORDS_N5 } from './words-n5.ts';
 
-/** Pools selectable in timed mode (spec §7.2). */
-export const TIMED_POOL_IDS = ['allhira', 'allkata', 'all', 'n5'] as const;
+/** Pools selectable in timed mode (spec §7.2, plus the N4–N1 vocabulary and 網路用語 since 2026-09-11). */
+export const TIMED_POOL_IDS = [
+	'allhira',
+	'allkata',
+	'all',
+	'n5',
+	'n4',
+	'n3',
+	'n2',
+	'n1',
+	'slang'
+] as const;
 export type TimedPoolId = (typeof TIMED_POOL_IDS)[number];
 
 export const TIMED_SECONDS = [30, 60, 120] as const;
@@ -19,7 +34,12 @@ export const TIMED_POOLS: Readonly<Record<TimedPoolId, readonly string[]>> = {
 	allhira: ALL_HIRA,
 	allkata: ALL_KATA,
 	all: [...ALL_HIRA, ...ALL_KATA],
-	n5: WORDS_N5.map((w) => w.kana)
+	n5: WORDS_N5.map((w) => w.kana),
+	n4: WORDS_N4.map((w) => w.kana),
+	n3: WORDS_N3.map((w) => w.kana),
+	n2: WORDS_N2.map((w) => w.kana),
+	n1: WORDS_N1.map((w) => w.kana),
+	slang: NETSLANG.map((w) => w.kana)
 };
 
 /** Mode string for 弱項練習 (spec §7.3): questions may be any kana, so its pool is `all`. */

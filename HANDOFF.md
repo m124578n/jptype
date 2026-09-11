@@ -38,6 +38,12 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
+### 2026-09-11 已合併（logo / SEO、中高階與實用內容）
+
+- 首頁 title「日文打字練習」、其餘「段落 · 日文打字練習」；logo 是 teal 鍵帽上一個あ（`Logo.svelte`、`static/icon.svg`、favicon、manifest）；每頁 description / canonical / OG / Twitter（`lib/seo.ts`），`/admin` `/me` `/login` `/library` noindex，`/sitemap.xml`、robots.txt、首頁 JSON-LD。**沒有 PNG 版 og:image 與 apple-touch-icon**（需要字型渲染；owner 之後用任何工具把 `static/icon.svg` 匯出 512×512 與 1200×630 即可）。
+- `@jptype/data` 新增 N4–N1 單字各 100、N4–N1 句子各 20、商用書信 30 句、網路用語 60；課程地圖多三組 10 課（共 40 課），計時賽多 `n4` `n3` `n2` `n1` `slang` 題庫（27 個榜）。內容是我寫的，**讀音、翻譯與網路用語的時效請 owner 抽查**。
+- 點子池新增「跟 AI 打字聊天並評分」（owner）。
+
 ### 2026-09-11 已合併（M4-1e 使用者內容不限歌曲）
 
 - `/songs` 改名 `/library`「我的內容」：類型任選、影片可選、文章自動斷句、可公開；`/contents` 公開列表合併平台與使用者內容（「來源」篩選、使用者內容連到 `/library/[id]`）；`/api/songs/public` 刪除。使用者內容不進榜。細節見 DECISIONS「M4-1e」。驗證：型別、353 測試、API 建純文字新聞內容 → 公開 → `/contents?source=user` 看得到。**瀏覽器未實測。**
@@ -101,7 +107,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 ## 5. 架構速覽
 
 - `packages/engine`：羅馬字判定引擎（`tokenize` / `TypingSession` / `score` / `replay` / `analyze`），純 TS，覆蓋率門檻 90%。`\n` 是題目分隔符。
-- `packages/data`：假名表 141 項、課程 30 課、N5 單字 100、短句 20、計時賽 pool、mode 字串（`lesson:` / `timed:` / `weak` / `content:`）。
+- `packages/data`：假名表 141 項、課程 40 課、N5 單字 100、短句 20、計時賽 pool、mode 字串（`lesson:` / `timed:` / `weak` / `content:`）。
 - `apps/web`：SvelteKit 2 + Svelte 5 runes，Cloudflare Workers（D1 / KV / R2 / cron）。自訂 worker entry `src/worker/index.ts` 包住 SvelteKit 輸出加 `scheduled`；adapter 讀 `wrangler.adapter.jsonc`。
 - 伺服器邏輯一律「純函式 + store 介面 + 假 store 單元測試」（`lib/server/runs`、`songs`、`contents`、`leaderboard`、`me`）。
 - 後端重算分數不信前端；anticheat 六條規則；排行榜 KV 快取 60 秒；週一 00:00 台北 cron 快照 + 刪 90 天前 R2 keylog。

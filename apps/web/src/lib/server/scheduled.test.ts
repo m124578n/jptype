@@ -23,7 +23,7 @@ describe('snapshotLastWeek', () => {
 			}
 		};
 		const r = await snapshotLastWeek({ store, kv }, MONDAY_0000_TAIPEI);
-		expect(r).toEqual({ week: '2026-W37', modes: 12 });
+		expect(r).toEqual({ week: '2026-W37', modes: 27 });
 		expect(allTimedModes()).toHaveLength(TIMED_POOL_IDS.length * TIMED_SECONDS.length);
 		expect(asked.every((a) => a.endsWith('@2026-W37'))).toBe(true);
 		expect(puts.map((p) => p.key)).toContain('lbsnap:timed:allhira:60:2026-W37');

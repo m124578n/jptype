@@ -1,6 +1,6 @@
 {
-	"name": "日文打字練習 jptype",
-	"short_name": "jptype",
+	"name": "ぱちぱち — 日文打字練習",
+	"short_name": "ぱちぱち",
 	"description": "從五十音開始練日文羅馬字輸入：課程、計時賽、排行榜，還能用自己的歌詞、台詞與文章練。",
 	"lang": "zh-TW",
 	"start_url": "/",

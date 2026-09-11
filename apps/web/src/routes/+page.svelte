@@ -68,7 +68,7 @@
 			'@context': 'https://schema.org',
 			'@type': 'WebApplication',
 			name: m.seo_site_name(),
-			alternateName: m.app_name(),
+			alternateName: [m.app_name(), 'pachipachi', 'jptype'],
 			applicationCategory: 'EducationalApplication',
 			operatingSystem: 'Web',
 			inLanguage: 'zh-Hant-TW',

@@ -39,7 +39,7 @@
 	<link rel="manifest" href="/manifest.webmanifest" />
 	<meta name="application-name" content={m.app_name()} />
 	<meta name="apple-mobile-web-app-title" content={m.app_name()} />
-	<meta property="og:site_name" content={m.seo_site_name()} />
+	<meta property="og:site_name" content="{m.app_name()}｜{m.seo_site_name()}" />
 	<meta property="og:type" content="website" />
 	<meta property="og:locale" content="zh_TW" />
 	<meta property="og:title" content={seo.title} />

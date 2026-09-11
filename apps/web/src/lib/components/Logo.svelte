@@ -1,8 +1,10 @@
 <script lang="ts">
 	/**
-	 * The jptype mark: a keycap with あ on it — the first kana you learn, on the key you press.
-	 * One accent colour, one glyph, nothing else (MASTER.md「Quiet minimalism」). `size` is the
-	 * height in px; the wordmark is optional so the same mark works as an icon.
+	 * The ぱちぱち mark (owner 2026-09-11): a keycap with ぱ on it and three short "clack" strokes
+	 * off its top-right corner — the sound of keys, the sound of applause. One accent colour on
+	 * a two-tone key (the darker plinth gives it a press), the glyph and strokes in the on-accent
+	 * colour so the same mark reads on light and dark backgrounds. `size` is the height in px;
+	 * the wordmark is optional so the mark alone works as an icon.
 	 */
 	let { size = 28, wordmark = true }: { size?: number; wordmark?: boolean } = $props();
 </script>
@@ -16,20 +18,29 @@
 		aria-hidden="true"
 		focusable="false"
 	>
-		<rect x="4" y="4" width="56" height="56" rx="14" fill="var(--accent)" />
-		<rect x="10" y="9" width="44" height="6" rx="3" fill="var(--on-accent)" opacity="0.28" />
+		<!-- plinth: the key's side, 4px deeper than the cap -->
+		<rect x="4" y="10" width="56" height="52" rx="14" class="plinth" />
+		<!-- cap -->
+		<rect x="4" y="4" width="56" height="52" rx="14" class="cap" />
+		<!-- ぱ, sitting a little left so the clacks have room -->
 		<text
-			x="32"
-			y="46"
+			x="29"
+			y="43"
 			text-anchor="middle"
-			font-family="'Noto Sans JP', system-ui, sans-serif"
-			font-size="34"
+			font-family="'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', system-ui, sans-serif"
+			font-size="32"
 			font-weight="700"
-			fill="var(--on-accent)">あ</text
+			class="glyph">ぱ</text
 		>
+		<!-- ぱち、ぱち: three clack strokes -->
+		<g class="clack" stroke-width="3.2" stroke-linecap="round" fill="none">
+			<path d="M47 20 L52 15" />
+			<path d="M50 27 L57 25" />
+			<path d="M43 15 L43 8" />
+		</g>
 	</svg>
 	{#if wordmark}
-		<span class="word">jptype</span>
+		<span class="word" lang="ja">ぱちぱち</span>
 	{/if}
 </span>
 
@@ -37,16 +48,29 @@
 	.logo {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5em;
+		gap: 0.45em;
 		line-height: 1;
 	}
 	.mark {
 		display: block;
 		flex: none;
 	}
+	.plinth {
+		fill: color-mix(in srgb, var(--accent) 72%, black);
+	}
+	.cap {
+		fill: var(--accent);
+	}
+	.glyph {
+		fill: var(--on-accent);
+	}
+	.clack {
+		stroke: var(--on-accent);
+		opacity: 0.92;
+	}
 	.word {
 		font-weight: 700;
-		letter-spacing: -0.01em;
-		font-size: calc(var(--size) * 0.72);
+		letter-spacing: 0.02em;
+		font-size: calc(var(--size) * 0.7);
 	}
 </style>

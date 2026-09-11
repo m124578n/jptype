@@ -243,7 +243,8 @@
 </script>
 
 <svelte:head
-	><title>{data.content.title} · {m.admin_contents_title()} · {m.app_name()}</title></svelte:head
+	><title>{data.content.title} · {m.admin_contents_title()} · {m.seo_site_name()}</title
+	></svelte:head
 >
 
 <div class="container container--wide stack page">

@@ -29,7 +29,7 @@
 	});
 </script>
 
-<svelte:head><title>{m.me_mode_weak()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.me_mode_weak()} · {m.seo_site_name()}</title></svelte:head>
 
 {#if lesson}
 	{#if weak && weak.length === 0}

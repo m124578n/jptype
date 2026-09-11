@@ -172,7 +172,9 @@
 </script>
 
 <svelte:head>
-	<title>{m.songs_timing_title()} · {song ? song.title : m.songs_title()} · {m.app_name()}</title>
+	<title
+		>{m.songs_timing_title()} · {song ? song.title : m.songs_title()} · {m.seo_site_name()}</title
+	>
 </svelte:head>
 <svelte:window {onkeydown} />
 

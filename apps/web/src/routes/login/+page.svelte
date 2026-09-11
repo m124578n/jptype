@@ -21,7 +21,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.login_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.login_title()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container stack login">
 	<header class="stack head">

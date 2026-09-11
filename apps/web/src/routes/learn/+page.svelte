@@ -32,7 +32,7 @@
 	});
 </script>
 
-<svelte:head><title>{m.learn_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.learn_title()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container container--wide stack map">
 	<header class="stack intro">

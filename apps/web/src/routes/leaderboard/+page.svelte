@@ -30,7 +30,7 @@
 	const inTop = $derived(!!data.me && data.board?.entries.some((e) => e.userId === data.user?.id));
 </script>
 
-<svelte:head><title>{m.leaderboard_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.leaderboard_title()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container container--wide stack lb">
 	<header class="stack head">

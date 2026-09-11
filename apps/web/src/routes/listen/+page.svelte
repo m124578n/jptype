@@ -197,7 +197,7 @@
 	});
 </script>
 
-<svelte:head><title>{m.listen_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.listen_title()} · {m.seo_site_name()}</title></svelte:head>
 <svelte:window {onkeydown} />
 
 <div class="container stack listen">

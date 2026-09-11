@@ -1,6 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import Logo from '$lib/components/Logo.svelte';
+	import { isNoindex, seoFor } from '$lib/seo';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -16,6 +18,11 @@
 	const isBoard = $derived(page.url.pathname.startsWith('/leaderboard'));
 	const isMe = $derived(page.url.pathname.startsWith('/me'));
 	const isAdminPage = $derived(page.url.pathname.startsWith('/admin'));
+
+	/** Shared SEO text for the current route; pages still override `<title>` where they need to. */
+	const seo = $derived(seoFor(page.url.pathname));
+	const canonical = $derived(`${page.url.origin}${page.url.pathname}`);
+	const noindex = $derived(isNoindex(page.url.pathname));
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	async function logout() {
@@ -25,13 +32,30 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
-	<title>{m.app_name()}</title>
+	<title>{seo.title}</title>
+	<meta name="description" content={seo.description} />
+	<link rel="canonical" href={canonical} />
+	<link rel="icon" href={favicon} type="image/svg+xml" />
+	<link rel="manifest" href="/manifest.webmanifest" />
+	<meta name="application-name" content={m.app_name()} />
+	<meta name="apple-mobile-web-app-title" content={m.app_name()} />
+	<meta property="og:site_name" content={m.seo_site_name()} />
+	<meta property="og:type" content="website" />
+	<meta property="og:locale" content="zh_TW" />
+	<meta property="og:title" content={seo.title} />
+	<meta property="og:description" content={seo.description} />
+	<meta property="og:url" content={canonical} />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content={seo.title} />
+	<meta name="twitter:description" content={seo.description} />
+	{#if noindex}
+		<meta name="robots" content="noindex" />
+	{/if}
 </svelte:head>
 
 <header class="site-header">
 	<nav class="container container--wide row" aria-label="主要">
-		<a class="brand" href={resolve('/')}>{m.app_name()}</a>
+		<a class="brand" href={resolve('/')} aria-label={m.seo_site_name()}><Logo size={26} /></a>
 		<a href={resolve('/learn')} aria-current={isLearn ? 'page' : undefined}>{m.nav_learn()}</a>
 		<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
 		<a href={resolve('/listen')} aria-current={isListen ? 'page' : undefined}>{m.nav_listen()}</a>
@@ -98,8 +122,11 @@
 		border-bottom-color: var(--accent);
 	}
 	.brand {
-		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
 		margin-right: var(--space-4);
+		text-decoration: none;
+		color: var(--fg);
 	}
 	.spacer {
 		flex: 1;

@@ -61,7 +61,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.copyright_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.copyright_title()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container stack page">
 	<header class="stack head">

@@ -7,7 +7,7 @@
 	const lesson = $derived(data.lesson);
 </script>
 
-<svelte:head><title>{lesson.title} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{lesson.title} · {m.seo_site_name()}</title></svelte:head>
 
 <LessonFlow
 	{lesson}

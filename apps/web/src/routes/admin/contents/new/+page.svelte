@@ -40,7 +40,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.admin_contents_new()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.admin_contents_new()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container stack page">
 	<header class="stack head">

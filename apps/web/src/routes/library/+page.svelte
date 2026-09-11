@@ -232,7 +232,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.songs_title()} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{m.songs_title()} · {m.seo_site_name()}</title></svelte:head>
 
 <div class="container stack songs">
 	<header class="stack head">

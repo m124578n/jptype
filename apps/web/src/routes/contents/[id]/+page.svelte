@@ -325,7 +325,7 @@
 	const boardHref = $derived(`${resolve('/leaderboard')}?mode=${encodeURIComponent(mode)}`);
 </script>
 
-<svelte:head><title>{data.content.title} · {m.app_name()}</title></svelte:head>
+<svelte:head><title>{data.content.title} · {m.seo_site_name()}</title></svelte:head>
 <svelte:window {onkeydown} />
 
 <div class="container container--wide stack content">

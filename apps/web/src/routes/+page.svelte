@@ -61,6 +61,22 @@
 	const bestScore = $derived(records.reduce((best, r) => Math.max(best, r.best.score), 0));
 	const lessonsDone = $derived(LESSONS.filter((lesson) => results[lesson.id] !== undefined).length);
 
+	/** Structured data for the home page; the tag is assembled here so the markup holds no raw <script>. */
+	const jsonLd =
+		`<${'script'} type="application/ld+json">` +
+		JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'WebApplication',
+			name: m.seo_site_name(),
+			alternateName: m.app_name(),
+			applicationCategory: 'EducationalApplication',
+			operatingSystem: 'Web',
+			inLanguage: 'zh-Hant-TW',
+			description: m.seo_desc_home(),
+			offers: { '@type': 'Offer', price: '0', priceCurrency: 'TWD' }
+		}) +
+		`</${'script'}>`;
+
 	/** Same calendar day in the reader's own timezone. */
 	function isToday(at: number): boolean {
 		const then = new Date(at);
@@ -72,6 +88,12 @@
 		);
 	}
 </script>
+
+<svelte:head>
+	<title>{m.seo_home_title()}</title>
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -- JSON.stringify output, no user text -->
+	{@html jsonLd}
+</svelte:head>
 
 <section class="container hero stack">
 	<h1>{m.home_tagline()}</h1>

@@ -542,3 +542,22 @@ ROADMAP M4-1 最後一條「User Provided 內容併入此模型」。做法是**
 ### migration `0005_unify_songs` 是手寫的
 
 drizzle-kit `generate` 看到 `takedown_requests` 一刪一加欄位會問「是改名嗎」，這個提示需要 TTY，`drizzle-kit/api` 也一樣。所以 SQL 手寫（`ALTER TABLE contents ADD …` → `INSERT INTO contents … SELECT … FROM songs` → `json_each(songs.lines)` 展開成 `content_lines` → 重建 `takedown_requests` → `DROP TABLE songs`），snapshot 與 journal 由 `apps/web/scripts/gen-migration.mjs` 用 `generateSQLiteDrizzleJson` 產生。本機用假資料（私有 / 公開 / 下架各一首 + 一筆檢舉）跑過 `wrangler d1 migrations apply --local`，三種狀態、時間軸、檢舉關聯都正確；搬過來的舊行 `romaji_text` 是空字串（只有新寫入才算羅馬字，歌曲頁不用它）。
+
+## 2026-09-11 M4-4 後台：使用者與練習紀錄管理
+
+ROADMAP M4-4 最後一個 ⬜ 的 Admin 項目。範圍刻意收在「看得到、能糾正、留紀錄」，不做帳號刪除或改名。
+
+### 管理員能做的四件事，以及為什麼只有這四件
+
+- **搜尋與查看**：`/admin/users?q=` 以 e-mail / 名稱 LIKE 搜尋（留空列最新 50 個帳號），每列帶場次數、最近練習、`user_strikes`、名下歌曲數（`contents.owner_id`）；`/admin/users/[id]` 列最近 50 場。**不載歌詞、不載 R2 keylog**，跟 `/admin` 歌曲區同一原則。
+- **標記 / 取消標記場次**：anticheat 六條規則是啟發式（§9.5），人要能兩個方向都推翻。標記後的場次跟自動標記一樣：分數留著、不進榜。改動時直接刪該 mode 的 `lb:{mode}:{week}` 與 `lb:{mode}:all`（跟 `submitRun` 同一組 key），不等 60 秒 TTL；匿名場次（`user_id` null）本來就不進榜，不清快取；旗標沒變就什麼都不做。
+- **刪除場次**：`runs` 列與 `runs/{id}.json` 一起刪（keylog 只為了解釋分數而存在）。未標記的登入者場次才清快取。
+- **恢復公開權限**：清掉 `user_strikes` 整列（次數歸零、解除停權）並寫一則 `notices.kind = 'reinstated'`（`/me` 會顯示）。**已下架的歌維持下架**——恢復的是「再公開的權利」，不是撤銷通知取下的結果；沒有紀錄可清時是 no-op、不發通知。
+
+### 實作形狀
+
+`lib/server/admin-users/{store,service,route}.ts`，服務層純函式 + 假 store 測試（11 個），deps 多兩個 hook：`invalidateLeaderboard(mode, week)`（KV）與 `deleteKeylog(runId)`（R2）。API：`GET /api/admin/users?q=`、`GET /api/admin/users/[id]`、`POST /api/admin/users/[id]/reinstate`、`POST /api/admin/runs/[id]`（`{ flagged }`）、`DELETE /api/admin/runs/[id]`。`modeLabel` 從 `/me` 抽到 `lib/mode-label.ts` 共用，順便把 `content:{id}` 的標籤從「課程」修成「內容」。
+
+### 本機不用 Google 也能登入：`scripts/dev-login.mjs`
+
+驗證這個功能時需要 admin session，而本機沒有 OAuth 憑證。Better Auth 的 session cookie 只是 `token.base64(HMAC-SHA256(secret, token))`，`secret` 就是 `.dev.vars` 的 `BETTER_AUTH_SECRET`，所以直接往本機 D1 塞 `user` + `session` 再算簽章就能登入。`node scripts/dev-login.mjs <email> [name]` 做這件事並印出要貼到瀏覽器 console 的 `document.cookie`；e-mail 在 `ADMIN_EMAILS` 裡就是 admin。只動 `.wrangler/state`，正式站用不到也用不了（secret 不同）。這輪就是用它對 `wrangler dev` 跑完整條 admin 流程（搜尋彙總、標記、刪除、恢復、404、非 admin 403）並確認 D1 列的變化。

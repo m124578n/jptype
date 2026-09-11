@@ -64,6 +64,7 @@
 		<p class="muted">{m.admin_lead()}</p>
 		<p class="row">
 			<a class="btn" href={resolve('/admin/contents')}>{m.admin_contents_title()}</a>
+			<a class="btn" href={resolve('/admin/users')}>{m.admin_users_title()}</a>
 		</p>
 	</header>
 

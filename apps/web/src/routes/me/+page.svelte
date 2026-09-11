@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { modeLabel } from '$lib/mode-label';
 	import { resolve } from '$app/paths';
 	import {
 		achievementStatsFromHistory,
@@ -102,24 +103,20 @@
 	);
 	const unlockedCount = $derived(achievements.filter((a) => a.unlocked).length);
 
-	function modeLabel(mode: string): string {
-		if (mode === 'weak') return m.me_mode_weak();
-		const [kind, a, b] = mode.split(':');
-		if (kind === 'timed') return `${m.nav_timed()} ${a} ${b}s`;
-		return `${m.nav_learn()} ${a ?? ''}`;
-	}
 	/** Unread first; a notice stays visible after it is read, it is a record. */
 	const unreadNotices = $derived(data.notices.filter((n) => n.readAt === null));
 
 	function noticeTitle(kind: string): string {
 		if (kind === 'song_removed') return m.notice_song_removed_title();
 		if (kind === 'suspended') return m.notice_suspended_title();
+		if (kind === 'reinstated') return m.notice_reinstated_title();
 		return m.notice_generic_title();
 	}
 
 	function noticeBody(kind: string): string {
 		if (kind === 'song_removed') return m.notice_song_removed_body();
 		if (kind === 'suspended') return m.notice_suspended_body();
+		if (kind === 'reinstated') return m.notice_reinstated_body();
 		return '';
 	}
 

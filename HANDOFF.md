@@ -1,10 +1,10 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型、M4-4 後台使用者管理之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
-M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
+M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
 
 ## 2. 新機器起手式
 
@@ -19,7 +19,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 ```
 
 - 本機 D1 是空的：排行榜、內容列表、後台都沒資料。要看排行榜可以先在 D1 塞測試列（之前的作法見 git log `feat(web): leaderboard`）。
-- 登入要 Google OAuth 憑證才跑得通；沒有時 `/login` 會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，其他頁面正常。
+- 登入要 Google OAuth 憑證才跑得通；沒有時 `/login` 會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，其他頁面正常。**本機繞過**：`cd apps/web && node scripts/dev-login.mjs m23568n@gmail.com` 會在本機 D1 塞使用者與 session 並印出 `document.cookie = …`，貼到瀏覽器 console 就是登入狀態（用 `ADMIN_EMAILS` 的 e-mail 就是 admin）。這樣 `/admin`、`/admin/contents`、`/admin/users`、`/me`、歌曲存 D1 的流程都能在本機看。
 - Admin = 登入者 email 在 `wrangler.jsonc` 的 `ADMIN_EMAILS`（目前 m23568n@gmail.com，用 Google 登入）。
 
 ## 3. 需要 owner 親自提供的東西（沒有這些就做不下去的項目）
@@ -37,6 +37,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
 
 ## 4. 待辦（依優先序）
+
+### 2026-09-11 已合併（M4-4 後台使用者管理）
+
+- `/admin/users`（搜尋 + 彙總）與 `/admin/users/[id]`（最近 50 場：標記 / 取消標記、刪除；清除下架紀錄恢復公開權限 → 站內通知）。`lib/server/admin-users/`，純函式 + 假 store 測試。細節與邊界見 DECISIONS「M4-4 後台」。
+- 驗證：型別、單元測試、build，並用 `scripts/dev-login.mjs` 造的 admin session 在 `wrangler dev` 上跑完整流程（真的打 D1）；瀏覽器畫面仍沒實測。
 
 ### 2026-09-11 已合併（M4-1c）
 
@@ -56,7 +61,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 - M4-5 AI（需要 key）：校對輔助、個人化錯誤建議、生成 N3 段落。
 - M3 剩餘：Azure TTS 批次（需要 key）、AI 分級文章（需要 key）、多人競速（Durable Objects，要另開規格）。
 - 無提示加成（關閉羅馬字提示 ×1.1）：規格允許不做，待 owner 決定。分數公式是否加 Combo 係數：待 owner 決定（現在是 `kpm × accuracy²`）。
-- 尚未在真實瀏覽器驗證過的互動（agent 只做了型別檢查與單元測試）：後台匯入（首次載入 17 MB 字典）、Line Editor、歌曲公開開關與套用共享時間軸、`/admin` 下架與 `/me` 通知、`/listen` 語音、YouTube 同步與對時工具。
+- 尚未在真實瀏覽器驗證過的互動（agent 只做了型別檢查與單元測試；現在有 `scripts/dev-login.mjs` 可以本機登入，owner 可自己點一輪）：`/admin/users` 兩頁、後台匯入（首次載入 17 MB 字典）、Line Editor、歌曲公開開關與套用共享時間軸、`/admin` 下架與 `/me` 通知、`/listen` 語音、YouTube 同步與對時工具。
 - 正式站前：Google Fonts 目前用 `<link>` 載入（可改自架）；`user.plan` 欄位有預留但無付費功能。
 
 ## 5. 架構速覽
@@ -75,6 +80,8 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 - drizzle-kit 重建 sqlite 表時會把 `sql\`DESC\`` 索引欄寫壞成 `` `"score" DESC` ``，手動改回 `` `score` DESC ``。
 - pnpm 12 Windows 長路徑：`peersSuffixMaxLength: 40` 已設。
 - adapter-cloudflare 會把 bundle 寫到它讀到的 wrangler config 的 `main`，所以 adapter 專用 `wrangler.adapter.jsonc`。
+- `pnpm build` 的 EBUSY 不一定是 dev server：preview 用的 `wrangler dev` 被砍掉後 workerd / esbuild 子程序可能還在（要 `taskkill /T` 整棵），而且鎖偶爾會殘留幾秒；手動 `Remove-Item -Recurse .svelte-kitcloudflare` 成功後再 build 就好。
+- `pnpm exec wrangler d1 execute --command "<很長的多行 SQL>"` 在 Windows 會 `ERR_PNPM_CLI_EXEC_SPAWN`（命令列太長），改用 `--file`。
 - drizzle-kit `generate` 遇到同一張表「刪一欄 + 加一欄」會問是不是改名，這個提示需要 TTY，在 Claude 的 shell 裡跑不了（`drizzle-kit/api` 也一樣）。這種 migration 就手寫 SQL，再用 `apps/web/scripts/gen-migration.mjs <NNNN_name>` 產 snapshot 與 journal（它只呼叫 `generateSQLiteDrizzleJson`，不 diff）。純加欄位的 migration 照舊 `pnpm --filter web db:generate`。
 - `vite-plugin-static-copy` 在 Windows 會重建來源路徑，改用 `apps/web/scripts/copy-kuromoji-dict.mjs`；dev 另有 middleware 讓 `.gz` 原樣送出。
 

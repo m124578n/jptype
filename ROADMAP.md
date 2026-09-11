@@ -102,7 +102,7 @@
 
 - ✅ 內容列表 `/contents`：搜尋、類型、JLPT、難度篩選（可疊加、全部寫在網址 `?type=&jlpt=&difficulty=&q=&page=`）；卡片顯示 YouTube 縮圖（沒有影片就用類型圖示）、標籤、個人最佳（localStorage `content:{id}`）；空狀態可一鍵清除篩選；「最近練過」帶出本機最近 6 筆 `content:*` / `song:*`
 - ✅ 首頁改版：Hero（未登入加「不用帳號也能開始練習」）+ 五張分類入口卡（課程 / 計時賽 / 內容 / 聽打 / 歌詞）+ 你的進度（未登入讀 localStorage：今天練了幾項、跨模式最佳分數、課程完成數；已登入導向 `/me`）+ 本週前 5
-- 🔨 Admin：內容 CRUD、發布 / 下架 ✅（`/admin/contents`，沿用 `ADMIN_EMAILS`，沒有新增 `user.role`）；使用者與練習紀錄管理 ⬜
+- ✅ Admin：內容 CRUD、發布 / 下架（`/admin/contents`，沿用 `ADMIN_EMAILS`，沒有新增 `user.role`）；使用者與練習紀錄管理（**2026-09-11**）：`/admin/users` 用 e-mail / 名稱搜尋（場次、最近練習、下架次數、歌曲數），`/admin/users/[id]` 看最近 50 場並可標記 / 取消標記防作弊（立即清該榜 KV 快取）、刪除場次（連 R2 keylog）、清除下架紀錄恢復公開權限（站內通知 `reinstated`，已下架的歌不復原）；API `/api/admin/users*`、`/api/admin/runs/[id]`；不顯示歌詞與鍵盤紀錄
 - ✅ Line Editor：`/admin/contents/[id]` 播放器旁逐句設定 start / end（「用目前時間填入」）、改假名與羅馬字（打不出來的字會標紅）、上移下移刪除新增
 - ⬜ 分析事件：內容瀏覽、開始練習、完成練習（核心指標 = 開始 → 完成的轉換率）
 

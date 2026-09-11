@@ -39,3 +39,6 @@ Thumbs.db
 
 # kuromoji dictionary copied from node_modules by apps/web/scripts/copy-kuromoji-dict.mjs
 apps/web/static/dict/
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -696,4 +696,4 @@ M4-1c 已把歌併進 `contents`，所以「不限歌曲」只是：`SongRecord.
 
 owner 從五個提案裡選了 **ぱちぱち**（鍵盤敲擊聲，也是拍手聲；好記、可愛、中文圈也念得出來）。`app_name` 改為「ぱちぱち」，網頁 title 維持「日文打字練習」（SEO 用字），`og:site_name` 是「ぱちぱち｜日文打字練習」，manifest 名稱「ぱちぱち — 日文打字練習」，JSON-LD 的 alternateName 列 ぱちぱち / pachipachi / jptype。repo、套件與程式識別字維持 jptype，不改。
 
-Logo 設計見 `design-system/jptype/MASTER.md`「Logo」：鍵帽 + ぱ + 三道敲擊線。選「ぱ」而不是「あ」是因為站名的第一個音就是它，半濁點的圈又剛好像一顆按鍵指示燈。PNG 也做出來了：`scripts/brand.mjs` 用 fontkit 把 Noto Sans CJK JP Bold 的字形轉成 path、resvg-wasm 點陣化，純 JS 不需要系統字型或原生工具；產出 icon 192／512、apple-touch-icon、og.png，`<head>` 已接上 `og:image`／`twitter:card=summary_large_image`／`apple-touch-icon`，manifest 也列了 PNG。字型檔不進 git（17 MB），首次執行前照腳本開頭的指令下載一次。
+Logo：先做了單鍵版，owner 說「給我幾版讓我挑」，用同一條管線出了六案（單鍵、圓鍵、字標、對話氣泡、雙鍵、線框，各附淺深色、16–32px、header 組合、分頁模擬）做成比較頁，owner 選**雙鍵「ぱ・ち」**。定稿見 `design-system/jptype/MASTER.md`「Logo」。PNG 也做出來了：`scripts/brand.mjs` 用 fontkit 把 Noto Sans CJK JP Bold 的字形轉成 path、resvg-wasm 點陣化，純 JS 不需要系統字型或原生工具；產出 icon 192／512、apple-touch-icon、og.png，`<head>` 已接上 `og:image`／`twitter:card=summary_large_image`／`apple-touch-icon`，manifest 也列了 PNG。字型檔不進 git（17 MB），首次執行前照腳本開頭的指令下載一次。

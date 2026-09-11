@@ -40,7 +40,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ### 2026-09-11 已合併（logo / SEO、中高階與實用內容）
 
-- 站名定為「ぱちぱち」（app_name；title 仍是「日文打字練習」），logo 重做：鍵帽 + ぱ + 三道敲擊線，規範在 design-system/jptype/MASTER.md「Logo」。
+- 站名定為「ぱちぱち」（app_name；title 仍是「日文打字練習」），logo 定稿為雙鍵「ぱ・ち」（owner 從六案中選），規範在 design-system/jptype/MASTER.md「Logo」。
 
 - 首頁 title「日文打字練習」、其餘「段落 · 日文打字練習」；logo 是 teal 鍵帽上一個あ（`Logo.svelte`、`static/icon.svg`、favicon、manifest）；每頁 description / canonical / OG / Twitter（`lib/seo.ts`），`/admin` `/me` `/login` `/library` noindex，`/sitemap.xml`、robots.txt、首頁 JSON-LD。PNG（icon 192／512、apple-touch-icon、og.png）由 `pnpm --filter web brand` 產生（fontkit + resvg-wasm，字型放 `apps/web/.cache/fonts/`，見腳本開頭）。
 - `@jptype/data` 新增 N4–N1 單字各 100、N4–N1 句子各 20、商用書信 30 句、網路用語 60；課程地圖多三組 10 課（共 40 課），計時賽多 `n4` `n3` `n2` `n1` `slang` 題庫（27 個榜）。內容是我寫的，**讀音、翻譯與網路用語的時效請 owner 抽查**。

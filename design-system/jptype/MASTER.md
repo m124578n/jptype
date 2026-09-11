@@ -78,8 +78,8 @@ Inline SVG (Lucide outlines, 20px, stroke 1.75). No emoji as icons.
 
 ## Logo（2026-09-11，站名「ぱちぱち」）
 
-- **Mark**：一顆鍵帽（accent 色的帽面 + 深 28% 的底座，做出按鍵厚度），帽面上一個粗體「ぱ」（on-accent 色，偏左），右上角三道短線是敲鍵聲——ぱちぱち 既是鍵盤聲也是拍手聲。64×64 viewBox，最小可用 16px（favicon 時三道線退成一個小點也還認得出鍵帽）。
+- **Mark（雙鍵，owner 2026-09-11 從六案中選定）**：兩顆鍵帽一前一後——前面 accent 色的鍵上粗體「ぱ」，右下方深 28% 的鍵上「ち」，前鍵右上角兩道 accent 色短線是敲鍵聲。ぱ・ち 是站名的一半，兩顆鍵就是「一鍵接一鍵」。64×64 viewBox；前鍵 (2,14) 30×30 r8，後鍵 (33,24) 29×29 r8，字形 ぱ 19px 基線 34、ち 18px 基線 44。最小可用 16px。另外五案（單鍵、圓鍵、字標、氣泡、線框）留在 session 的比較頁，沒有採用。
 - **Wordmark**：「ぱちぱち」Noto Sans JP 700，字距 0.02em，高度為 mark 的 0.7。header 用 mark + wordmark；favicon、manifest、社群縮圖只用 mark。
 - **顏色**：只用 `--accent` / `--on-accent`，深淺模式自動對調（`Logo.svelte` 用 CSS 變數；`static/icon.svg` 固定 #0D9488 / #0A6B62 / #FFFFFF）。不做漸層、不加陰影、不加外框。
-- **禁止**：把「ぱ」換成別的假名、改成多色、旋轉、加光暈。
+- **禁止**：換掉假名、改成多色、旋轉、加光暈、把兩顆鍵拆開使用。
 - **產生方式**：`pnpm --filter web brand`（`apps/web/scripts/brand.mjs`）。「ぱ」與社群卡的文字用 fontkit 從 Noto Sans CJK JP Bold（SIL OFL，放在 git-ignored 的 `apps/web/.cache/fonts/`）轉成 SVG path，所以 logo 不依賴使用者的字型；PNG 用 resvg 的 WASM 版點陣化。產出：`static/icon.svg`（= `src/lib/assets/favicon.svg`）、`src/lib/assets/logo-glyph.ts`（`Logo.svelte` 用的 path）、`static/icon-192.png`、`static/icon-512.png`、`static/apple-touch-icon.png`（180，淺色底）、`static/og.png`（1200×630：鍵帽 + ぱちぱち + 日文打字練習 + 一條主色線）。改 logo 就改 `brand.mjs` 裡的 `markSvg` 再跑一次。

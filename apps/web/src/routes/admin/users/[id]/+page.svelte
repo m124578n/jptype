@@ -141,7 +141,12 @@
 								<td class="num">{formatAccuracy(run.accuracy)}</td>
 								<td class="num">{formatDuration(run.durationMs)}</td>
 								<td class="num">{run.maxCombo ?? '—'}</td>
-								<td>{run.flagged ? m.admin_runs_flagged() : m.admin_runs_clean()}</td>
+								<td>
+									{run.flagged ? m.admin_runs_flagged() : m.admin_runs_clean()}
+									{#if run.unrankedReason === 'accuracy'}
+										<span class="muted small">{m.admin_runs_unranked_accuracy()}</span>
+									{/if}
+								</td>
 								<td>
 									<div class="row actions">
 										<button

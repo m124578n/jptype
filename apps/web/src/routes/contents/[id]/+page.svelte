@@ -70,6 +70,7 @@
 	let newBest = $state(false);
 	let skippedLines = $state(0);
 	let rank = $state<number | null>(null);
+	let unranked = $state<'accuracy' | null>(null);
 	/** A sync run with skipped or replayed lines cannot be verified server-side; it stays local. */
 	let localOnly = $state(false);
 
@@ -159,6 +160,7 @@
 		newBest = false;
 		skippedLines = 0;
 		rank = null;
+		unranked = null;
 		localOnly = false;
 		lastTime = Number.NaN;
 		lineErrors = {};
@@ -219,6 +221,7 @@
 			turnstileSiteKey: data.turnstileSiteKey
 		});
 		rank = response?.rank ?? null;
+		unranked = response?.unranked ?? null;
 	}
 
 	function finishSync() {
@@ -559,6 +562,8 @@
 			</p>
 		{:else if localOnly}
 			<p class="center muted small">{m.contents_local_only()}</p>
+		{:else if unranked === 'accuracy'}
+			<p class="center muted small">{m.result_unranked_accuracy()}</p>
 		{:else if rank !== null}
 			<p class="center muted">{m.contents_rank({ rank })}</p>
 		{/if}

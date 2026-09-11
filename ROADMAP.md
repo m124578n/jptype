@@ -42,7 +42,7 @@
 - ✅ Cron（週一 00:00 台北）：上週 9 個計時榜前 100 快照到 KV `lbsnap:*`、刪 90 天前 R2 keylog；自訂 worker entry 包住 SvelteKit `_worker.js`
 - ✅ `GET /api/me/stats`、`/me`：總場次、連續天數、近 30 天、弱項清單、五十音錯字熱圖（清音 / 濁音 / 拗音）、最近 20 場；未登入顯示本機 localStorage 版本
 - ✅ 弱項練習 `/learn/weak`（errors/attempts > 0.2 且 attempts ≥ 3，隨機補足到 20 題；mode `weak` 可送分）
-- ⬜ 無提示加成（關閉羅馬字提示 ×1.1）— 規格允許第一版不做，留到 review 後決定
+- ❌ 無提示加成（關閉羅馬字提示 ×1.1）— **不做**（owner 2026-09-11）：提示開關不在 log 裡，伺服器驗不了，會變成免費 10%；見 DECISIONS「分數規則定案」
 
 ## M3 — 內容擴充（2026-09-10 開工，三塊平行由 Opus agent 實作）
 
@@ -51,7 +51,7 @@
 - ✅ C. 歌詞打字 `/songs`：嵌 youtube-nocookie 官方播放器（只存 11 字元影片 id）+ 使用者自貼假名歌詞（漢字會被擋下並指出行號），只存 localStorage、不送伺服器、不進榜；`/songs/[id]` 逐行打（前後行淡顯）
   - ✅ 同步模式（唱到哪打到哪）：`lines` 改成 `{ text, start? }`（秒），`parseLyrics` 吃 LRC `[mm:ss.xx]`／`[mm:ss]`（一行多標籤會複製該行）、裸 `mm:ss`／`hh:mm:ss` 前綴、metadata 與 enhanced 標籤會丟掉；YouTube IFrame Player API 每 100 ms 回報時間，`start <= t` 的最後一行就是目前句，沒打完也跟著走（結果頁顯示跳過句數），暫停時不吃鍵、Seek 會重開該行的 `TypingSession`；倒數 3-2-1-START、Space 播放／暫停、Esc 離開、Ctrl+R 重來。模式（同步／自由）記在 localStorage
   - ✅ 對時工具 `/songs/[id]/timing`：時間標記不靠任何網站，使用者邊播邊按 Space 打點（每行 ±0.5 秒微調、「從這句重播」、上一句重打、全部重來），存回該首歌的 `lines[].start`；兩行以上有時間才開放同步模式
-- ⬜ Azure Speech 批次音檔 → R2（需要 owner 的 Azure key；瀏覽器 TTS 先頂著）
+- ⬜ 批次音檔 → R2（瀏覽器 TTS 先頂著）：**待 owner 選路線**（Azure F0 免費層 vs. VOICEVOX 本機產檔），調查結果在 DECISIONS「TTS 路線」
 - ⬜ AI 生成分級文章（離線 + 人工校對，需要 API key）
 - ⬜ 多人競速房（Durable Objects，另開規格）
 
@@ -94,7 +94,7 @@
 - ✅ 錯誤分析：最常錯的假名、最常錯的拼法（如 shi → si）— `lib/practice/errors.ts`，結果頁各列前 5
 - ✅ 結果頁補：Time、Max Combo、Errors、最常錯誤（`ResultPanel` 可選 props，既有呼叫端不受影響）
 - ✅ 每個內容的排行榜：mode `content:{id}` 直接沿用既有排行榜（KV 快取、週榜 / 總榜），`/leaderboard?mode=content:{id}` 顯示內容標題；草稿內容的成績一律被擋掉
-- ⬜ Accuracy ≥ 90% 才算有效成績；分數公式是否加 Combo 係數 **[待確認]**（現行 §6.5 是 kpm × accuracy²）
+- ✅ Accuracy ≥ 90% 才進榜（**2026-09-11**）：未達的場次照存、照算 kana_stats，但 `runs.unranked_reason = 'accuracy'`（migration `0007_unranked_reason`）不進任何榜，結果頁明講原因（跟 anticheat 不同）；分數公式**維持** `kpm × accuracy²`，不加 Combo 係數（owner 2026-09-11）
 - ✅ 個人統計補：今日 / 本週練習時間、近 30 天平均 Accuracy / KPM（登入走 D1，未登入走 localStorage 的 200 筆滾動紀錄，共用 `lib/stats.ts`）
 - ✅ 簡單成就：First Practice、100 Combo、KPM ≥ 100、Perfect、10 次練習（`lib/achievements.ts` 純推導，不另開表；`runs.max_combo` migration `0004_achievements`）
 

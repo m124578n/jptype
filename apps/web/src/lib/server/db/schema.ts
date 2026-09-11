@@ -32,6 +32,9 @@ export const runs = sqliteTable(
 		maxCombo: integer('max_combo'),
 		week: text('week').notNull(), // 'YYYY-Www' in Asia/Taipei
 		flagged: integer('flagged').notNull().default(0), // 1 → anticheat suspect
+		// Why an otherwise honest run stays off the leaderboard; null → ranked. 'accuracy' = below
+		// the 90 % floor (DECISIONS「分數規則定案」). Unlike `flagged`, the reason is shown to the user.
+		unrankedReason: text('unranked_reason'),
 		createdAt: integer('created_at').notNull() // epoch ms
 	},
 	(t) => [

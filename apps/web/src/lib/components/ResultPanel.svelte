@@ -14,6 +14,7 @@
 		retryLabel = m.result_retry(),
 		showPracticeWrong = true,
 		rank,
+		unranked,
 		durationMs,
 		maxCombo,
 		errors
@@ -27,6 +28,8 @@
 		showPracticeWrong?: boolean;
 		/** Weekly rank from the server (logged-in, unflagged runs only). */
 		rank?: number | undefined;
+		/** Why the server kept the run off the boards ('accuracy' = under 90 %). */
+		unranked?: 'accuracy' | undefined;
 		/** Typing time of the run (M4-3). Omitted → the Time tile is hidden. */
 		durationMs?: number | undefined;
 		/** Longest streak of correct keys (M4-3). Omitted → the Max Combo tile is hidden. */
@@ -55,6 +58,9 @@
 		{#if newBest}<span class="badge">{m.result_new_best()}</span>{/if}
 		{#if rank !== undefined}<span class="badge">{m.result_rank({ rank })}</span>{/if}
 	</div>
+	{#if unranked === 'accuracy'}
+		<p class="muted unranked">{m.result_unranked_accuracy()}</p>
+	{/if}
 
 	<dl class="stats">
 		<div>
@@ -139,6 +145,10 @@
 </section>
 
 <style>
+	.unranked {
+		margin: 0;
+		font-size: 0.875rem;
+	}
 	.result {
 		gap: var(--space-8);
 	}

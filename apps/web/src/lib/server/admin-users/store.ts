@@ -38,6 +38,8 @@ export interface AdminRun {
 	maxCombo: number | null;
 	week: string;
 	flagged: boolean;
+	/** 'accuracy' when the run was under the 90 % floor (stored, never ranked). */
+	unrankedReason: string | null;
 	createdAt: number;
 }
 
@@ -82,6 +84,7 @@ function toRun(row: typeof runs.$inferSelect): AdminRun {
 		maxCombo: row.maxCombo ?? null,
 		week: row.week,
 		flagged: row.flagged === 1,
+		unrankedReason: row.unrankedReason ?? null,
 		createdAt: row.createdAt
 	};
 }

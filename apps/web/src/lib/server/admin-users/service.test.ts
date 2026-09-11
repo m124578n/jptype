@@ -43,6 +43,7 @@ function run(over: Partial<AdminRun> = {}): AdminRun {
 		maxCombo: 80,
 		week: '2026-W37',
 		flagged: false,
+		unrankedReason: null,
 		createdAt: NOW - 1000,
 		...over
 	};

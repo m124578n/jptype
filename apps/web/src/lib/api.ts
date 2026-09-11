@@ -16,6 +16,8 @@ export interface RunResponse {
 	kpm: number;
 	accuracy: number;
 	rank?: number;
+	/** Stored but not ranked, and why: 'accuracy' = under the 90 % floor. */
+	unranked?: 'accuracy';
 }
 
 /** POST /api/runs. Resolves to null on any failure; the UI keeps its local result. */

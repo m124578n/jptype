@@ -147,6 +147,36 @@ describe('submitRun', () => {
 		expect(invalidated).toEqual([]);
 	});
 
+	it('keeps a run under 90 % accuracy off the boards, and says so', async () => {
+		// Two wrong keys out of five: 60 % accuracy, an honest but sloppy run.
+		const sloppy = { ...HONEST, log: record('あ\nい\nう', 'xaxiu') };
+		sloppy.durationMs = (sloppy.log.at(-1)?.t ?? 0) - (sloppy.log[0]?.t ?? 0);
+		const { store, inserted, kanaCalls } = fakeStore();
+		const { d, invalidated } = deps(store);
+		const r = await submitRun('u1', sloppy, d);
+		if (!r.ok) throw new Error(r.error);
+		expect(r.body.accuracy).toBeCloseTo(0.6);
+		expect(r.body.unranked).toBe('accuracy');
+		expect(r.body.rank).toBeUndefined();
+		expect(inserted[0]).toMatchObject({ flagged: 0, unrankedReason: 'accuracy' });
+		expect(kanaCalls).toHaveLength(1); // the mistakes still feed the weak-spot stats
+		expect(invalidated).toEqual([]);
+	});
+
+	it('ranks a run at exactly 90 % and stores no reason on a clean one', async () => {
+		// Nine right, one wrong: exactly the floor, which still counts.
+		const border = { ...HONEST, text: 'あ\nい\nう\nえ\nお\nあ\nい\nう\nえ' };
+		border.log = record(border.text, 'xaiueoaiue');
+		border.durationMs = (border.log.at(-1)?.t ?? 0) - (border.log[0]?.t ?? 0);
+		const { store, inserted } = fakeStore();
+		const { d } = deps(store);
+		const r = await submitRun('u1', border, d);
+		if (!r.ok) throw new Error(r.error);
+		expect(r.body.unranked).toBeUndefined();
+		expect(r.body.rank).toBe(3);
+		expect(inserted[0]?.unrankedReason).toBeNull();
+	});
+
 	it('flags cheaters silently: stored with flagged=1, no rank, no invalidation', async () => {
 		const { store, inserted, kanaCalls } = fakeStore({ countRunsSince: async () => 25 });
 		const { d, invalidated } = deps(store);

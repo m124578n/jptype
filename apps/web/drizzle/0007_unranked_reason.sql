@@ -1,0 +1,1 @@
+ALTER TABLE `runs` ADD `unranked_reason` text;

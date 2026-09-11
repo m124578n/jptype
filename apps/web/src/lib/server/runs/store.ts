@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, isNotNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../db/index.ts';
 import { kanaStats, runs, user, type NewRun } from '../db/schema.ts';
 
@@ -31,10 +31,12 @@ export interface RunStore {
 	userBest(mode: string, week: string | null, userId: string): Promise<number | null>;
 }
 
+/** A run counts for the boards when it is signed in, not flagged and not under the accuracy floor. */
 function rankedFilter(mode: string, week: string | null) {
 	return and(
 		eq(runs.mode, mode),
 		eq(runs.flagged, 0),
+		isNull(runs.unrankedReason),
 		isNotNull(runs.userId),
 		week === null ? undefined : eq(runs.week, week)
 	);

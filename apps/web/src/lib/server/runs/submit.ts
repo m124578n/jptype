@@ -18,13 +18,18 @@ export interface RunSubmission {
 	maxCombo?: number;
 }
 
+/** Why an honest run is kept off the boards. Shown to the user, unlike an anticheat flag. */
+export type UnrankedReason = 'accuracy';
+
 export interface RunResponse {
 	runId: string;
 	score: number;
 	kpm: number;
 	accuracy: number;
-	/** Present for logged-in, unflagged runs: rank on the weekly board. */
+	/** Present for logged-in, unflagged, ranked runs: rank on the weekly board. */
 	rank?: number;
+	/** Present when the run was stored but does not count for the boards (DECISIONS「分數規則定案」). */
+	unranked?: UnrankedReason;
 }
 
 export type SubmitResult =
@@ -46,6 +51,13 @@ export interface SubmitDeps {
 }
 
 export const MAX_LOG_EVENTS = 6000;
+/** Below this accuracy a run is stored but never ranked (owner decision 2026-09-11). */
+export const MIN_RANKED_ACCURACY = 0.9;
+
+/** The reason a run stays off the boards, or null when it is eligible. */
+export function unrankedReasonFor(accuracy: number): UnrankedReason | null {
+	return accuracy < MIN_RANKED_ACCURACY ? 'accuracy' : null;
+}
 export const MAX_TEXT_CHARS = 4000;
 const FIVE_MINUTES = 5 * 60 * 1000;
 
@@ -125,6 +137,7 @@ export async function submitRun(
 		recentRuns
 	});
 	const flagged = reasons.length > 0;
+	const unranked = unrankedReasonFor(result.accuracy);
 
 	const runId = (deps.newId ?? ulid)(now);
 	const week = weekOf(now);
@@ -142,6 +155,7 @@ export async function submitRun(
 		maxCombo: maxComboFromLog(sub.log),
 		week,
 		flagged: flagged ? 1 : 0,
+		unrankedReason: unranked,
 		createdAt: now
 	});
 	await deps.putLog(runId, sub.log);
@@ -152,10 +166,12 @@ export async function submitRun(
 		kpm: result.kpm,
 		accuracy: result.accuracy
 	};
+	if (unranked) body.unranked = unranked;
 
 	if (userId) {
 		await deps.store.upsertKanaStats(userId, outcomes, now);
-		if (!flagged) {
+		// An anticheat flag stays silent; the accuracy floor is told to the user (`unranked`).
+		if (!flagged && !unranked) {
 			const hundredth = await deps.store.hundredthScore(sub.mode, week);
 			if (hundredth === null || result.score >= hundredth) {
 				await deps.invalidateLeaderboard(sub.mode, week);

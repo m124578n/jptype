@@ -1,6 +1,6 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型、M4-4 後台使用者管理與分析事件之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-11（M4-1c、M4-4 後台與分析事件、分數規則定案之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
@@ -12,7 +12,7 @@ M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排�
 # Node 22（.node-version 會讓 fnm/nvm 自動切）、pnpm 12
 pnpm install                      # prepare 會：複製 kuromoji 字典到 apps/web/static/dict、編譯 Paraglide、svelte-kit sync
 cp apps/web/.dev.vars.example apps/web/.dev.vars   # 填 BETTER_AUTH_SECRET（任意 32 bytes 隨機字串）；Google 憑證有就填
-pnpm --filter web db:migrate:local                 # 套 0000–0006 到本機 D1（.wrangler/state）
+pnpm --filter web db:migrate:local                 # 套 0000–0007 到本機 D1（.wrangler/state）
 pnpm dev                                           # http://localhost:5173（Vite + Cloudflare 綁定模擬）
 pnpm run ci                                        # lint → typecheck → 資料驗證 → 測試（含覆蓋率門檻）→ build
 pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 出來的 worker（含 cron：/__scheduled?cron=0+16+*+*+0 需 --test-scheduled）
@@ -38,6 +38,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
+### 2026-09-11 已合併（分數規則定案）
+
+- owner 拍板：無提示加成不做、Combo 係數不加、公開歌曲不進榜、**Accuracy ≥ 90% 才進榜**（`runs.unranked_reason`，migration `0007_unranked_reason`；結果頁會明講）。理由在 DECISIONS「分數規則定案」。
+- TTS 路線（Azure F0 vs. VOICEVOX）調查完成，**待 owner 決定**，見 DECISIONS「TTS 路線」。
+
 ### 2026-09-11 已合併（M4-4 分析事件）
 
 - `content_events_daily`（migration `0006_content_events`，drizzle-kit CLI 直接產，純加表不會問）：view / start / complete 每日次數，不存人。`lib/server/events/`；`POST /api/events`（beacon）；`/contents/[id]` load 計 view、頁面第一個鍵計 start、`finish()` 計 complete；`/admin/contents` 多四欄（近 30 天）。見 DECISIONS「分析事件」。
@@ -62,10 +67,9 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ### 明確還沒做
 
-- 公開歌曲要不要有自己的排行榜（現在 `content:{歌曲id}` 一律被擋，維持 M3 C「不進榜」）：待 owner 決定，見 DECISIONS「M4-1c」。
+- TTS 批次音檔的路線（Azure F0 或 VOICEVOX）與聲音偏好：待 owner 決定，見 DECISIONS「TTS 路線」；決定後寫 `scripts/tts-batch.ts` + R2 上傳 + 前端「有音檔就播，沒有就用瀏覽器語音」。
 - M4-5 AI（需要 key）：校對輔助、個人化錯誤建議、生成 N3 段落。
 - M3 剩餘：Azure TTS 批次（需要 key）、AI 分級文章（需要 key）、多人競速（Durable Objects，要另開規格）。
-- 無提示加成（關閉羅馬字提示 ×1.1）：規格允許不做，待 owner 決定。分數公式是否加 Combo 係數：待 owner 決定（現在是 `kpm × accuracy²`）。
 - 尚未在真實瀏覽器驗證過的互動（agent 只做了型別檢查與單元測試；現在有 `scripts/dev-login.mjs` 可以本機登入，owner 可自己點一輪）：`/admin/users` 兩頁、後台匯入（首次載入 17 MB 字典）、Line Editor、歌曲公開開關與套用共享時間軸、`/admin` 下架與 `/me` 通知、`/listen` 語音、YouTube 同步與對時工具。
 - 正式站前：Google Fonts 目前用 `<link>` 載入（可改自架）；`user.plan` 欄位有預留但無付費功能。
 

@@ -389,7 +389,6 @@
 		</p>
 	</header>
 
-	t
 	<div class="board" class:live={result === null && videoId !== ''}>
 		{#if videoId !== ''}
 			<div class="stage">
@@ -582,7 +581,6 @@
 				<a class="btn" href={resolve('/contents')}>{m.contents_back()}</a>
 			</p>
 		{/if}
-		t
 	</div>
 
 	{#if data.content.sourceName !== '' || data.content.sourceUrl !== '' || data.content.license !== ''}

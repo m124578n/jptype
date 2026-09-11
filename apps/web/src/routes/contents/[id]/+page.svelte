@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { trackContentEvent } from '$lib/events';
 	import type { LessonHint } from '@jptype/data';
 	import { contentMode } from '@jptype/data';
@@ -96,12 +96,10 @@
 		return Object.keys(lineSeen).map((text) => ({ text, errors: lineErrors[text] ?? 0 }));
 	}
 
-	/** idle → countdown (3-2-1-START) → running; free mode stays 'running'. */
-	let phase = $state<'idle' | 'countdown' | 'running'>('idle');
+	/** idle → running (the video plays and the lyric countdown is driven by its clock); free mode stays 'running'. */
+	let phase = $state<'idle' | 'running'>('idle');
 	/** Whether this run has counted its `start` (the first key); reset with the run. */
 	let started = false;
-	let countdown = $state(3);
-	let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 	let controller = $state<PlayerController | undefined>(undefined);
 	let playerState = $state<PlayerStateName>('unstarted');
@@ -114,7 +112,8 @@
 
 	/** A jump larger than this between 100 ms ticks can only be a seek. */
 	const SEEK_JUMP_S = 1.5;
-	const COUNTDOWN_MS = 700;
+	/** A wait longer than this reads as an intro / interlude: show the seconds, not a 3-2-1. */
+	const COUNTDOWN_FROM_S = 3;
 
 	const active = $derived<PracticeRun | SongSyncRun | null>(practiceMode === 'sync' ? sync : run);
 	/** Errors the stored record has for the line being typed now; 0 hides the note. */
@@ -130,8 +129,6 @@
 		reset();
 	});
 
-	onDestroy(clearCountdown);
-
 	$effect(() => {
 		sound.enabled = settings.sound;
 		sound.volume = settings.volume;
@@ -142,11 +139,6 @@
 		saveSettings(settings);
 	}
 
-	function clearCountdown() {
-		if (countdownTimer !== null) clearInterval(countdownTimer);
-		countdownTimer = null;
-	}
-
 	function chooseMode(next: Mode) {
 		if (practiceMode === next) return;
 		practiceMode = next;
@@ -154,7 +146,6 @@
 	}
 
 	function reset() {
-		clearCountdown();
 		started = false;
 		result = null;
 		newBest = false;
@@ -180,19 +171,23 @@
 		}
 	}
 
+	/** Play at once; the countdown to the first line follows the video clock (see `waiting`). */
 	function startSync() {
 		if (practiceMode !== 'sync' || !sync || phase !== 'idle') return;
-		clearCountdown();
-		countdown = 3;
-		phase = 'countdown';
-		countdownTimer = setInterval(() => {
-			countdown -= 1;
-			if (countdown >= 0) return;
-			clearCountdown();
-			phase = 'running';
-			controller?.play();
-		}, COUNTDOWN_MS);
+		phase = 'running';
+		controller?.play();
 	}
+
+	/** Seconds until the line the typist is waiting for (intro / interlude), from the video clock. */
+	const waiting = $derived.by(() => {
+		const s = sync;
+		if (!s || practiceMode !== 'sync' || phase !== 'running' || result !== null) return null;
+		const at = s.waitingFor;
+		if (at === null) return null;
+		const remaining = at - s.position;
+		if (remaining <= 0) return null;
+		return { remaining, intro: s.pending && s.index === 0 };
+	});
 
 	/**
 	 * Score locally, then send the run to the server (spec §8): signed in it is ranked per
@@ -282,7 +277,6 @@
 				startSync();
 				return;
 			}
-			if (phase === 'countdown') return;
 			if (e.key === ' ' && s.nextKey !== ' ') {
 				e.preventDefault();
 				togglePlay();
@@ -334,7 +328,7 @@
 <svelte:head><title>{data.content.title} · {m.app_name()}</title></svelte:head>
 <svelte:window {onkeydown} />
 
-<div class="container stack content">
+<div class="container container--wide stack content">
 	<header class="stack head">
 		<a class="muted back" href={resolve('/contents')}>← {m.contents_back()}</a>
 		<h1>{data.content.title}</h1>
@@ -395,57 +389,128 @@
 		</p>
 	</header>
 
-	{#if videoId !== ''}
-		<div class="stage">
-			<YouTubePlayer
-				{videoId}
-				title={data.content.title}
-				bind:controller
-				ontime={onPlayerTime}
-				onstate={onPlayerState}
-				onfail={() => (playerFailed = true)}
-			/>
-			{#if practiceMode === 'sync' && phase === 'countdown'}
-				<div class="countdown" aria-live="assertive">
-					<span>{countdown > 0 ? countdown : m.contents_countdown_go()}</span>
-				</div>
+	t
+	<div class="board" class:live={result === null && videoId !== ''}>
+		{#if videoId !== ''}
+			<div class="stage">
+				<YouTubePlayer
+					{videoId}
+					title={data.content.title}
+					bind:controller
+					ontime={onPlayerTime}
+					onstate={onPlayerState}
+					onfail={() => (playerFailed = true)}
+				/>
+				{#if waiting !== null}
+					<div
+						class="countdown"
+						class:far={waiting.remaining > COUNTDOWN_FROM_S}
+						aria-live="polite"
+					>
+						{#if waiting.remaining > COUNTDOWN_FROM_S}
+							<span class="gap">
+								{waiting.intro ? m.songs_sync_intro() : m.songs_sync_interlude()}
+								· {m.songs_sync_next_in({ seconds: Math.ceil(waiting.remaining) })}
+							</span>
+						{:else}
+							<span>{Math.ceil(waiting.remaining)}</span>
+						{/if}
+					</div>
+				{/if}
+			</div>
+			{#if playerFailed}
+				<p class="muted small center">{m.songs_player_failed()}</p>
 			{/if}
-		</div>
-		{#if playerFailed}
-			<p class="muted small center">{m.songs_player_failed()}</p>
 		{/if}
-	{/if}
 
-	{#if result === null && practiceMode === 'sync' && sync}
-		<section class="stack practice">
-			{#if phase === 'idle'}
-				<p class="center">
-					<button type="button" class="btn btn--primary" onclick={startSync}>
-						{m.contents_sync_start()}
-					</button>
-				</p>
-				<p class="muted small center">{m.contents_keys()}</p>
-			{:else}
+		{#if result === null && practiceMode === 'sync' && sync}
+			<section class="stack practice">
+				{#if phase === 'idle'}
+					<p class="center">
+						<button type="button" class="btn btn--primary" onclick={startSync}>
+							{m.contents_sync_start()}
+						</button>
+					</p>
+					<p class="muted small center">{m.contents_keys()}</p>
+				{:else}
+					<p class="muted small" aria-live="polite">
+						{m.contents_progress({ current: sync.index + 1, total: sync.total })}
+						{#if skippedLines > 0}· {m.contents_skipped({ count: skippedLines })}{/if}
+					</p>
+					<p class="muted line" lang="ja">{previous ?? ''}</p>
+					<TypingArea run={sync} showHint={settings.showHint} {hints} />
+					<p class="muted line" lang="ja">{upcoming ?? ''}</p>
+					<p class="muted small center status" aria-live="polite">
+						{#if playerState === 'paused'}
+							{m.contents_sync_paused()}
+						{:else if sync.pending && playerState === 'playing'}
+							{m.songs_sync_pending()}
+						{:else if sync.lineDone}
+							✓ {m.contents_sync_line_done()}
+						{:else if playerState !== 'playing'}
+							{m.contents_sync_waiting()}
+						{:else}
+							&nbsp;
+						{/if}
+					</p>
+					{#if settings.showKeyboard}
+						<Keyboard next={sync.nextKey} />
+					{/if}
+					{#if coarsePointer}
+						<p class="muted small center">{m.typing_mobile_notice()}</p>
+					{/if}
+					<div class="row tools">
+						<button
+							type="button"
+							class="btn btn--icon"
+							aria-pressed={settings.showHint}
+							aria-label={m.typing_hint_toggle()}
+							title={m.typing_hint_toggle()}
+							onclick={() => updateSetting('showHint', !settings.showHint)}
+						>
+							<Icon name="text" />
+						</button>
+						<button
+							type="button"
+							class="btn btn--icon"
+							aria-pressed={settings.showKeyboard}
+							aria-label={m.typing_keyboard_toggle()}
+							title={m.typing_keyboard_toggle()}
+							onclick={() => updateSetting('showKeyboard', !settings.showKeyboard)}
+						>
+							<Icon name="keyboard" />
+						</button>
+						<button
+							type="button"
+							class="btn btn--icon"
+							aria-pressed={settings.sound}
+							aria-label={m.typing_sound_toggle()}
+							title={m.typing_sound_toggle()}
+							onclick={() => updateSetting('sound', !settings.sound)}
+						>
+							<Icon name={settings.sound ? 'volume' : 'volume-off'} />
+						</button>
+						<button type="button" class="btn" onclick={reset}>{m.contents_restart()}</button>
+						<button type="button" class="btn" onclick={finishSync}>{m.contents_stop()}</button>
+					</div>
+					<p class="muted small center">{m.contents_keys()}</p>
+				{/if}
+			</section>
+		{:else if result === null && run}
+			<section class="stack practice">
 				<p class="muted small" aria-live="polite">
-					{m.contents_progress({ current: sync.index + 1, total: sync.total })}
-					{#if skippedLines > 0}· {m.contents_skipped({ count: skippedLines })}{/if}
+					{m.contents_progress({ current: run.index + 1, total: run.questions.length })}
 				</p>
 				<p class="muted line" lang="ja">{previous ?? ''}</p>
-				<TypingArea run={sync} showHint={settings.showHint} {hints} />
+				{#if lineNote > 0}
+					<p class="review-note small" aria-live="polite">
+						{m.review_line_note({ count: lineNote })}
+					</p>
+				{/if}
+				<TypingArea {run} showHint={settings.showHint} {hints} />
 				<p class="muted line" lang="ja">{upcoming ?? ''}</p>
-				<p class="muted small center status" aria-live="polite">
-					{#if playerState === 'paused'}
-						{m.contents_sync_paused()}
-					{:else if sync.lineDone}
-						✓ {m.contents_sync_line_done()}
-					{:else if playerState !== 'playing'}
-						{m.contents_sync_waiting()}
-					{:else}
-						&nbsp;
-					{/if}
-				</p>
 				{#if settings.showKeyboard}
-					<Keyboard next={sync.nextKey} />
+					<Keyboard next={run.nextKey} />
 				{/if}
 				{#if coarsePointer}
 					<p class="muted small center">{m.typing_mobile_notice()}</p>
@@ -482,97 +547,43 @@
 						<Icon name={settings.sound ? 'volume' : 'volume-off'} />
 					</button>
 					<button type="button" class="btn" onclick={reset}>{m.contents_restart()}</button>
-					<button type="button" class="btn" onclick={finishSync}>{m.contents_stop()}</button>
 				</div>
-				<p class="muted small center">{m.contents_keys()}</p>
+			</section>
+		{:else if result && active}
+			<ResultPanel
+				{result}
+				wrongUnits={active.wrongUnits}
+				{newBest}
+				onpracticeWrong={reset}
+				onretry={reset}
+				retryLabel={m.contents_again()}
+				showPracticeWrong={false}
+				durationMs={active.durationMs}
+				maxCombo={active.maxCombo}
+				errors={active.errorAnalysis()}
+			/>
+			{#if practiceMode === 'sync' && skippedLines > 0}
+				<p class="center muted">{m.contents_skipped({ count: skippedLines })}</p>
 			{/if}
-		</section>
-	{:else if result === null && run}
-		<section class="stack practice">
-			<p class="muted small" aria-live="polite">
-				{m.contents_progress({ current: run.index + 1, total: run.questions.length })}
-			</p>
-			<p class="muted line" lang="ja">{previous ?? ''}</p>
-			{#if lineNote > 0}
-				<p class="review-note small" aria-live="polite">
-					{m.review_line_note({ count: lineNote })}
+			{#if practiceMode === 'review'}
+				<p class="center muted small">
+					{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
 				</p>
+			{:else if localOnly}
+				<p class="center muted small">{m.contents_local_only()}</p>
+			{:else if unranked === 'accuracy'}
+				<p class="center muted small">{m.result_unranked_accuracy()}</p>
+			{:else if rank !== null}
+				<p class="center muted">{m.contents_rank({ rank })}</p>
 			{/if}
-			<TypingArea {run} showHint={settings.showHint} {hints} />
-			<p class="muted line" lang="ja">{upcoming ?? ''}</p>
-			{#if settings.showKeyboard}
-				<Keyboard next={run.nextKey} />
-			{/if}
-			{#if coarsePointer}
-				<p class="muted small center">{m.typing_mobile_notice()}</p>
-			{/if}
-			<div class="row tools">
-				<button
-					type="button"
-					class="btn btn--icon"
-					aria-pressed={settings.showHint}
-					aria-label={m.typing_hint_toggle()}
-					title={m.typing_hint_toggle()}
-					onclick={() => updateSetting('showHint', !settings.showHint)}
-				>
-					<Icon name="text" />
-				</button>
-				<button
-					type="button"
-					class="btn btn--icon"
-					aria-pressed={settings.showKeyboard}
-					aria-label={m.typing_keyboard_toggle()}
-					title={m.typing_keyboard_toggle()}
-					onclick={() => updateSetting('showKeyboard', !settings.showKeyboard)}
-				>
-					<Icon name="keyboard" />
-				</button>
-				<button
-					type="button"
-					class="btn btn--icon"
-					aria-pressed={settings.sound}
-					aria-label={m.typing_sound_toggle()}
-					title={m.typing_sound_toggle()}
-					onclick={() => updateSetting('sound', !settings.sound)}
-				>
-					<Icon name={settings.sound ? 'volume' : 'volume-off'} />
-				</button>
-				<button type="button" class="btn" onclick={reset}>{m.contents_restart()}</button>
-			</div>
-		</section>
-	{:else if result && active}
-		<ResultPanel
-			{result}
-			wrongUnits={active.wrongUnits}
-			{newBest}
-			onpracticeWrong={reset}
-			onretry={reset}
-			retryLabel={m.contents_again()}
-			showPracticeWrong={false}
-			durationMs={active.durationMs}
-			maxCombo={active.maxCombo}
-			errors={active.errorAnalysis()}
-		/>
-		{#if practiceMode === 'sync' && skippedLines > 0}
-			<p class="center muted">{m.contents_skipped({ count: skippedLines })}</p>
-		{/if}
-		{#if practiceMode === 'review'}
-			<p class="center muted small">
-				{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+			<p class="row center actions">
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- boardHref applies resolve(); only a query string is appended -->
+				<a class="btn" href={boardHref}>{m.contents_leaderboard()}</a>
+				<a class="btn" href={resolve('/contents')}>{m.contents_back()}</a>
 			</p>
-		{:else if localOnly}
-			<p class="center muted small">{m.contents_local_only()}</p>
-		{:else if unranked === 'accuracy'}
-			<p class="center muted small">{m.result_unranked_accuracy()}</p>
-		{:else if rank !== null}
-			<p class="center muted">{m.contents_rank({ rank })}</p>
 		{/if}
-		<p class="row center actions">
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- boardHref applies resolve(); only a query string is appended -->
-			<a class="btn" href={boardHref}>{m.contents_leaderboard()}</a>
-			<a class="btn" href={resolve('/contents')}>{m.contents_back()}</a>
-		</p>
-	{/if}
+		t
+	</div>
 
 	{#if data.content.sourceName !== '' || data.content.sourceUrl !== '' || data.content.license !== ''}
 		<footer class="muted small source">
@@ -636,6 +647,40 @@
 		font-weight: 700;
 		color: var(--accent);
 		letter-spacing: 0.02em;
+		pointer-events: none;
+	}
+	.countdown.far {
+		align-items: flex-end;
+		padding-bottom: var(--space-4);
+		background: transparent;
+	}
+	.gap {
+		font-size: 1rem;
+		font-weight: 500;
+		letter-spacing: 0;
+		padding: var(--space-2) var(--space-4);
+		border-radius: var(--radius);
+		background: color-mix(in srgb, var(--bg) 85%, transparent);
+	}
+	/* Video and the line being typed side by side on wide screens, so both stay in view (owner 2026-09-11). */
+	.board {
+		display: grid;
+		gap: var(--space-6);
+		align-items: start;
+	}
+	.board.live .stage {
+		width: min(100%, calc(45vh * 16 / 9));
+		margin-inline: auto;
+	}
+	@media (min-width: 64rem) {
+		.board.live {
+			grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+		}
+		.board.live .stage {
+			width: 100%;
+			position: sticky;
+			top: var(--space-4);
+		}
 	}
 	.practice {
 		gap: var(--space-4);

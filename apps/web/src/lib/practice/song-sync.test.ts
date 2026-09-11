@@ -17,6 +17,56 @@ function type(run: SongSyncRun, keys: string, from: number): number {
 	return now;
 }
 
+describe('SongSyncRun – intros and interludes', () => {
+	const LATE: SongLine[] = [
+		{ text: 'あ', start: 10 },
+		{ text: 'い', start: 30 }
+	];
+
+	it('is pending before the first line starts and ignores keys until then', () => {
+		const run = new SongSyncRun(LATE);
+		expect(run.index).toBe(0);
+		expect(run.pending).toBe(true);
+		expect(run.press('a', 100)).toBeNull();
+		expect(run.log).toHaveLength(0);
+		run.timeUpdate(9.4); // still before start − LEAD_S
+		expect(run.pending).toBe(true);
+		run.timeUpdate(9.6); // inside the lead-in
+		expect(run.pending).toBe(false);
+		expect(run.press('a', 200)?.ok).toBe(true);
+	});
+
+	it('says which second it is waiting for: the line ahead, then the next line, then nothing', () => {
+		const run = new SongSyncRun(LATE);
+		expect(run.waitingFor).toBe(10); // intro
+		run.timeUpdate(10);
+		expect(run.waitingFor).toBeNull(); // typing
+		type(run, 'a', 1000);
+		expect(run.lineDone).toBe(true);
+		expect(run.waitingFor).toBe(30); // interlude before the next line
+		run.timeUpdate(30);
+		expect(run.waitingFor).toBeNull();
+		type(run, 'i', 2000);
+		expect(run.finished).toBe(true);
+		expect(run.waitingFor).toBeNull();
+	});
+
+	it('tracks the playback position through ticks and seeks', () => {
+		const run = new SongSyncRun(LATE);
+		run.timeUpdate(12);
+		expect(run.position).toBe(12);
+		run.seek(3);
+		expect(run.position).toBe(3);
+		expect(run.pending).toBe(true); // seeked back into the intro
+	});
+
+	it('does not stall a song whose first line starts at 0', () => {
+		const run = new SongSyncRun(LINES);
+		expect(run.pending).toBe(false);
+		expect(run.waitingFor).toBeNull();
+	});
+});
+
 describe('SongSyncRun – construction', () => {
 	it('keeps only timed lines, sorted by start time', () => {
 		const run = new SongSyncRun([

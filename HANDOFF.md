@@ -38,6 +38,10 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
+### 2026-09-11 已合併（同步模式：前奏／間奏、並排版面、漢字顯示）
+
+- owner 實測回報三件事，都改了：倒數改用影片時間對第一句（超過 3 秒「前奏 · 下一句 N 秒後」，3 秒內 3-2-1），還沒唱到的句子按鍵不算（提前 0.5 秒）；寬螢幕影片與歌詞並排、窄螢幕影片限高；有漢字的句子假名在上、漢字在下。`SongSyncRun` 多 `position / pending / waitingFor`（有測試）；`/songs/[id]` 與 `/contents/[id]` 都改。見 DECISIONS「同步模式的前奏與間奏、版面、漢字顯示」。**瀏覽器未實測，請 owner 用同一首歌再試。**
+
 ### 2026-09-11 已合併（M4-1d 歌詞貼漢字 + 標點不擋）
 
 - `/songs` 儲存時若有打不出來的字：瀏覽器端 kuromoji 轉假名 + 略過標點 → 「確認讀音」清單逐行可改 → 再存。`lib/songs-kana.ts`（純函式有測試）、`SongLine.original`（localStorage 與 `content_lines.original_text` 都存），練習頁與對時頁顯示原文。細節與沒做的事見 DECISIONS「M4-1d」。

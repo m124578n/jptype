@@ -30,6 +30,12 @@ export interface SyncLine {
 }
 
 /**
+ * Seconds before a line's start at which typing it is already accepted: a tapped time is
+ * rarely exact and singers come in a hair early.
+ */
+export const LEAD_S = 0.5;
+
+/**
  * Sync mode ("唱到哪打到哪"): the **video** decides which line is current, not the typist.
  * Used by 歌詞同步 and by any imported content whose lines carry start times (M4-1).
  *
@@ -40,6 +46,12 @@ export interface SyncLine {
  *
  * Lines without a start time are dropped: sync mode needs a timeline for every question it shows
  * (the timing editor at `/songs/[id]/timing` is how the user gives them one).
+ *
+ * Intros and interludes: the first line becomes current at video time 0 (`lineIndexAt`), but it
+ * is `pending` — keys are ignored — until the video reaches its start (minus `LEAD_S`). While a
+ * line is pending, or once it is done and the next one is still ahead, `waitingFor` says which
+ * video second the typist is waiting for, so the page can count down to the *lyric*, not to the
+ * video (the owner's 2026-09-11 test: "3-2-1 was out of sync with the lyrics").
  *
  * `text` + `log` are kept the way `PracticeRun` keeps them so the result is scored identically,
  * but they do **not** round-trip through `replay()` — skipped and re-typed lines break that
@@ -60,6 +72,8 @@ export class SongSyncRun implements TypingRun {
 	milestoneAt = $state(0);
 	/** Lines the song moved past before the user finished them. */
 	skippedLines = $state(0);
+	/** Last playback position reported by the player (video seconds). */
+	position = $state(0);
 
 	private startedAt: number | null = null;
 	private lastKeyAt = 0;
@@ -110,6 +124,30 @@ export class SongSyncRun implements TypingRun {
 		return this.session.finished;
 	}
 
+	/** The video has not reached the current line yet (an intro, or a seek back before it). */
+	get pending(): boolean {
+		void this.tick;
+		return !this.finished && this.lines.length > 0 && this.position < this.currentStart - LEAD_S;
+	}
+
+	/** Start time of the line after the current one, or null on the last line. */
+	get nextStart(): number | null {
+		void this.tick;
+		return this.lines[this.index + 1]?.start ?? null;
+	}
+
+	/**
+	 * The video second the typist is waiting for: the current line's start while it is pending,
+	 * the next line's start once the current one is typed, otherwise null (typing is on).
+	 */
+	get waitingFor(): number | null {
+		void this.tick;
+		if (this.finished || this.lines.length === 0) return null;
+		if (this.pending) return this.currentStart;
+		if (this.session.finished) return this.nextStart;
+		return null;
+	}
+
 	get unitIndex(): number {
 		void this.tick;
 		return this.session.progress.unitIndex;
@@ -156,6 +194,7 @@ export class SongSyncRun implements TypingRun {
 	 */
 	timeUpdate(seconds: number): void {
 		if (this.finished) return;
+		this.position = seconds;
 		const target = this.lineIndexAt(seconds);
 		if (target === this.index) return;
 		if (target > this.index) {
@@ -178,6 +217,7 @@ export class SongSyncRun implements TypingRun {
 	 */
 	seek(seconds: number): void {
 		if (this.finished) return;
+		this.position = seconds;
 		this.combo = 0;
 		this.jumpTo(this.lineIndexAt(seconds));
 	}
@@ -203,7 +243,8 @@ export class SongSyncRun implements TypingRun {
 	}
 
 	press(key: string, nowMs: number): PressResult | null {
-		if (this.finished || this.session.finished) return null;
+		// Nothing to type yet: the song has not reached this line (intro / interlude).
+		if (this.finished || this.session.finished || this.pending) return null;
 		// The clock starts on the first *logged* key; ignored keys (Shift…) must not start it.
 		const startedAt = this.startedAt ?? nowMs;
 		const t = nowMs - startedAt;

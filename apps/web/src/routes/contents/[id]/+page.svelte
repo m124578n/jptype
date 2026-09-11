@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { trackContentEvent } from '$lib/events';
 	import type { LessonHint } from '@jptype/data';
 	import { contentMode } from '@jptype/data';
 	import type { ScoreResult } from '@jptype/engine';
@@ -96,6 +97,8 @@
 
 	/** idle → countdown (3-2-1-START) → running; free mode stays 'running'. */
 	let phase = $state<'idle' | 'countdown' | 'running'>('idle');
+	/** Whether this run has counted its `start` (the first key); reset with the run. */
+	let started = false;
 	let countdown = $state(3);
 	let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -151,6 +154,7 @@
 
 	function reset() {
 		clearCountdown();
+		started = false;
 		result = null;
 		newBest = false;
 		skippedLines = 0;
@@ -204,6 +208,7 @@
 			maxCombo: finished.maxCombo
 		});
 		recordKanaStats(finished.unitOutcomes);
+		trackContentEvent(data.content.id, 'complete');
 		review = recordLineOutcomes(mode, outcomes(), { title: data.content.title });
 		sound.play('bell');
 		// A review run only covers the lines this typist missed, so it is never ranked.
@@ -283,6 +288,7 @@
 			if (playerState !== 'playing') return; // paused: the video is not moving
 			if (e.key.length !== 1) return;
 			e.preventDefault();
+			noteStart();
 			const line = s.current;
 			const res = s.press(e.key, performance.now());
 			if (!res) return;
@@ -296,12 +302,20 @@
 		if (!r || r.finished) return;
 		if (e.key.length !== 1) return;
 		e.preventDefault();
+		noteStart();
 		const line = r.current;
 		const res = r.press(e.key, performance.now());
 		if (!res) return;
 		noteKey(line, res.ok);
 		sound.play(res.ok ? 'key' : 'error');
 		if (r.finished) void finish(r, r.result(), true);
+	}
+
+	/** The first key of a run counts as `start` (M4-4 analytics); a finished run as `complete`. */
+	function noteStart() {
+		if (started) return;
+		started = true;
+		trackContentEvent(data.content.id, 'start');
 	}
 
 	function lineTextAt(index: number): string | undefined {

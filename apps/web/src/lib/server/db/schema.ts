@@ -195,6 +195,25 @@ export const contentLines = sqliteTable(
 	(t) => [uniqueIndex('content_lines_order').on(t.contentId, t.order)]
 );
 
+/**
+ * Daily counters behind the admin analytics (M4-4「分析事件」): how often a published content was
+ * viewed, started and completed. One row per (Taipei day, content, kind) with a count — no user
+ * id, no session id, nothing to tie an event to a person. The core metric is
+ * completes / starts per content.
+ */
+export const contentEventsDaily = sqliteTable(
+	'content_events_daily',
+	{
+		day: text('day').notNull(), // 'YYYY-MM-DD' in Asia/Taipei
+		contentId: text('content_id')
+			.notNull()
+			.references(() => contents.id, { onDelete: 'cascade' }),
+		kind: text('kind').notNull(), // 'view' | 'start' | 'complete'
+		count: integer('count').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.day, t.contentId, t.kind] })]
+);
+
 export type Run = typeof runs.$inferSelect;
 export type NewRun = typeof runs.$inferInsert;
 export type KanaStat = typeof kanaStats.$inferSelect;
@@ -209,3 +228,4 @@ export type ContentRow = typeof contents.$inferSelect;
 export type NewContentRow = typeof contents.$inferInsert;
 export type ContentLineRow = typeof contentLines.$inferSelect;
 export type NewContentLineRow = typeof contentLines.$inferInsert;
+export type ContentEventRow = typeof contentEventsDaily.$inferSelect;

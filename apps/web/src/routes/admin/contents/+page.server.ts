@@ -5,6 +5,8 @@ import { isAdmin } from '$lib/server/admin';
 import { d1ContentStore } from '$lib/server/contents/store';
 import { listContentsAsAdmin, parseListQuery } from '$lib/server/contents/service';
 import { createDb } from '$lib/server/db';
+import { contentStats, STATS_DAYS } from '$lib/server/events/service';
+import { d1EventStore } from '$lib/server/events/store';
 import { platformEnv } from '$lib/server/platform';
 
 /**
@@ -20,6 +22,11 @@ export const load: PageServerLoad = async (event) => {
 	const statusParam = event.url.searchParams.get('status');
 	const status = statusParam === 'draft' || statusParam === 'published' ? statusParam : 'all';
 	const query = parseListQuery(event.url.searchParams, status);
-	const deps = { store: d1ContentStore(createDb(env.DB)) };
-	return { query, status, list: await listContentsAsAdmin(query, deps) };
+	const db = createDb(env.DB);
+	const list = await listContentsAsAdmin(query, { store: d1ContentStore(db) });
+	const stats = await contentStats(
+		list.contents.map((c) => c.id),
+		{ events: d1EventStore(db) }
+	);
+	return { query, status, list, stats, statsDays: STATS_DAYS };
 };

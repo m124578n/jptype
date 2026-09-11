@@ -1,10 +1,10 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型、M4-4 後台使用者管理之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型、M4-4 後台使用者管理與分析事件之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
-M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
+M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理、M4-4 分析事件（migration 0006）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
 
 ## 2. 新機器起手式
 
@@ -12,7 +12,7 @@ M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排�
 # Node 22（.node-version 會讓 fnm/nvm 自動切）、pnpm 12
 pnpm install                      # prepare 會：複製 kuromoji 字典到 apps/web/static/dict、編譯 Paraglide、svelte-kit sync
 cp apps/web/.dev.vars.example apps/web/.dev.vars   # 填 BETTER_AUTH_SECRET（任意 32 bytes 隨機字串）；Google 憑證有就填
-pnpm --filter web db:migrate:local                 # 套 0000–0005 到本機 D1（.wrangler/state）
+pnpm --filter web db:migrate:local                 # 套 0000–0006 到本機 D1（.wrangler/state）
 pnpm dev                                           # http://localhost:5173（Vite + Cloudflare 綁定模擬）
 pnpm run ci                                        # lint → typecheck → 資料驗證 → 測試（含覆蓋率門檻）→ build
 pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 出來的 worker（含 cron：/__scheduled?cron=0+16+*+*+0 需 --test-scheduled）
@@ -37,6 +37,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
 
 ## 4. 待辦（依優先序）
+
+### 2026-09-11 已合併（M4-4 分析事件）
+
+- `content_events_daily`（migration `0006_content_events`，drizzle-kit CLI 直接產，純加表不會問）：view / start / complete 每日次數，不存人。`lib/server/events/`；`POST /api/events`（beacon）；`/contents/[id]` load 計 view、頁面第一個鍵計 start、`finish()` 計 complete；`/admin/contents` 多四欄（近 30 天）。見 DECISIONS「分析事件」。
+- 驗證：單元測試、型別、在 dev server 上用假內容跑過（兩次瀏覽、兩次 start、一次 complete → 後台 50%），草稿 / 未知 id 404。
 
 ### 2026-09-11 已合併（M4-4 後台使用者管理）
 

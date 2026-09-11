@@ -104,7 +104,7 @@
 - ✅ 首頁改版：Hero（未登入加「不用帳號也能開始練習」）+ 五張分類入口卡（課程 / 計時賽 / 內容 / 聽打 / 歌詞）+ 你的進度（未登入讀 localStorage：今天練了幾項、跨模式最佳分數、課程完成數；已登入導向 `/me`）+ 本週前 5
 - ✅ Admin：內容 CRUD、發布 / 下架（`/admin/contents`，沿用 `ADMIN_EMAILS`，沒有新增 `user.role`）；使用者與練習紀錄管理（**2026-09-11**）：`/admin/users` 用 e-mail / 名稱搜尋（場次、最近練習、下架次數、歌曲數），`/admin/users/[id]` 看最近 50 場並可標記 / 取消標記防作弊（立即清該榜 KV 快取）、刪除場次（連 R2 keylog）、清除下架紀錄恢復公開權限（站內通知 `reinstated`，已下架的歌不復原）；API `/api/admin/users*`、`/api/admin/runs/[id]`；不顯示歌詞與鍵盤紀錄
 - ✅ Line Editor：`/admin/contents/[id]` 播放器旁逐句設定 start / end（「用目前時間填入」）、改假名與羅馬字（打不出來的字會標紅）、上移下移刪除新增
-- ⬜ 分析事件：內容瀏覽、開始練習、完成練習（核心指標 = 開始 → 完成的轉換率）
+- ✅ 分析事件（**2026-09-11**）：內容瀏覽（伺服端 load 計）、開始練習（第一個鍵）、完成練習，存每日彙總表 `content_events_daily`（migration `0006_content_events`；只有次數，不記使用者）；瀏覽器用 `sendBeacon` 送 `POST /api/events`；`/admin/contents` 列表顯示近 30 天瀏覽 / 開始 / 完成 / 轉換率（= 完成 ÷ 開始）。只計已發布的平台內容
 
 ### M4-5 AI（最後做，且只用自有內容）
 

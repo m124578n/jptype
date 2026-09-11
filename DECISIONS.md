@@ -561,3 +561,23 @@ ROADMAP M4-4 最後一個 ⬜ 的 Admin 項目。範圍刻意收在「看得到�
 ### 本機不用 Google 也能登入：`scripts/dev-login.mjs`
 
 驗證這個功能時需要 admin session，而本機沒有 OAuth 憑證。Better Auth 的 session cookie 只是 `token.base64(HMAC-SHA256(secret, token))`，`secret` 就是 `.dev.vars` 的 `BETTER_AUTH_SECRET`，所以直接往本機 D1 塞 `user` + `session` 再算簽章就能登入。`node scripts/dev-login.mjs <email> [name]` 做這件事並印出要貼到瀏覽器 console 的 `document.cookie`；e-mail 在 `ADMIN_EMAILS` 裡就是 admin。只動 `.wrangler/state`，正式站用不到也用不了（secret 不同）。這輪就是用它對 `wrangler dev` 跑完整條 admin 流程（搜尋彙總、標記、刪除、恢復、404、非 admin 403）並確認 D1 列的變化。
+
+## 2026-09-11 M4-4 分析事件：只存每日次數，不存人
+
+ROADMAP M4-4「內容瀏覽、開始練習、完成練習，核心指標 = 開始 → 完成的轉換率」。
+
+### 資料形狀
+
+一張表 `content_events_daily (day, content_id, kind, count)`，主鍵 `(day, content_id, kind)`，`day` 是台北日曆日（跟 `runs.week` 同一套 `lib/time.ts`），`kind` 是 `view | start | complete`。**沒有 user id、session id、IP、user agent，也沒有逐筆事件列**：一個計數器無法反查到人，這是刻意的（規格 §12 不做追蹤式分析；Worker 也不叫任何外部分析服務）。代價是不能做「同一個人瀏覽後有沒有開始」這種漏斗，但轉換率用「完成 ÷ 開始」的次數比就夠回答「哪些內容讓人半途而廢」。
+
+### 三個事件在哪裡計
+
+- `view`：`/contents/[id]` 的 `+page.server.ts` load 成功後 `bump` 一次（每次 SSR 都算，含爬蟲；不裝任何前端腳本就有數字）。
+- `start`：練習頁**第一個按鍵**時送（`reset()` 會清旗標，所以 Ctrl+R 重來或換模式再打一次算新的一場）。
+- `complete`：`finish()` 時送（同步 / 自由 / 複習模式都算）。
+- 瀏覽器用 `navigator.sendBeacon` 送 `POST /api/events`（離開頁面時的 `complete` 也送得出去），失敗就丟掉。
+- 伺服器只接受**已發布的平台內容**：草稿、使用者歌曲、不存在的 id 一律 404（不讓人用打點探測私有 id 是否存在），kind 錯 400，成功 204。
+
+### 後台
+
+`/admin/contents` 列表多四欄：瀏覽 / 開始 / 完成 / 轉換率，都是**近 30 天**（含今天）的加總，沒開始過的內容轉換率顯示「—」，比值上限 1（同一場可能重來多次卻只算一個 start 之類的邊界）。沒做圖表、沒做逐日趨勢；要的時候資料表已經是逐日的，直接畫即可。

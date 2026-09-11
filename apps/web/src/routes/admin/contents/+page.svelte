@@ -5,6 +5,10 @@
 	import { difficultyLabel, jlptLabel, statusLabel, typeLabel } from '$lib/contents-labels';
 	import { formatDateTime } from '$lib/format';
 
+	function percent(value: number | null): string {
+		return value === null ? '—' : `${Math.round(value * 100)}%`;
+	}
+
 	let { data } = $props();
 
 	// Seeded from the URL, then owned by the input until the next navigation.
@@ -85,6 +89,34 @@
 						<th scope="col">{m.admin_contents_col_type()}</th>
 						<th scope="col">{m.admin_contents_col_status()}</th>
 						<th scope="col" class="num">{m.admin_contents_col_lines()}</th>
+						<th
+							scope="col"
+							class="num"
+							title={m.admin_contents_stats_note({ days: data.statsDays })}
+						>
+							{m.admin_contents_col_views()}
+						</th>
+						<th
+							scope="col"
+							class="num"
+							title={m.admin_contents_stats_note({ days: data.statsDays })}
+						>
+							{m.admin_contents_col_starts()}
+						</th>
+						<th
+							scope="col"
+							class="num"
+							title={m.admin_contents_stats_note({ days: data.statsDays })}
+						>
+							{m.admin_contents_col_completes()}
+						</th>
+						<th
+							scope="col"
+							class="num"
+							title={m.admin_contents_stats_note({ days: data.statsDays })}
+						>
+							{m.admin_contents_col_conversion()}
+						</th>
 						<th scope="col">{m.admin_contents_col_updated()}</th>
 					</tr>
 				</thead>
@@ -101,13 +133,20 @@
 							<td>{typeLabel[content.type]()}</td>
 							<td>{statusLabel[content.status]()}</td>
 							<td class="num">{content.lineCount}</td>
+							<td class="num">{data.stats[content.id]?.views ?? 0}</td>
+							<td class="num">{data.stats[content.id]?.starts ?? 0}</td>
+							<td class="num">{data.stats[content.id]?.completes ?? 0}</td>
+							<td class="num">{percent(data.stats[content.id]?.conversion ?? null)}</td>
 							<td class="when">{formatDateTime(content.updatedAt)}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
-		<p class="muted small">{m.admin_contents_total({ count: data.list.total })}</p>
+		<p class="muted small">
+			{m.admin_contents_total({ count: data.list.total })} ·
+			{m.admin_contents_stats_note({ days: data.statsDays })}
+		</p>
 	{/if}
 </div>
 

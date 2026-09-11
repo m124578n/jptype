@@ -1,6 +1,8 @@
 {
 	"version": "6",
 	"dialect": "sqlite",
+	"id": "1f484c04-70ab-431f-90dd-d3227e91c234",
+	"prevId": "4360e10f-8a1a-4abe-a383-29ed2bb1cbd6",
 	"tables": {
 		"account": {
 			"name": "account",
@@ -117,6 +119,60 @@
 				}
 			},
 			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"content_events_daily": {
+			"name": "content_events_daily",
+			"columns": {
+				"day": {
+					"name": "day",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"content_id": {
+					"name": "content_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"kind": {
+					"name": "kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"count": {
+					"name": "count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {
+				"content_events_daily_content_id_contents_id_fk": {
+					"name": "content_events_daily_content_id_contents_id_fk",
+					"tableFrom": "content_events_daily",
+					"tableTo": "contents",
+					"columnsFrom": ["content_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {
+				"content_events_daily_day_content_id_kind_pk": {
+					"columns": ["day", "content_id", "kind"],
+					"name": "content_events_daily_day_content_id_kind_pk"
+				}
+			},
 			"uniqueConstraints": {},
 			"checkConstraints": {}
 		},
@@ -1088,6 +1144,7 @@
 	"views": {},
 	"enums": {},
 	"_meta": {
+		"schemas": {},
 		"tables": {},
 		"columns": {}
 	},
@@ -1129,7 +1186,5 @@
 				}
 			}
 		}
-	},
-	"id": "4360e10f-8a1a-4abe-a383-29ed2bb1cbd6",
-	"prevId": "70a71223-a198-4206-9a2b-4a7a690b5c04"
+	}
 }

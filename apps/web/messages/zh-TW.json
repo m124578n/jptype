@@ -430,6 +430,7 @@
 	"admin_contents_filter_all": "全部",
 	"admin_contents_status_draft": "草稿",
 	"admin_contents_status_published": "已發布",
+	"admin_contents_status_removed": "已下架",
 	"admin_contents_empty": "還沒有內容。",
 	"admin_contents_total": "共 {count} 筆",
 	"admin_contents_col_title": "標題",

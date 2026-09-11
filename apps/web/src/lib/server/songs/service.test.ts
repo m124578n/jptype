@@ -76,21 +76,8 @@ function fakeStore(seed: { songs?: SongRecord[]; strikes?: [string, StrikeRecord
 	const notices: NoticeRecord[] = [];
 
 	const store: SongStore = {
-		insertSong: async (row) => {
-			songs.set(row.id, {
-				...song(),
-				id: row.id,
-				ownerId: row.ownerId,
-				videoId: row.videoId,
-				title: row.title,
-				lines: JSON.parse(row.lines) as SongLine[],
-				visibility: row.visibility === 'public' ? 'public' : 'private',
-				publicConsentAt: row.publicConsentAt ?? null,
-				status: row.status === 'removed' ? 'removed' : 'active',
-				removedReason: row.removedReason ?? null,
-				createdAt: row.createdAt,
-				updatedAt: row.updatedAt
-			});
+		insertSong: async (record) => {
+			songs.set(record.id, { ...record, lines: record.lines.map((l) => ({ ...l })) });
 		},
 		getSong: async (id) => songs.get(id),
 		patchSong: async (id, patch) => {
@@ -120,7 +107,21 @@ function fakeStore(seed: { songs?: SongRecord[]; strikes?: [string, StrikeRecord
 			}));
 			return { rows, total: all.length };
 		},
-		searchSongs: async (q) => [...songs.values()].filter((s) => q === '' || s.title.includes(q)),
+		searchSongs: async (q, limit) =>
+			[...songs.values()]
+				.filter((s) => q === '' || s.title.includes(q))
+				.slice(0, limit)
+				.map((s) => ({
+					id: s.id,
+					title: s.title,
+					ownerId: s.ownerId,
+					videoId: s.videoId,
+					lineCount: s.lines.length,
+					visibility: s.visibility,
+					status: s.status,
+					removedReason: s.removedReason,
+					updatedAt: s.updatedAt
+				})),
 		unpublishAll: async (ownerId, now) => {
 			let n = 0;
 			for (const [id, s] of songs) {
@@ -172,7 +173,7 @@ function fakeStore(seed: { songs?: SongRecord[]; strikes?: [string, StrikeRecord
 		insertReport: async (row) => {
 			reports.set(row.id, {
 				id: row.id,
-				songId: row.songId ?? null,
+				contentId: row.contentId ?? null,
 				videoId: row.videoId ?? '',
 				reporterContact: row.reporterContact,
 				claim: row.claim,
@@ -278,13 +279,16 @@ describe('body validation', () => {
 	});
 
 	it('needs a contact and a claim on a report, plus something to point at', () => {
-		const report = { songId: 'S1', reporterContact: ' a@b.c ', claim: ' 我是權利人 ' };
-		expect(parseReportInput(report)).toEqual({
-			songId: 'S1',
+		const report = { contentId: 'S1', reporterContact: ' a@b.c ', claim: ' 我是權利人 ' };
+		const parsed = {
+			contentId: 'S1',
 			videoId: '',
 			reporterContact: 'a@b.c',
 			claim: '我是權利人'
-		});
+		};
+		expect(parseReportInput(report)).toEqual(parsed);
+		// The pre-M4-1c body field is still understood.
+		expect(parseReportInput({ ...report, contentId: undefined, songId: 'S1' })).toEqual(parsed);
 		expect(parseReportInput({ ...report, reporterContact: '' })).toMatch(/reporterContact/);
 		expect(parseReportInput({ ...report, claim: '' })).toMatch(/claim/);
 		expect(parseReportInput({ reporterContact: 'a@b.c', claim: 'x' })).toMatch(/required/);
@@ -475,20 +479,20 @@ describe('shared timelines', () => {
 });
 
 describe('notice and takedown', () => {
-	const report = { songId: 'S1', videoId: '', reporterContact: 'a@b.c', claim: '我是權利人' };
+	const report = { contentId: 'S1', videoId: '', reporterContact: 'a@b.c', claim: '我是權利人' };
 
 	it('fills the video id in from the reported song', async () => {
 		const fake = fakeStore({ songs: [song({ visibility: 'public' })] });
 		const r = await fileReport(report, deps(fake));
 		expect(r.ok).toBe(true);
-		expect([...fake.reports.values()][0]).toMatchObject({ songId: 'S1', videoId: VIDEO });
+		expect([...fake.reports.values()][0]).toMatchObject({ contentId: 'S1', videoId: VIDEO });
 	});
 
 	it('keeps a report whose song is already gone, as long as a video id is given', async () => {
 		const fake = fakeStore();
 		const r = await fileReport({ ...report, videoId: VIDEO }, deps(fake));
 		expect(r.ok).toBe(true);
-		expect([...fake.reports.values()][0]).toMatchObject({ songId: null, videoId: VIDEO });
+		expect([...fake.reports.values()][0]).toMatchObject({ contentId: null, videoId: VIDEO });
 	});
 
 	it('removes the song, strikes the owner and leaves them a notice', async () => {
@@ -501,7 +505,11 @@ describe('notice and takedown', () => {
 			deps(fake)
 		);
 
-		expect(r.ok && r.body.removal).toMatchObject({ songId: 'S1', strikes: 1, suspended: false });
+		expect(r.ok && r.body.removal).toMatchObject({
+			contentId: 'S1',
+			strikes: 1,
+			suspended: false
+		});
 		expect(fake.songs.get('S1')).toMatchObject({
 			status: 'removed',
 			visibility: 'private',

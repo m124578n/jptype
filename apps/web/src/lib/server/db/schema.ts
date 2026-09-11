@@ -56,39 +56,6 @@ export const kanaStats = sqliteTable(
 );
 
 /**
- * One song in a signed-in user's library (M4-1b).
- *
- * `lines` is the user's own pasted reading of the lyrics, stored as JSON
- * (`{ text, start? }[]`). It is **private by default**: only the owner reads it, unless they
- * explicitly set `visibility = 'public'` after ticking the rights declaration, which is what
- * `publicConsentAt` records. `status = 'removed'` is the notice-and-takedown outcome; the row is
- * kept (with `removedReason`) so the handling stays on record. Anonymous visitors keep their
- * library in localStorage and never reach this table.
- */
-export const songs = sqliteTable(
-	'songs',
-	{
-		id: text('id').primaryKey(), // ulid
-		ownerId: text('owner_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
-		videoId: text('video_id').notNull(), // 11-char YouTube id, never a URL
-		title: text('title').notNull(),
-		lines: text('lines').notNull(), // JSON: { text: string; start?: number }[]
-		visibility: text('visibility').notNull().default('private'), // 'private' | 'public'
-		publicConsentAt: integer('public_consent_at'), // epoch ms of the rights declaration
-		status: text('status').notNull().default('active'), // 'active' | 'removed'
-		removedReason: text('removed_reason'),
-		createdAt: integer('created_at').notNull(), // epoch ms
-		updatedAt: integer('updated_at').notNull() // epoch ms
-	},
-	(t) => [
-		index('songs_owner').on(t.ownerId, sql`${t.updatedAt} DESC`),
-		index('songs_public').on(t.visibility, t.status, sql`${t.updatedAt} DESC`)
-	]
-);
-
-/**
  * A shared timeline for a video: **no lyric text ever lands here**.
  *
  * Only the video id, the number of lines, a hex SHA-256 per line text (`lineHashes`) and the
@@ -110,10 +77,14 @@ export const songTimings = sqliteTable(
 	(t) => [index('song_timings_video').on(t.videoId)]
 );
 
-/** A rights holder's notice about a public song (著作權法 §90-4～§90-12 / notice-and-takedown). */
+/**
+ * A rights holder's notice about a public content (著作權法 §90-4～§90-12 / notice-and-takedown).
+ * `contentId` points at the `contents` row (a user-provided song since M4-1c); it is kept as a
+ * null reference when the row is gone so the report itself stays on record.
+ */
 export const takedownRequests = sqliteTable('takedown_requests', {
 	id: text('id').primaryKey(), // ulid
-	songId: text('song_id').references(() => songs.id, { onDelete: 'set null' }),
+	contentId: text('content_id').references(() => contents.id, { onDelete: 'set null' }),
 	videoId: text('video_id').notNull().default(''),
 	reporterContact: text('reporter_contact').notNull(), // e-mail or any reply address they give
 	claim: text('claim').notNull(),
@@ -149,13 +120,22 @@ export const notices = sqliteTable(
 );
 
 /**
- * One importable piece of Japanese content (M4-1): a song, an anime line set, a news piece, a
- * novel excerpt, a JLPT drill or free text. Everything the platform practises on goes through
- * this one model — **the repo itself ships no content**, an admin imports every row.
+ * One piece of Japanese content (M4-1): a song, an anime line set, a news piece, a novel
+ * excerpt, a JLPT drill or free text. Everything the platform practises on goes through this
+ * one model — **the repo itself ships no content**. Two kinds of row live here:
  *
- * The rights columns are not decoration: `rightsStatus` must be `'cleared'` before a content may
- * be published (ROADMAP M4-1「rightsStatus 不明者不得發布」), and `sourceType` / `sourceUrl` /
- * `sourceName` / `license` record where the text came from so that claim can be checked later.
+ * - **platform content** (`ownerId = null`): imported by an admin through `/admin/contents`,
+ *   listed on `/contents` once `status = 'published'`. The rights columns are not decoration:
+ *   `rightsStatus` must be `'cleared'` before it may be published (ROADMAP M4-1「rightsStatus
+ *   不明者不得發布」), and `sourceType` / `sourceUrl` / `sourceName` / `license` record where
+ *   the text came from so that claim can be checked later.
+ * - **user-provided content** (`ownerId` set, `sourceType = 'user_provided'`; since M4-1c the
+ *   former `songs` table): the user's own pasted reading of lyrics, **private by default**
+ *   (`status = 'draft'` → only the owner reads it), never in the public `/contents` list. The
+ *   owner may set it `'published'` after ticking the rights declaration, which is what
+ *   `publicConsentAt` records; `'removed'` is the notice-and-takedown outcome, kept with
+ *   `removedReason` so the handling stays on record. Anonymous visitors keep their library in
+ *   localStorage and never reach this table.
  */
 export const contents = sqliteTable(
 	'contents',
@@ -167,19 +147,24 @@ export const contents = sqliteTable(
 		videoId: text('video_id'), // 11-char YouTube id when the content is timed to a video
 		jlptLevel: text('jlpt_level').notNull().default('unknown'), // 'N5'..'N1' | 'unknown'
 		difficulty: text('difficulty').notNull().default('normal'), // easy | normal | hard | expert
-		status: text('status').notNull().default('draft'), // 'draft' | 'published'
+		status: text('status').notNull().default('draft'), // 'draft' | 'published' | 'removed'
 		sourceType: text('source_type').notNull().default('original'), // original | licensed | public_domain | user_provided | other
 		sourceUrl: text('source_url').notNull().default(''),
 		sourceName: text('source_name').notNull().default(''),
 		license: text('license').notNull().default(''),
 		rightsStatus: text('rights_status').notNull().default('unknown'), // 'cleared' | 'unknown'
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		// User-provided content only (null → platform content). The row goes with the account.
+		ownerId: text('owner_id').references(() => user.id, { onDelete: 'cascade' }),
+		publicConsentAt: integer('public_consent_at'), // epoch ms of the owner's rights declaration
+		removedReason: text('removed_reason'), // set with status = 'removed'
 		createdAt: integer('created_at').notNull(), // epoch ms
 		updatedAt: integer('updated_at').notNull() // epoch ms
 	},
 	(t) => [
 		index('contents_list').on(t.status, t.type, sql`${t.updatedAt} DESC`),
-		index('contents_jlpt').on(t.status, t.jlptLevel)
+		index('contents_jlpt').on(t.status, t.jlptLevel),
+		index('contents_owner').on(t.ownerId, sql`${t.updatedAt} DESC`)
 	]
 );
 
@@ -213,8 +198,6 @@ export const contentLines = sqliteTable(
 export type Run = typeof runs.$inferSelect;
 export type NewRun = typeof runs.$inferInsert;
 export type KanaStat = typeof kanaStats.$inferSelect;
-export type SongRow = typeof songs.$inferSelect;
-export type NewSongRow = typeof songs.$inferInsert;
 export type SongTimingRow = typeof songTimings.$inferSelect;
 export type NewSongTimingRow = typeof songTimings.$inferInsert;
 export type TakedownRow = typeof takedownRequests.$inferSelect;

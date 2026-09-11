@@ -44,5 +44,6 @@ export const difficultyLabel: Record<Difficulty, () => string> = {
 
 export const statusLabel: Record<ContentStatus, () => string> = {
 	draft: m.admin_contents_status_draft,
-	published: m.admin_contents_status_published
+	published: m.admin_contents_status_published,
+	removed: m.admin_contents_status_removed
 };

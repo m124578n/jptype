@@ -2,6 +2,10 @@
  * Song services (M4-1b): pure functions over a `SongStore`, so every rule below is unit-tested
  * against a fake store and the API routes stay thin (same pattern as `runs/submit.ts`).
  *
+ * Storage-wise a song is user-provided content (M4-1c): a `contents` row owned by the user plus
+ * its `content_lines`; `store.ts` / `mapping.ts` hide that, and nothing here changes because
+ * of it — a private song is still a song only its owner can read.
+ *
  * The rules that matter, from DECISIONS「歌曲功能定案」:
  * - lyrics are **private by default**; only the owner reads a private song;
  * - going public needs an explicit rights declaration (`consent: true`), whose time is recorded;
@@ -14,6 +18,7 @@ import { parseYoutubeId, type SongLine } from '../../songs.ts';
 import { isHashList, matchTiming, type TimingCandidate } from '../../song-hash.ts';
 import { ulid } from '../ulid.ts';
 import type {
+	AdminSongSummary,
 	NoticeRecord,
 	PublicSongSummary,
 	ReportStatus,
@@ -187,17 +192,20 @@ export function parseTimingInput(raw: unknown): TimingInput | string {
 }
 
 export interface ReportInput {
-	songId: string | null;
+	/** The reported song's content id (the `/songs/[id]` in the URL). */
+	contentId: string | null;
 	videoId: string;
 	reporterContact: string;
 	claim: string;
 }
 
+/** Body of POST /api/reports. `songId` is still accepted as the old name of `contentId`. */
 export function parseReportInput(raw: unknown): ReportInput | string {
 	if (!raw || typeof raw !== 'object') return 'body must be an object';
 	const b = raw as Record<string, unknown>;
-	if (b.songId !== undefined && b.songId !== null && typeof b.songId !== 'string') {
-		return 'songId invalid';
+	const rawId = b.contentId ?? b.songId;
+	if (rawId !== undefined && rawId !== null && typeof rawId !== 'string') {
+		return 'contentId invalid';
 	}
 	if (typeof b.reporterContact !== 'string') return 'reporterContact must be a string';
 	const contact = b.reporterContact.trim();
@@ -206,9 +214,9 @@ export function parseReportInput(raw: unknown): ReportInput | string {
 	const claim = b.claim.trim();
 	if (claim === '' || claim.length > MAX_CLAIM_CHARS) return 'claim invalid';
 	const videoId = typeof b.videoId === 'string' ? (parseYoutubeId(b.videoId) ?? '') : '';
-	const songId = typeof b.songId === 'string' && b.songId !== '' ? b.songId : null;
-	if (songId === null && videoId === '') return 'songId or videoId required';
-	return { songId, videoId, reporterContact: contact, claim };
+	const contentId = typeof rawId === 'string' && rawId !== '' ? rawId : null;
+	if (contentId === null && videoId === '') return 'contentId or videoId required';
+	return { contentId, videoId, reporterContact: contact, claim };
 }
 
 export interface ResolveInput {
@@ -251,36 +259,21 @@ export async function createSong(
 	deps: SongDeps
 ): Promise<Result<SongRecord>> {
 	const now = clock(deps);
-	const songId = id(deps, now);
-	await deps.store.insertSong({
-		id: songId,
+	const song: SongRecord = {
+		id: id(deps, now),
 		ownerId: userId,
 		videoId: input.videoId,
 		title: input.title,
-		lines: JSON.stringify(input.lines),
+		lines: input.lines,
 		visibility: 'private',
 		publicConsentAt: null,
 		status: 'active',
 		removedReason: null,
 		createdAt: now,
 		updatedAt: now
-	});
-	return {
-		ok: true,
-		body: {
-			id: songId,
-			ownerId: userId,
-			videoId: input.videoId,
-			title: input.title,
-			lines: input.lines,
-			visibility: 'private',
-			publicConsentAt: null,
-			status: 'active',
-			removedReason: null,
-			createdAt: now,
-			updatedAt: now
-		}
 	};
+	await deps.store.insertSong(song);
+	return { ok: true, body: song };
 }
 
 export function listMySongs(userId: string, deps: SongDeps): Promise<SongRecord[]> {
@@ -464,17 +457,17 @@ export async function fileReport(
 ): Promise<Result<{ id: string }>> {
 	const now = clock(deps);
 	let videoId = input.videoId;
-	let songId = input.songId;
-	if (songId !== null) {
-		const song = await deps.store.getSong(songId);
-		if (!song) songId = null;
+	let contentId = input.contentId;
+	if (contentId !== null) {
+		const song = await deps.store.getSong(contentId);
+		if (!song) contentId = null;
 		else if (videoId === '') videoId = song.videoId;
 	}
-	if (songId === null && videoId === '') return fail(400, 'songId or videoId required');
+	if (contentId === null && videoId === '') return fail(400, 'contentId or videoId required');
 	const reportId = id(deps, now);
 	await deps.store.insertReport({
 		id: reportId,
-		songId,
+		contentId,
 		videoId,
 		reporterContact: input.reporterContact,
 		claim: input.claim,
@@ -494,7 +487,7 @@ export function listReports(
 }
 
 export interface RemovalOutcome {
-	songId: string;
+	contentId: string;
 	ownerId: string;
 	strikes: number;
 	suspended: boolean;
@@ -545,7 +538,7 @@ async function removeSongAndStrike(
 			readAt: null
 		});
 	}
-	return { songId: song.id, ownerId: song.ownerId, strikes, suspended };
+	return { contentId: song.id, ownerId: song.ownerId, strikes, suspended };
 }
 
 export async function resolveReport(
@@ -558,8 +551,8 @@ export async function resolveReport(
 	if (report.status !== 'open') return fail(409, 'report already resolved');
 
 	let removal: RemovalOutcome | null = null;
-	if (input.action === 'removed' && report.songId !== null) {
-		const song = await deps.store.getSong(report.songId);
+	if (input.action === 'removed' && report.contentId !== null) {
+		const song = await deps.store.getSong(report.contentId);
 		if (song && song.status === 'active') {
 			removal = await removeSongAndStrike(song, input.adminNote, deps);
 		}
@@ -585,7 +578,8 @@ export async function removeSongAsAdmin(
 	return { ok: true, body: await removeSongAndStrike(song, reason, deps) };
 }
 
-export function searchSongsAsAdmin(q: string, deps: SongDeps): Promise<SongRecord[]> {
+/** Title search for the admin console: summaries only, the lyrics are never loaded. */
+export function searchSongsAsAdmin(q: string, deps: SongDeps): Promise<AdminSongSummary[]> {
 	return deps.store.searchSongs(q.slice(0, MAX_QUERY_CHARS), ADMIN_SEARCH_LIMIT);
 }
 

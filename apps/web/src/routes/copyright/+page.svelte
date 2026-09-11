@@ -26,10 +26,10 @@
 	});
 
 	/** A song page URL identifies the row; anything else is treated as a YouTube link. */
-	function splitTarget(input: string): { songId?: string; videoId?: string } {
+	function splitTarget(input: string): { contentId?: string; videoId?: string } {
 		const text = input.trim();
 		const songMatch = /\/songs\/([A-Za-z0-9_-]+)/.exec(text);
-		if (songMatch?.[1]) return { songId: songMatch[1] };
+		if (songMatch?.[1]) return { contentId: songMatch[1] };
 		const videoId = parseYoutubeId(text);
 		return videoId === null ? {} : { videoId };
 	}
@@ -38,13 +38,13 @@
 		event.preventDefault();
 		error = '';
 		const where = splitTarget(target);
-		if (contact.trim() === '' || claim.trim() === '' || (!where.songId && !where.videoId)) {
+		if (contact.trim() === '' || claim.trim() === '' || (!where.contentId && !where.videoId)) {
 			error = m.copyright_error_fields();
 			return;
 		}
 		sending = true;
 		const ok = await fileReport({
-			songId: where.songId ?? null,
+			contentId: where.contentId ?? null,
 			videoId: where.videoId ?? '',
 			reporterContact: contact.trim(),
 			claim: claim.trim()

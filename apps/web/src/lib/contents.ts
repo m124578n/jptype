@@ -2,9 +2,11 @@
  * The content model shared by the browser and the Worker (M4-1).
  *
  * Every practice surface beyond the kana lessons — songs, anime lines, news, novels, JLPT drills,
- * free text — is a `contents` row plus its `content_lines`. The repo ships **zero** content: an
- * admin imports each row through `/admin/contents`, and the rights columns below record where it
- * came from. Nothing may be published while `rightsStatus` is `'unknown'`.
+ * free text — is a `contents` row plus its `content_lines`. The repo ships **zero** content.
+ * Platform content (`ownerId === null`) is imported by an admin through `/admin/contents`, and
+ * the rights columns below record where it came from; nothing may be published while
+ * `rightsStatus` is `'unknown'`. User-provided content (`ownerId` set, M4-1c) is a user's own
+ * lyric paste: private unless the owner publishes it, and never in the public content list.
  */
 import { validateLines } from './songs.ts';
 
@@ -17,7 +19,11 @@ export type JlptLevel = (typeof JLPT_LEVELS)[number];
 export const DIFFICULTIES = ['easy', 'normal', 'hard', 'expert'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
-export const CONTENT_STATUSES = ['draft', 'published'] as const;
+/**
+ * `draft` → only its author reads it; `published` → practisable by everyone; `removed` → taken
+ * down after a rights notice (user-provided content only), kept on record but never shown.
+ */
+export const CONTENT_STATUSES = ['draft', 'published', 'removed'] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 
 export const SOURCE_TYPES = [
@@ -51,6 +57,8 @@ export interface ContentMeta extends ContentRights {
 	jlptLevel: JlptLevel;
 	difficulty: Difficulty;
 	status: ContentStatus;
+	/** The user who owns this content, or null for platform content imported by an admin. */
+	ownerId: string | null;
 	createdAt: number;
 	updatedAt: number;
 }

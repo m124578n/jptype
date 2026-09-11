@@ -7,6 +7,7 @@ import {
 	deleteContent,
 	getContentAsAdmin,
 	getPublicContent,
+	listContentsAsAdmin,
 	listPublicContents,
 	parseContentInput,
 	parseContentPatchInput,
@@ -71,6 +72,9 @@ function fakeStore() {
 			license: row.license ?? '',
 			rightsStatus: (row.rightsStatus ?? 'unknown') as ContentRecord['rightsStatus'],
 			createdBy: row.createdBy ?? null,
+			ownerId: row.ownerId ?? null,
+			publicConsentAt: row.publicConsentAt ?? null,
+			removedReason: row.removedReason ?? null,
 			createdAt: row.createdAt,
 			updatedAt: row.updatedAt
 		};
@@ -90,6 +94,8 @@ function fakeStore() {
 	}
 
 	function matches(row: NewContentRow, filter: ContentFilter): boolean {
+		if ((filter.owner === 'platform') !== (row.ownerId === null || row.ownerId === undefined))
+			return false;
 		if (filter.status !== 'all' && (row.status ?? 'draft') !== filter.status) return false;
 		if (filter.type !== undefined && row.type !== filter.type) return false;
 		if (filter.jlptLevel !== undefined && row.jlptLevel !== filter.jlptLevel) return false;
@@ -158,7 +164,43 @@ function fakeStore() {
 		now: () => NOW,
 		newId: () => `C${++counter}`
 	};
-	return { store, deps, rows, lines };
+
+	/** A user's published song, as the song store writes it (M4-1c): owned, user-provided. */
+	async function seedUserSong(id: string): Promise<void> {
+		rows.push({
+			id,
+			type: 'song',
+			title: 'ユーザーの歌',
+			description: '',
+			videoId: 'dQw4w9WgXcQ',
+			jlptLevel: 'unknown',
+			difficulty: 'normal',
+			status: 'published',
+			sourceType: 'user_provided',
+			sourceUrl: '',
+			sourceName: '',
+			license: '',
+			rightsStatus: 'unknown',
+			createdBy: 'u1',
+			ownerId: 'u1',
+			publicConsentAt: NOW,
+			removedReason: null,
+			createdAt: NOW,
+			updatedAt: NOW
+		});
+		lines.push({
+			id: `${id}-0000`,
+			contentId: id,
+			order: 0,
+			startTime: null,
+			endTime: null,
+			originalText: 'あいうえお',
+			kanaText: 'あいうえお',
+			romajiText: 'aiueo',
+			metadata: null
+		});
+	}
+	return { store, deps, rows, lines, seedUserSong };
 }
 
 describe('parseContentInput', () => {
@@ -253,6 +295,7 @@ describe('parseStatusInput / parseListQuery', () => {
 		);
 		expect(q).toEqual({
 			status: 'published',
+			owner: 'platform',
 			type: 'song',
 			difficulty: 'hard',
 			q: 'うた',
@@ -358,6 +401,22 @@ describe('setContentStatus', () => {
 	});
 });
 
+describe('admin reads', () => {
+	it('keeps a user-provided song out of the admin console entirely (M4-1c)', async () => {
+		const { deps, seedUserSong } = fakeStore();
+		await seedUserSong('S1');
+		await createContent('admin1', INPUT, deps);
+
+		const list = await listContentsAsAdmin(parseListQuery(new URLSearchParams(), 'all'), deps);
+		expect(list.contents.map((c) => c.id)).toEqual(['C1']);
+		expect(await getContentAsAdmin('S1', deps)).toMatchObject({ status: 404 });
+		expect(await updateContent('S1', { title: 'x' }, deps)).toMatchObject({ status: 404 });
+		expect(await setContentLines('S1', [line()], deps)).toMatchObject({ status: 404 });
+		expect(await setContentStatus('S1', 'draft', deps)).toMatchObject({ status: 404 });
+		expect(await deleteContent('S1', deps)).toMatchObject({ status: 404 });
+	});
+});
+
 describe('public reads', () => {
 	it('lists published contents only, with the filters applied', async () => {
 		const { deps } = fakeStore();
@@ -375,6 +434,18 @@ describe('public reads', () => {
 			deps
 		);
 		expect(filtered.contents).toHaveLength(0);
+	});
+
+	it('never lists or serves a user-provided song, published or not (M4-1c)', async () => {
+		const { deps, seedUserSong } = fakeStore();
+		await seedUserSong('S1');
+		await createContent('admin1', INPUT, deps);
+		await setContentLines('C1', [line()], deps);
+		await setContentStatus('C1', 'published', deps);
+
+		const all = await listPublicContents(parseListQuery(new URLSearchParams(), 'published'), deps);
+		expect(all.contents.map((c) => c.id)).toEqual(['C1']);
+		expect(await getPublicContent('S1', deps)).toMatchObject({ status: 404 });
 	});
 
 	it('404s a draft, and returns the lines of a published content', async () => {
@@ -407,5 +478,11 @@ describe('contentPool', () => {
 		await setContentLines('C1', [line()], deps);
 		await expect(contentPool('C1', deps)).resolves.toBeUndefined();
 		await expect(contentPool('nope', deps)).resolves.toBeUndefined();
+	});
+
+	it("is undefined for a user's published song: songs stay out of the leaderboard", async () => {
+		const { deps, seedUserSong } = fakeStore();
+		await seedUserSong('S1');
+		await expect(contentPool('S1', deps)).resolves.toBeUndefined();
 	});
 });

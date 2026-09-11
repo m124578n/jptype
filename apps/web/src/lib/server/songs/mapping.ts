@@ -1,0 +1,137 @@
+/**
+ * How a song maps onto the unified content model (M4-1c).
+ *
+ * A song is a `contents` row with `ownerId` set and `sourceType = 'user_provided'`, plus one
+ * `content_lines` row per lyric line. The song API keeps talking in `visibility` + `status`
+ * (what the pages and the service tests were written against); this module is the one place
+ * that translates between that view and the `contents.status` column:
+ *
+ * | song view                                 | contents.status |
+ * | ----------------------------------------- | --------------- |
+ * | `visibility: 'private'`, `status: 'active'` | `'draft'`       |
+ * | `visibility: 'public'`, `status: 'active'`  | `'published'`   |
+ * | `status: 'removed'` (any visibility)        | `'removed'`     |
+ *
+ * Pure functions only, so the mapping is unit-tested without D1.
+ */
+import { toRomaji } from '../../ja/romaji.ts';
+import type { SongLine } from '../../songs.ts';
+import type { ContentRow, NewContentLineRow, NewContentRow } from '../db/schema.ts';
+import type { SongPatch, SongRecord, SongStatus, SongVisibility } from './store.ts';
+
+export type SongContentStatus = 'draft' | 'published' | 'removed';
+
+/** `contents.status` for a song in the given state. */
+export function contentStatusOf(visibility: SongVisibility, status: SongStatus): SongContentStatus {
+	if (status === 'removed') return 'removed';
+	return visibility === 'public' ? 'published' : 'draft';
+}
+
+/** The song view of a `contents.status` value; anything unexpected reads as private + active. */
+export function songStateOf(status: string): { visibility: SongVisibility; status: SongStatus } {
+	if (status === 'removed') return { visibility: 'private', status: 'removed' };
+	return { visibility: status === 'published' ? 'public' : 'private', status: 'active' };
+}
+
+/**
+ * The `contents.status` a patch asks for, or undefined when it touches neither field.
+ * A visibility change alone must not resurrect a removed song, so the store applies the
+ * result with `keepRemoved` (SQL `CASE WHEN status = 'removed' THEN status ELSE ? END`).
+ */
+export function statusPatchOf(
+	patch: Pick<SongPatch, 'visibility' | 'status'>
+): { status: SongContentStatus; keepRemoved: boolean } | undefined {
+	if (patch.status === 'removed') return { status: 'removed', keepRemoved: false };
+	if (patch.status === 'active') {
+		return { status: patch.visibility === 'public' ? 'published' : 'draft', keepRemoved: false };
+	}
+	if (patch.visibility !== undefined) {
+		return { status: patch.visibility === 'public' ? 'published' : 'draft', keepRemoved: true };
+	}
+	return undefined;
+}
+
+/** The `contents` row for a song; everything a song does not have takes the platform default. */
+export function songToContentRow(song: SongRecord): NewContentRow {
+	return {
+		id: song.id,
+		type: 'song',
+		title: song.title,
+		description: '',
+		videoId: song.videoId,
+		jlptLevel: 'unknown',
+		difficulty: 'normal',
+		status: contentStatusOf(song.visibility, song.status),
+		sourceType: 'user_provided',
+		sourceUrl: '',
+		sourceName: '',
+		license: '',
+		// The owner's declaration lives in `publicConsentAt`; nobody has verified the rights.
+		rightsStatus: 'unknown',
+		createdBy: song.ownerId,
+		ownerId: song.ownerId,
+		publicConsentAt: song.publicConsentAt,
+		removedReason: song.removedReason,
+		createdAt: song.createdAt,
+		updatedAt: song.updatedAt
+	};
+}
+
+/** Deterministic line id: the lines of a song are always replaced as a whole. */
+export function lineId(contentId: string, order: number): string {
+	return `${contentId}-${String(order).padStart(4, '0')}`;
+}
+
+/**
+ * `content_lines` rows for a song's lines. The pasted text is both the original and the kana
+ * (a song is pasted as kana already — kanji are refused on the way in), and the romaji is
+ * derived so the row looks like any other content line.
+ */
+export function linesToRows(contentId: string, lines: readonly SongLine[]): NewContentLineRow[] {
+	return lines.map((line, order) => ({
+		id: lineId(contentId, order),
+		contentId,
+		order,
+		startTime: line.start ?? null,
+		endTime: null,
+		originalText: line.text,
+		kanaText: line.text,
+		romajiText: toRomaji(line.text),
+		metadata: null
+	}));
+}
+
+/** Back to the song shape; rows must already be in `order`. */
+export function rowsToLines(
+	rows: readonly { kanaText: string; startTime?: number | null }[]
+): SongLine[] {
+	return rows.map((row) =>
+		row.startTime === null || row.startTime === undefined
+			? { text: row.kanaText }
+			: { text: row.kanaText, start: row.startTime }
+	);
+}
+
+/** Whether a `contents` row is a song at all (user-provided rows only reach the song API). */
+export function isSongRow(
+	row: Pick<ContentRow, 'ownerId'>
+): row is ContentRow & { ownerId: string } {
+	return typeof row.ownerId === 'string' && row.ownerId !== '';
+}
+
+export function toSongRecord(row: ContentRow & { ownerId: string }, lines: SongLine[]): SongRecord {
+	const state = songStateOf(row.status);
+	return {
+		id: row.id,
+		ownerId: row.ownerId,
+		videoId: row.videoId ?? '',
+		title: row.title,
+		lines,
+		visibility: state.visibility,
+		publicConsentAt: row.publicConsentAt ?? null,
+		status: state.status,
+		removedReason: row.removedReason ?? null,
+		createdAt: row.createdAt,
+		updatedAt: row.updatedAt
+	};
+}

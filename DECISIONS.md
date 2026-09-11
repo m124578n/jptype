@@ -516,3 +516,29 @@ migration `0004_achievements` 只有 `ALTER TABLE runs ADD max_combo integer`（
 ### 沒有動的東西
 
 分數公式維持 §6.5 的 `kpm × accuracy²`，沒有加 Combo 係數；「Accuracy ≥ 90% 才算有效成績」仍未做（兩項都還在 ROADMAP M4-3 待確認）。
+
+## 2026-09-11 M4-1c 歌曲併入統一內容模型
+
+ROADMAP M4-1 最後一條「User Provided 內容併入此模型」。做法是**把 `songs` 表整個拿掉**，不是在旁邊再加一層對應表。
+
+### 一首歌 = `contents` 一列 + `content_lines`
+
+- `contents` 多三欄：`owner_id`（有值 = 使用者內容，null = 平台內容）、`public_consent_at`（公開時勾的權利聲明時間）、`removed_reason`；索引 `contents_owner (owner_id, updated_at DESC)`。
+- 歌曲的 `visibility` + `status` 兩個欄位收成一個 `contents.status`：私有 = `draft`、公開 = `published`、下架 = `removed`（`status` 因此多了 `removed`）。對應寫在 `lib/server/songs/mapping.ts`，純函式、有測試；只改 visibility 的 patch 用 SQL `CASE WHEN status = 'removed' THEN status ELSE ? END` 套，下架的歌不會被「設回私有」復活。
+- 每行歌詞一列 `content_lines`：`originalText` 與 `kanaText` 都是使用者貼的假名（貼入時漢字已被擋掉）、`romajiText` 用 `lib/ja/romaji` 算、`startTime` = 對時秒數。行 id 是 `{songId}-{0000}`（整表覆寫，不需要 ulid）。
+- `sourceType = 'user_provided'`、`rightsStatus` 維持 `'unknown'`：使用者的權利聲明記在 `publicConsentAt`，那是使用者自己的主張，不是我們核過的「cleared」，管理員看到的欄位不該說謊。
+- `takedown_requests.song_id` 改名 `content_id`，FK 指向 `contents`。
+
+### 平台內容與使用者內容永遠分開列
+
+`ContentFilter` 多了必填的 `owner: 'platform' | 'user'`，沒有任何呼叫端會把兩種混在一張列表：`/contents`、`/api/contents`、`/admin/contents`、`content:{id}` 的題庫（`contentPool`）只看 `owner_id IS NULL`；`/api/songs*` 與 admin 的歌曲搜尋只看 `owner_id IS NOT NULL`。所以管理員的 Line Editor 打不開任何人的私有歌詞（404），使用者的公開歌也不會出現在 `/contents`（它在 `/songs` 的公開曲庫）。
+
+**歌曲仍然不進榜**：`contentPool` 對使用者內容回 undefined，`POST /api/runs` 的 `content:{歌曲id}` 會被擋。M3 C 的「不進榜」原本是因為歌詞只存本機，現在伺服器其實驗得了；要不要讓公開歌曲有自己的榜 **[待確認]**（改一行：`contentPool` 放行 `status = 'published'` 的使用者內容即可）。
+
+### 對外介面沒變
+
+`/api/songs`、`/api/songs/[id]`、`/visibility`、`/api/songs/public`、`/api/timings*`、`/api/admin/songs*` 的回應形狀與 `/songs` 三個頁面一行都沒改（`SongRecord` 還是 `visibility` + `status: active | removed`）。唯一改名：檢舉 body 與 `TakedownRecord` 的 `songId` → `contentId`（`/api/reports` 舊名 `songId` 照收）。admin 歌曲搜尋改回 `AdminSongSummary`（只有行數，不再載歌詞）。
+
+### migration `0005_unify_songs` 是手寫的
+
+drizzle-kit `generate` 看到 `takedown_requests` 一刪一加欄位會問「是改名嗎」，這個提示需要 TTY，`drizzle-kit/api` 也一樣。所以 SQL 手寫（`ALTER TABLE contents ADD …` → `INSERT INTO contents … SELECT … FROM songs` → `json_each(songs.lines)` 展開成 `content_lines` → 重建 `takedown_requests` → `DROP TABLE songs`），snapshot 與 journal 由 `apps/web/scripts/gen-migration.mjs` 用 `generateSQLiteDrizzleJson` 產生。本機用假資料（私有 / 公開 / 下架各一首 + 一筆檢舉）跑過 `wrangler d1 migrations apply --local`，三種狀態、時間軸、檢舉關聯都正確；搬過來的舊行 `romaji_text` 是空字串（只有新寫入才算羅馬字，歌曲頁不用它）。

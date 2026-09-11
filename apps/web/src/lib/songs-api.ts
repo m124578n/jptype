@@ -1,7 +1,8 @@
 /**
  * Browser side of the song API (M4-1b).
  *
- * A signed-in user's library lives in D1 and syncs across devices; an anonymous visitor keeps
+ * A signed-in user's library lives in D1 (as user-provided content since M4-1c, which changes
+ * nothing on this side) and syncs across devices; an anonymous visitor keeps
  * using `localStorage` exactly as before. Both are read through `LibraryEntry`, so the pages do
  * not branch on where a song came from beyond the `remote` flag.
  *
@@ -231,7 +232,8 @@ export async function countTimingUse(id: string): Promise<void> {
 // ── Notice and takedown ────────────────────────────────────────────────────────────────────────
 
 export interface ReportBody {
-	songId?: string | null;
+	/** The reported song's id (the `/songs/[id]` in the URL). */
+	contentId?: string | null;
 	videoId?: string;
 	reporterContact: string;
 	claim: string;
@@ -246,7 +248,7 @@ export async function fileReport(body: ReportBody): Promise<boolean> {
 
 export interface AdminReport {
 	id: string;
-	songId: string | null;
+	contentId: string | null;
 	videoId: string;
 	reporterContact: string;
 	claim: string;

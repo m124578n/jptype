@@ -9,18 +9,6 @@ import { requireAdmin, songDeps } from '$lib/server/songs/route';
 export const GET: RequestHandler = async (event) => {
 	requireAdmin(event);
 	const deps = songDeps(event);
-	const found = await searchSongsAsAdmin(event.url.searchParams.get('q') ?? '', deps);
-	return json({
-		songs: found.map((s) => ({
-			id: s.id,
-			title: s.title,
-			ownerId: s.ownerId,
-			videoId: s.videoId,
-			lineCount: s.lines.length,
-			visibility: s.visibility,
-			status: s.status,
-			removedReason: s.removedReason,
-			updatedAt: s.updatedAt
-		}))
-	});
+	const songs = await searchSongsAsAdmin(event.url.searchParams.get('q') ?? '', deps);
+	return json({ songs });
 };

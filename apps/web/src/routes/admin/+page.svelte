@@ -108,8 +108,9 @@
 							<tr>
 								<td class="when">{formatDateTime(report.createdAt)}</td>
 								<td>
-									{#if report.songId && report.songTitle}
-										<a href={resolve('/songs/[id]', { id: report.songId })}>{report.songTitle}</a>
+									{#if report.contentId && report.songTitle}
+										<a href={resolve('/songs/[id]', { id: report.contentId })}>{report.songTitle}</a
+										>
 									{:else}
 										<span class="muted">{m.admin_song_gone()}</span>
 									{/if}

@@ -4,6 +4,9 @@
  * `songs/service.ts`.
  *
  * The rules that matter:
+ * - everything here is about **platform content** (`ownerId === null`): a user-provided row
+ *   (the song library, M4-1c) is invisible to these services — the admin console never opens a
+ *   user's private lyrics, and `/contents` never lists them (ROADMAP M4-1);
  * - contents and lines are **admin-only** to write; the route checks `ADMIN_EMAILS` first;
  * - a content may only be published when `rightsStatus === 'cleared'` **and** at least one line
  *   is typeable by the engine (ROADMAP M4-1「rightsStatus 不明者不得發布」);
@@ -267,6 +270,7 @@ export function parseListQuery(params: URLSearchParams, status: ContentStatus | 
 	const rawPage = Number(params.get('page') ?? '1');
 	return {
 		status,
+		owner: 'platform',
 		...(isContentType(type) ? { type } : {}),
 		...(isJlptLevel(jlpt) ? { jlptLevel: jlpt } : {}),
 		...(isDifficulty(difficulty) ? { difficulty } : {}),
@@ -276,6 +280,15 @@ export function parseListQuery(params: URLSearchParams, status: ContentStatus | 
 }
 
 // ── Admin services ─────────────────────────────────────────────────────────────────────────────
+
+/** A platform content by id; a user-provided row is a 404 here, like a missing one. */
+async function platformContent(
+	contentId: string,
+	deps: ContentDeps
+): Promise<ContentRecord | undefined> {
+	const found = await deps.store.getContent(contentId);
+	return found && found.ownerId === null ? found : undefined;
+}
 
 export async function createContent(
 	userId: string,
@@ -299,6 +312,9 @@ export async function createContent(
 		license: input.license,
 		rightsStatus: input.rightsStatus,
 		createdBy: userId,
+		ownerId: null,
+		publicConsentAt: null,
+		removedReason: null,
 		createdAt: now,
 		updatedAt: now
 	});
@@ -309,6 +325,9 @@ export async function createContent(
 			id: contentId,
 			status: 'draft',
 			createdBy: userId,
+			ownerId: null,
+			publicConsentAt: null,
+			removedReason: null,
 			createdAt: now,
 			updatedAt: now
 		}
@@ -320,7 +339,7 @@ export async function updateContent(
 	patch: ContentPatchInput,
 	deps: ContentDeps
 ): Promise<Result<ContentRecord>> {
-	const found = await deps.store.getContent(contentId);
+	const found = await platformContent(contentId, deps);
 	if (!found) return fail(404, 'content not found');
 	const now = clock(deps);
 	await deps.store.patchContent(contentId, { ...patch, updatedAt: now });
@@ -331,7 +350,7 @@ export async function deleteContent(
 	contentId: string,
 	deps: ContentDeps
 ): Promise<Result<{ deleted: true }>> {
-	const found = await deps.store.getContent(contentId);
+	const found = await platformContent(contentId, deps);
 	if (!found) return fail(404, 'content not found');
 	await deps.store.deleteContent(contentId);
 	return { ok: true, body: { deleted: true } };
@@ -343,7 +362,7 @@ export async function setContentLines(
 	lines: readonly LineInput[],
 	deps: ContentDeps
 ): Promise<Result<{ lines: ContentLineRecord[] }>> {
-	const found = await deps.store.getContent(contentId);
+	const found = await platformContent(contentId, deps);
 	if (!found) return fail(404, 'content not found');
 	const now = clock(deps);
 
@@ -378,7 +397,7 @@ export async function setContentStatus(
 	status: ContentStatus,
 	deps: ContentDeps
 ): Promise<Result<ContentRecord>> {
-	const found = await deps.store.getContent(contentId);
+	const found = await platformContent(contentId, deps);
 	if (!found) return fail(404, 'content not found');
 	const now = clock(deps);
 
@@ -404,14 +423,17 @@ async function list(query: ListQuery, pageSize: number, deps: ContentDeps): Prom
 	return { contents: rows, total, page, pageSize };
 }
 
-/** Admin list: every status, newest update first. */
+/** Admin list: every status of the platform content, newest update first. */
 export function listContentsAsAdmin(query: ListQuery, deps: ContentDeps): Promise<ContentList> {
-	return list(query, ADMIN_PAGE_SIZE, deps);
+	return list({ ...query, owner: 'platform' }, ADMIN_PAGE_SIZE, deps);
 }
 
-/** Public list: published only. Plain filters and search, newest first — nothing is curated. */
+/**
+ * Public list: published platform content only. Plain filters and search, newest first —
+ * nothing is curated, and a user's published song is found on `/songs`, not here.
+ */
 export function listPublicContents(query: ListQuery, deps: ContentDeps): Promise<ContentList> {
-	return list({ ...query, status: 'published' }, PAGE_SIZE, deps);
+	return list({ ...query, status: 'published', owner: 'platform' }, PAGE_SIZE, deps);
 }
 
 export interface ContentDetail {
@@ -424,7 +446,7 @@ export async function getContentAsAdmin(
 	contentId: string,
 	deps: ContentDeps
 ): Promise<Result<ContentDetail>> {
-	const content = await deps.store.getContent(contentId);
+	const content = await platformContent(contentId, deps);
 	if (!content) return fail(404, 'content not found');
 	return { ok: true, body: { content, lines: await deps.store.getLines(contentId) } };
 }
@@ -434,20 +456,21 @@ export async function getPublicContent(
 	contentId: string,
 	deps: ContentDeps
 ): Promise<Result<ContentDetail>> {
-	const content = await deps.store.getContent(contentId);
+	const content = await platformContent(contentId, deps);
 	if (!content || content.status !== 'published') return fail(404, 'content not found');
 	return { ok: true, body: { content, lines: await deps.store.getLines(contentId) } };
 }
 
 /**
  * The question pool of `content:{id}` for `POST /api/runs`: the kana of every published line.
- * Undefined when the content is not published, which makes the run fail validation.
+ * Undefined when the content is not published platform content, which makes the run fail
+ * validation — a user's song stays out of the leaderboard (ROADMAP M3 C「不進榜」).
  */
 export async function contentPool(
 	contentId: string,
 	deps: ContentDeps
 ): Promise<readonly string[] | undefined> {
-	const content = await deps.store.getContent(contentId);
+	const content = await platformContent(contentId, deps);
 	if (!content || content.status !== 'published') return undefined;
 	const lines = await deps.store.getLines(contentId);
 	return lines.map((l: Pick<ContentLine, 'kanaText'>) => l.kanaText);

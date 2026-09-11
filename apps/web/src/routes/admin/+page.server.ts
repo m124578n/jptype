@@ -21,22 +21,7 @@ export const load: PageServerLoad = async (event) => {
 	const deps = { store: d1SongStore(createDb(env.DB)) };
 	const status = event.url.searchParams.get('status') === 'all' ? 'all' : 'open';
 	const q = (event.url.searchParams.get('q') ?? '').trim();
-	const found = q === '' ? [] : await searchSongsAsAdmin(q, deps);
+	const songs = q === '' ? [] : await searchSongsAsAdmin(q, deps);
 
-	return {
-		status,
-		q,
-		reports: await listReports(status, deps),
-		songs: found.map((s) => ({
-			id: s.id,
-			title: s.title,
-			ownerId: s.ownerId,
-			videoId: s.videoId,
-			lineCount: s.lines.length,
-			visibility: s.visibility,
-			status: s.status,
-			removedReason: s.removedReason,
-			updatedAt: s.updatedAt
-		}))
-	};
+	return { status, q, reports: await listReports(status, deps), songs };
 };

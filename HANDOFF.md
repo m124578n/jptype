@@ -1,10 +1,10 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-10（M4-3、M4-2/4 合併後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-11（M4-1c 歌曲併入統一內容模型之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
-M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
+M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
 
 ## 2. 新機器起手式
 
@@ -12,7 +12,7 @@ M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排�
 # Node 22（.node-version 會讓 fnm/nvm 自動切）、pnpm 12
 pnpm install                      # prepare 會：複製 kuromoji 字典到 apps/web/static/dict、編譯 Paraglide、svelte-kit sync
 cp apps/web/.dev.vars.example apps/web/.dev.vars   # 填 BETTER_AUTH_SECRET（任意 32 bytes 隨機字串）；Google 憑證有就填
-pnpm --filter web db:migrate:local                 # 套 0000–0003 到本機 D1（.wrangler/state）
+pnpm --filter web db:migrate:local                 # 套 0000–0005 到本機 D1（.wrangler/state）
 pnpm dev                                           # http://localhost:5173（Vite + Cloudflare 綁定模擬）
 pnpm run ci                                        # lint → typecheck → 資料驗證 → 測試（含覆蓋率門檻）→ build
 pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 出來的 worker（含 cron：/__scheduled?cron=0+16+*+*+0 需 --test-scheduled）
@@ -38,7 +38,13 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
-### 2026-09-10 最後一輪已合併（M4-3 與 M4-2/4）
+### 2026-09-11 已合併（M4-1c）
+
+- `songs` 表刪除：一首歌 = `contents`（`owner_id`、`source_type = 'user_provided'`、status draft/published/removed）+ `content_lines`；對應在 `lib/server/songs/mapping.ts`，D1 store 在 `lib/server/songs/store.ts`。API 與 `/songs` 頁面介面沒變；檢舉 body 的 `songId` 改名 `contentId`（舊名仍收）。平台內容與使用者內容永遠分開列（`ContentFilter.owner`）。理由與細節見 DECISIONS「M4-1c」。
+- migration `0005_unify_songs` 手寫（drizzle-kit 的改名提示需要 TTY）；snapshot 用 `apps/web/scripts/gen-migration.mjs` 產生。**本機記得 `pnpm --filter web db:migrate:local`**。
+- 驗證：型別檢查、單元測試（新增 mapping 測試、contents 服務的 owner 隔離測試）、build、`wrangler dev` 上用假資料跑過 migration 與 `/api/songs*`、`/api/contents`、`/api/reports` 冒煙；瀏覽器互動一樣沒實測。
+
+### 2026-09-10 已合併（M4-3 與 M4-2/4）
 
 - M4-3：Combo / Max Combo（`runs.max_combo`，migration `0004_achievements`，伺服器從 log 重算）、錯誤分析（最常錯假名與拼法，結果頁前 5）、結果頁 Time / Errors、`/me` 今日與本週練習時間、30 天平均、五個成就（由既有資料推導，無新表）。
 - M4-2 Review 模式（內容與歌曲只複習錯過的句子，紀錄在 localStorage `jptype:review`，不送伺服器）、`/contents` 最近練過與空狀態、首頁分類卡與「你的進度」、`/learn` 完成度與「繼續上次」。
@@ -46,7 +52,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ### 明確還沒做
 
-- M4-1 的「User Provided 內容併入統一模型」：目前歌曲用獨立的 `songs` 表，內容用 `contents`；規格希望最終合一。
+- 公開歌曲要不要有自己的排行榜（現在 `content:{歌曲id}` 一律被擋，維持 M3 C「不進榜」）：待 owner 決定，見 DECISIONS「M4-1c」。
 - M4-5 AI（需要 key）：校對輔助、個人化錯誤建議、生成 N3 段落。
 - M3 剩餘：Azure TTS 批次（需要 key）、AI 分級文章（需要 key）、多人競速（Durable Objects，要另開規格）。
 - 無提示加成（關閉羅馬字提示 ×1.1）：規格允許不做，待 owner 決定。分數公式是否加 Combo 係數：待 owner 決定（現在是 `kpm × accuracy²`）。
@@ -69,6 +75,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 - drizzle-kit 重建 sqlite 表時會把 `sql\`DESC\`` 索引欄寫壞成 `` `"score" DESC` ``，手動改回 `` `score` DESC ``。
 - pnpm 12 Windows 長路徑：`peersSuffixMaxLength: 40` 已設。
 - adapter-cloudflare 會把 bundle 寫到它讀到的 wrangler config 的 `main`，所以 adapter 專用 `wrangler.adapter.jsonc`。
+- drizzle-kit `generate` 遇到同一張表「刪一欄 + 加一欄」會問是不是改名，這個提示需要 TTY，在 Claude 的 shell 裡跑不了（`drizzle-kit/api` 也一樣）。這種 migration 就手寫 SQL，再用 `apps/web/scripts/gen-migration.mjs <NNNN_name>` 產 snapshot 與 journal（它只呼叫 `generateSQLiteDrizzleJson`，不 diff）。純加欄位的 migration 照舊 `pnpm --filter web db:generate`。
 - `vite-plugin-static-copy` 在 Windows 會重建來源路徑，改用 `apps/web/scripts/copy-kuromoji-dict.mjs`；dev 另有 middleware 讓 `.gz` 原樣送出。
 
 ## 7. 用 agent 分工的作法（省額度）

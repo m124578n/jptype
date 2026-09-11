@@ -1,4 +1,16 @@
-import { and, asc, count, desc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	or,
+	sql,
+	type SQL
+} from 'drizzle-orm';
 import {
 	isContentType,
 	isDifficulty,
@@ -24,6 +36,10 @@ import {
 /** A content row as the app sees it, with the enum columns narrowed. */
 export interface ContentRecord extends ContentMeta {
 	createdBy: string | null;
+	/** User-provided content: when the owner ticked the rights declaration (null → never). */
+	publicConsentAt: number | null;
+	/** Set together with `status = 'removed'`. */
+	removedReason: string | null;
 }
 
 export interface ContentLineRecord extends ContentLine {
@@ -43,12 +59,19 @@ export interface ContentPatch {
 	sourceName?: string;
 	license?: string;
 	rightsStatus?: string;
+	publicConsentAt?: number | null;
+	removedReason?: string | null;
 	updatedAt: number;
 }
 
-/** `status: 'all'` is the admin view; the public list always passes `'published'`. */
+/**
+ * `status: 'all'` is the admin view; the public list always passes `'published'`.
+ * `owner` separates platform content (`ownerId IS NULL`, the admin console and `/contents`) from
+ * user-provided content (`ownerId` set, the song library); no caller lists both together.
+ */
 export interface ContentFilter {
 	status: ContentStatus | 'all';
+	owner: 'platform' | 'user';
 	type?: ContentType;
 	jlptLevel?: JlptLevel;
 	difficulty?: Difficulty;
@@ -84,7 +107,7 @@ function narrowDifficulty(value: string): Difficulty {
 }
 
 function narrowStatus(value: string): ContentStatus {
-	return value === 'published' ? 'published' : 'draft';
+	return value === 'published' || value === 'removed' ? value : 'draft';
 }
 
 function toRecord(row: ContentRow): ContentRecord {
@@ -103,12 +126,15 @@ function toRecord(row: ContentRow): ContentRecord {
 		license: row.license,
 		rightsStatus: row.rightsStatus === 'cleared' ? 'cleared' : 'unknown',
 		createdBy: row.createdBy ?? null,
+		ownerId: row.ownerId ?? null,
+		publicConsentAt: row.publicConsentAt ?? null,
+		removedReason: row.removedReason ?? null,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt
 	};
 }
 
-function toLine(row: ContentLineRow): ContentLineRecord {
+export function toLine(row: ContentLineRow): ContentLineRecord {
 	return {
 		id: row.id,
 		order: row.order,
@@ -134,6 +160,7 @@ function textLike(q: string): SQL | undefined {
 
 function filterWhere(filter: ContentFilter): SQL | undefined {
 	return and(
+		filter.owner === 'platform' ? isNull(contents.ownerId) : isNotNull(contents.ownerId),
 		filter.status === 'all' ? undefined : eq(contents.status, filter.status),
 		filter.type === undefined ? undefined : eq(contents.type, filter.type),
 		filter.jlptLevel === undefined ? undefined : eq(contents.jlptLevel, filter.jlptLevel),
@@ -182,6 +209,8 @@ export function d1ContentStore(db: Db): ContentStore {
 			if (patch.sourceName !== undefined) set.sourceName = patch.sourceName;
 			if (patch.license !== undefined) set.license = patch.license;
 			if (patch.rightsStatus !== undefined) set.rightsStatus = patch.rightsStatus;
+			if (patch.publicConsentAt !== undefined) set.publicConsentAt = patch.publicConsentAt;
+			if (patch.removedReason !== undefined) set.removedReason = patch.removedReason;
 			await db.update(contents).set(set).where(eq(contents.id, id));
 		},
 
@@ -238,14 +267,17 @@ export function d1ContentStore(db: Db): ContentStore {
 			// D1 has no interactive transaction, but it does have batches: one delete plus the
 			// inserts go to the database together, so a content is never left half-edited.
 			const del = db.delete(contentLines).where(eq(contentLines.contentId, contentId));
-			const inserts = chunk(rows, 20).map((part) => db.insert(contentLines).values(part));
+			const inserts = chunk(rows, LINE_BATCH).map((part) => db.insert(contentLines).values(part));
 			await db.batch([del, ...inserts]);
 		}
 	};
 }
 
-/** D1 caps the bound parameters per statement; insert the lines in batches. */
-function chunk<T>(items: readonly T[], size: number): T[][] {
+/** Lines per INSERT: D1 caps the bound parameters per statement (9 columns × 20 rows). */
+export const LINE_BATCH = 20;
+
+/** Split a line list into INSERT-sized parts. */
+export function chunk<T>(items: readonly T[], size: number): T[][] {
 	const out: T[][] = [];
 	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size) as T[]);
 	return out;

@@ -66,7 +66,7 @@
 - ✅ 權利 metadata 為必填：sourceType（original / licensed / public_domain / user_provided / other）、sourceUrl、sourceName、license、rightsStatus（cleared / unknown）；**`rightsStatus != 'cleared'` 或沒有任何一句打得出來就不能發布**（伺服器 409）
 - ✅ Manual Import 管線：貼文字 → 斷句（`lib/ja/segment`）→ 漢字→假名（瀏覽器端 kuromoji，字典由自己的網域提供，不叫外部 API）→ 羅馬字（`lib/ja/romaji`）→ 管理員逐句校對 → 發布
 - ✅ 公開瀏覽 `/contents`（類型 / JLPT / 難度篩選 + 搜尋 + 個人最佳）與練習 `/contents/[id]`（有時間軸走同步模式，否則逐句）；成績送 `POST /api/runs`，mode `content:{id}`
-- ⬜ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs`（M4-1b 的 `songs` 表）併入此模型
+- ✅ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs`（M4-1b 的 `songs` 表）併入此模型（**M4-1c，2026-09-11**）：`songs` 表刪除，一首歌 = `contents` 一列（`ownerId` 為該使用者、`sourceType = 'user_provided'`、`status` draft = 私有 / published = 公開 / removed = 下架）+ `content_lines`；migration `0005_unify_songs` 連資料一起搬（含 `takedown_requests.song_id → content_id`）。`/api/songs*`、`/api/timings*`、`/api/reports`、`/api/admin/songs*` 的介面與 `/songs` 頁面都沒變（檢舉 body 的 `songId` 改名 `contentId`，舊名仍收）；`/contents`、`/admin/contents`、`content:{id}` 排行榜一律只看平台內容（`ownerId IS NULL`）
 - ⬜ 之後任何第三方來源都以獨立 Connector 實作，並遵守該來源的使用條款（不做繞過、不做大量抓取）
 
 ### M4-1b 歌曲：歌詞私有、時間軸共享、可選公開（owner 2026-09-10 定案，第二個 Opus agent）

@@ -339,102 +339,107 @@
 		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
 	{:else if song}
 		<header class="stack head">
-			<h1>{song.title}</h1>
-			<div class="row modes" role="group" aria-label={m.songs_mode_label()}>
-				<button
-					type="button"
-					class="btn"
-					class:btn--primary={mode === 'sync'}
-					aria-pressed={mode === 'sync'}
-					disabled={!syncable}
-					onclick={() => chooseMode('sync')}
-				>
-					{m.songs_mode_sync()}
-				</button>
-				<button
-					type="button"
-					class="btn"
-					class:btn--primary={mode === 'free'}
-					aria-pressed={mode === 'free'}
-					onclick={() => chooseMode('free')}
-				>
-					{m.songs_mode_free()}
-				</button>
-				<button
-					type="button"
-					class="btn"
-					class:btn--primary={mode === 'review'}
-					aria-pressed={mode === 'review'}
-					disabled={missed.length === 0}
-					title={missed.length === 0 ? m.review_none() : m.review_mode_hint()}
-					onclick={() => chooseMode('review')}
-				>
-					{m.review_mode()}
-				</button>
+			<div class="row titlebar">
+				<h1 class="title">{song.title}</h1>
+				<div class="row modes" role="group" aria-label={m.songs_mode_label()}>
+					<button
+						type="button"
+						class="btn btn--small"
+						class:btn--primary={mode === 'sync'}
+						aria-pressed={mode === 'sync'}
+						disabled={!syncable}
+						onclick={() => chooseMode('sync')}
+					>
+						{m.songs_mode_sync()}
+					</button>
+					<button
+						type="button"
+						class="btn btn--small"
+						class:btn--primary={mode === 'free'}
+						aria-pressed={mode === 'free'}
+						onclick={() => chooseMode('free')}
+					>
+						{m.songs_mode_free()}
+					</button>
+					<button
+						type="button"
+						class="btn btn--small"
+						class:btn--primary={mode === 'review'}
+						aria-pressed={mode === 'review'}
+						disabled={missed.length === 0}
+						title={missed.length === 0 ? m.review_none() : m.review_mode_hint()}
+						onclick={() => chooseMode('review')}
+					>
+						{m.review_mode()}
+					</button>
+				</div>
 			</div>
-			{#if mode === 'review'}
-				<p class="muted small">
+			<p class="muted small note">
+				{#if mode === 'review'}
 					{m.review_mode_hint()} · {m.review_available({ count: missed.length })}
-				</p>
-			{:else if !syncable}
-				<p class="muted small">
+				{:else if !syncable}
 					{m.songs_sync_unavailable()}
 					{#if isOwner}
 						<a href={resolve('/songs/[id]/timing', { id: data.id })}>{m.songs_timing_link()}</a>
 					{/if}
-				</p>
-			{:else if mode === 'sync'}
-				<p class="muted small">{m.songs_mode_sync_hint()}</p>
-			{:else}
-				<p class="muted small">{m.songs_mode_free_hint()}</p>
-			{/if}
-			{#if mode !== 'review' && missed.length > 0}
-				<p class="muted small">{m.review_available({ count: missed.length })}</p>
-			{/if}
-			{#if !isOwner}
-				<p class="muted small">{m.songs_public_owner()}</p>
-			{/if}
+				{:else if mode === 'sync'}
+					{m.songs_mode_sync_hint()}
+				{:else}
+					{m.songs_mode_free_hint()}
+				{/if}
+				{#if mode !== 'review' && missed.length > 0}
+					· {m.review_available({ count: missed.length })}
+				{/if}
+				{#if !isOwner}
+					· {m.songs_public_owner()}
+				{/if}
+			</p>
 		</header>
 
-		{#if isOwner && !removed}
-			<section class="card publish stack">
-				<strong>{m.songs_publish_title()}</strong>
-				<p class="muted small">{m.songs_publish_body()}</p>
-				{#if !remote}
-					<p class="muted small">{m.songs_publish_local()}</p>
-				{:else if visibility === 'public'}
-					<p class="row">
-						<span class="ok small">{m.songs_visibility_public()}</span>
-						<button type="button" class="btn" disabled={publishing} onclick={togglePublic}>
-							{m.songs_unpublish_button()}
+		{#snippet tools(stop: boolean)}
+			<div class="row toolbar">
+				<span class="row toggles">
+					<button
+						type="button"
+						class="btn btn--icon"
+						aria-pressed={settings.showHint}
+						aria-label={m.typing_hint_toggle()}
+						title={m.typing_hint_toggle()}
+						onclick={() => updateSetting('showHint', !settings.showHint)}
+					>
+						<Icon name="text" />
+					</button>
+					<button
+						type="button"
+						class="btn btn--icon"
+						aria-pressed={settings.showKeyboard}
+						aria-label={m.typing_keyboard_toggle()}
+						title={m.typing_keyboard_toggle()}
+						onclick={() => updateSetting('showKeyboard', !settings.showKeyboard)}
+					>
+						<Icon name="keyboard" />
+					</button>
+					<button
+						type="button"
+						class="btn btn--icon"
+						aria-pressed={settings.sound}
+						aria-label={m.typing_sound_toggle()}
+						title={m.typing_sound_toggle()}
+						onclick={() => updateSetting('sound', !settings.sound)}
+					>
+						<Icon name={settings.sound ? 'volume' : 'volume-off'} />
+					</button>
+				</span>
+				<span class="row actions">
+					<button type="button" class="btn btn--small" onclick={reset}>{m.songs_restart()}</button>
+					{#if stop}
+						<button type="button" class="btn btn--small" onclick={finishSync}>
+							{m.songs_sync_stop()}
 						</button>
-					</p>
-				{:else}
-					<label class="row consent">
-						<input type="checkbox" bind:checked={consent} />
-						<span class="small">{m.songs_publish_consent()}</span>
-					</label>
-					<p>
-						<button
-							type="button"
-							class="btn btn--primary"
-							disabled={publishing || !consent}
-							onclick={togglePublic}
-						>
-							{m.songs_publish_button()}
-						</button>
-					</p>
-				{/if}
-				{#if publishError !== ''}
-					<p class="error small" role="alert">{publishError}</p>
-				{/if}
-			</section>
-		{:else if isOwner && removed}
-			<section class="card publish stack">
-				<strong>{m.songs_status_removed()}</strong>
-				<p class="muted small">{m.songs_publish_removed()}</p>
-			</section>
-		{/if}
+					{/if}
+				</span>
+			</div>
+		{/snippet}
 
 		<div class="board" class:live={result === null}>
 			<div class="stage">
@@ -462,22 +467,38 @@
 						{/if}
 					</div>
 				{/if}
+				{#if playerFailed}
+					<p class="muted small center">{m.songs_player_failed()}</p>
+				{/if}
 			</div>
 
 			{#if mode === 'sync' && result === null}
-				<section class="stack practice">
+				<section class="card panel stack" aria-label={m.songs_mode_sync()}>
 					{#if phase === 'idle'}
-						<p class="center">
+						<div class="stack idle">
 							<button type="button" class="btn btn--primary" onclick={startSync}>
 								{m.songs_sync_start()}
 							</button>
-						</p>
-						<p class="muted small center">{m.songs_sync_keys()}</p>
+							<p class="muted small center">{m.songs_sync_keys()}</p>
+						</div>
 					{:else if sync}
-						<p class="muted small" aria-live="polite">
-							{m.songs_progress({ current: sync.index + 1, total: sync.total })}
-							{#if skippedLines > 0}· {m.songs_skipped({ count: skippedLines })}{/if}
-						</p>
+						<div class="row meta">
+							<span class="muted small" aria-live="polite">
+								{m.songs_progress({ current: sync.index + 1, total: sync.total })}
+								{#if skippedLines > 0}· {m.songs_skipped({ count: skippedLines })}{/if}
+							</span>
+							<span class="muted small status" aria-live="polite">
+								{#if playerState === 'paused'}
+									{m.songs_sync_paused()}
+								{:else if sync.pending && playerState === 'playing'}
+									{m.songs_sync_pending()}
+								{:else if sync.lineDone}
+									✓ {m.songs_sync_line_done()}
+								{:else if playerState !== 'playing'}
+									{m.songs_sync_waiting()}
+								{/if}
+							</span>
+						</div>
 						<p class="muted line" lang="ja">{previous ?? ''}</p>
 						<div class="lyric" class:ruby={currentOriginal !== undefined}>
 							<TypingArea run={sync} showHint={settings.showHint} />
@@ -486,73 +507,29 @@
 							{/if}
 						</div>
 						<p class="muted line" lang="ja">{upcoming ?? ''}</p>
-						<p class="muted small center status" aria-live="polite">
-							{#if playerState === 'paused'}
-								{m.songs_sync_paused()}
-							{:else if sync.pending && playerState === 'playing'}
-								{m.songs_sync_pending()}
-							{:else if sync.lineDone}
-								✓ {m.songs_sync_line_done()}
-							{:else if playerState !== 'playing'}
-								{m.songs_sync_waiting()}
-							{:else}
-								&nbsp;
-							{/if}
-						</p>
 						{#if settings.showKeyboard}
 							<Keyboard next={sync.nextKey} />
 						{/if}
 						{#if coarsePointer}
 							<p class="muted small center">{m.typing_mobile_notice()}</p>
 						{/if}
-						<div class="row tools">
-							<button
-								type="button"
-								class="btn btn--icon"
-								aria-pressed={settings.showHint}
-								aria-label={m.typing_hint_toggle()}
-								title={m.typing_hint_toggle()}
-								onclick={() => updateSetting('showHint', !settings.showHint)}
-							>
-								<Icon name="text" />
-							</button>
-							<button
-								type="button"
-								class="btn btn--icon"
-								aria-pressed={settings.showKeyboard}
-								aria-label={m.typing_keyboard_toggle()}
-								title={m.typing_keyboard_toggle()}
-								onclick={() => updateSetting('showKeyboard', !settings.showKeyboard)}
-							>
-								<Icon name="keyboard" />
-							</button>
-							<button
-								type="button"
-								class="btn btn--icon"
-								aria-pressed={settings.sound}
-								aria-label={m.typing_sound_toggle()}
-								title={m.typing_sound_toggle()}
-								onclick={() => updateSetting('sound', !settings.sound)}
-							>
-								<Icon name={settings.sound ? 'volume' : 'volume-off'} />
-							</button>
-							<button type="button" class="btn" onclick={reset}>{m.songs_restart()}</button>
-							<button type="button" class="btn" onclick={finishSync}>{m.songs_sync_stop()}</button>
-						</div>
-						<p class="muted small center">{m.songs_sync_keys()}</p>
+						{@render tools(true)}
+						<p class="muted keys">{m.songs_sync_keys()}</p>
 					{/if}
 				</section>
 			{:else if mode !== 'sync' && run && result === null}
-				<section class="stack practice">
-					<p class="muted small" aria-live="polite">
-						{m.songs_progress({ current: run.index + 1, total: run.questions.length })}
-					</p>
+				<section class="card panel stack" aria-label={m.songs_mode_free()}>
+					<div class="row meta">
+						<span class="muted small" aria-live="polite">
+							{m.songs_progress({ current: run.index + 1, total: run.questions.length })}
+						</span>
+						{#if lineNote > 0}
+							<span class="muted small" aria-live="polite">
+								{m.review_line_note({ count: lineNote })}
+							</span>
+						{/if}
+					</div>
 					<p class="muted line" lang="ja">{previous ?? ''}</p>
-					{#if lineNote > 0}
-						<p class="review-note small" aria-live="polite">
-							{m.review_line_note({ count: lineNote })}
-						</p>
-					{/if}
 					<div class="lyric" class:ruby={currentOriginal !== undefined}>
 						<TypingArea {run} showHint={settings.showHint} />
 						{#if currentOriginal !== undefined}
@@ -566,96 +543,126 @@
 					{#if coarsePointer}
 						<p class="muted small center">{m.typing_mobile_notice()}</p>
 					{/if}
-					<div class="row tools">
-						<button
-							type="button"
-							class="btn btn--icon"
-							aria-pressed={settings.showHint}
-							aria-label={m.typing_hint_toggle()}
-							title={m.typing_hint_toggle()}
-							onclick={() => updateSetting('showHint', !settings.showHint)}
-						>
-							<Icon name="text" />
-						</button>
-						<button
-							type="button"
-							class="btn btn--icon"
-							aria-pressed={settings.showKeyboard}
-							aria-label={m.typing_keyboard_toggle()}
-							title={m.typing_keyboard_toggle()}
-							onclick={() => updateSetting('showKeyboard', !settings.showKeyboard)}
-						>
-							<Icon name="keyboard" />
-						</button>
-						<button
-							type="button"
-							class="btn btn--icon"
-							aria-pressed={settings.sound}
-							aria-label={m.typing_sound_toggle()}
-							title={m.typing_sound_toggle()}
-							onclick={() => updateSetting('sound', !settings.sound)}
-						>
-							<Icon name={settings.sound ? 'volume' : 'volume-off'} />
-						</button>
-						<button type="button" class="btn" onclick={reset}>{m.songs_restart()}</button>
-					</div>
+					{@render tools(false)}
 				</section>
 			{:else if result && active}
-				<ResultPanel
-					{result}
-					wrongUnits={active.wrongUnits}
-					{newBest}
-					onpracticeWrong={reset}
-					onretry={reset}
-					retryLabel={m.songs_again()}
-					showPracticeWrong={false}
-					durationMs={active.durationMs}
-					maxCombo={active.maxCombo}
-					errors={active.errorAnalysis()}
-				/>
-				{#if mode === 'sync'}
-					<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>
-				{:else if mode === 'review'}
-					<p class="center muted small">
-						{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+				<div class="stack">
+					<ResultPanel
+						{result}
+						wrongUnits={active.wrongUnits}
+						{newBest}
+						onpracticeWrong={reset}
+						onretry={reset}
+						retryLabel={m.songs_again()}
+						showPracticeWrong={false}
+						durationMs={active.durationMs}
+						maxCombo={active.maxCombo}
+						errors={active.errorAnalysis()}
+					/>
+					{#if mode === 'sync'}
+						<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>
+					{:else if mode === 'review'}
+						<p class="center muted small">
+							{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+						</p>
+					{/if}
+					<p class="center">
+						<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
 					</p>
-				{/if}
-				<p class="center">
-					<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
-				</p>
+				</div>
 			{/if}
 		</div>
 
-		{#if playerFailed}
-			<p class="muted small center">{m.songs_player_failed()}</p>
+		{#if isOwner && !removed}
+			<section class="card publish stack">
+				<div class="row between">
+					<strong>{m.songs_publish_title()}</strong>
+					{#if remote && visibility === 'public'}
+						<span class="ok small">{m.songs_visibility_public()}</span>
+					{:else}
+						<span class="muted small">{m.songs_visibility_private()}</span>
+					{/if}
+				</div>
+				{#if !remote}
+					<p class="muted small">{m.songs_publish_local()}</p>
+				{:else if visibility === 'public'}
+					<p class="muted small">{m.songs_publish_body()}</p>
+					<p>
+						<button
+							type="button"
+							class="btn btn--small"
+							disabled={publishing}
+							onclick={togglePublic}
+						>
+							{m.songs_unpublish_button()}
+						</button>
+					</p>
+				{:else}
+					<p class="muted small">{m.songs_publish_body()}</p>
+					<label class="row consent">
+						<input type="checkbox" bind:checked={consent} />
+						<span class="small">{m.songs_publish_consent()}</span>
+					</label>
+					<p>
+						<button
+							type="button"
+							class="btn btn--small btn--primary"
+							disabled={publishing || !consent}
+							onclick={togglePublic}
+						>
+							{m.songs_publish_button()}
+						</button>
+					</p>
+				{/if}
+				{#if publishError !== ''}
+					<p class="error small" role="alert">{publishError}</p>
+				{/if}
+			</section>
+		{:else if isOwner && removed}
+			<section class="card publish stack">
+				<strong>{m.songs_status_removed()}</strong>
+				<p class="muted small">{m.songs_publish_removed()}</p>
+			</section>
 		{/if}
 	{/if}
 </div>
 
 <style>
 	.song {
-		gap: var(--space-8);
+		gap: var(--space-6);
 	}
 	.head {
+		gap: var(--space-2);
+	}
+	.titlebar {
+		justify-content: space-between;
+		align-items: center;
 		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+	.title {
+		margin: 0;
+		font-size: 1.5rem;
+		line-height: 1.3;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+	.modes {
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+	.note {
+		margin: 0;
 	}
 	.small {
 		font-size: 0.875rem;
 	}
-	.publish {
-		padding: var(--space-4) var(--space-6);
-		gap: var(--space-2);
+	.center {
+		text-align: center;
 	}
-	.publish p {
-		margin: 0;
-	}
-	.consent {
-		align-items: flex-start;
-		gap: var(--space-2);
-		cursor: pointer;
-	}
-	.consent input {
-		margin-top: 0.2em;
+	.between {
+		justify-content: space-between;
+		align-items: center;
 	}
 	.ok {
 		color: var(--accent);
@@ -663,15 +670,35 @@
 	.error {
 		color: var(--danger);
 	}
-	.center {
-		text-align: center;
+	.btn--small {
+		min-height: 36px;
+		padding-inline: var(--space-4);
+		font-size: 0.875rem;
 	}
-	.modes {
-		gap: var(--space-2);
-		flex-wrap: wrap;
+
+	/* Video and the line being typed side by side on wide screens, so both stay in view. */
+	.board {
+		display: grid;
+		gap: var(--space-4);
+		align-items: start;
 	}
 	.stage {
 		position: relative;
+	}
+	.board.live .stage {
+		width: min(100%, calc(38vh * 16 / 9));
+		margin-inline: auto;
+	}
+	@media (min-width: 64rem) {
+		.board.live {
+			grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+			gap: var(--space-6);
+		}
+		.board.live .stage {
+			width: 100%;
+			position: sticky;
+			top: var(--space-4);
+		}
 	}
 	.countdown {
 		position: absolute;
@@ -693,68 +720,104 @@
 		background: transparent;
 	}
 	.gap {
-		font-size: 1rem;
+		font-size: 0.875rem;
 		font-weight: 500;
 		letter-spacing: 0;
-		padding: var(--space-2) var(--space-4);
+		padding: var(--space-1) var(--space-3);
 		border-radius: var(--radius);
 		background: color-mix(in srgb, var(--bg) 85%, transparent);
 	}
-	/* Video and the line being typed side by side on wide screens, so both stay in view (owner 2026-09-11). */
-	.board {
-		display: grid;
-		gap: var(--space-6);
-		align-items: start;
+
+	/* The lyric panel: meta row, previous line, current line (kana over kanji), next line, tools. */
+	.panel {
+		padding: var(--space-4) var(--space-6);
+		gap: var(--space-3);
+		min-height: 14rem;
 	}
-	.board.live .stage {
-		width: min(100%, calc(45vh * 16 / 9));
-		margin-inline: auto;
+	.idle {
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-3);
+		min-height: 12rem;
 	}
-	@media (min-width: 64rem) {
-		.board.live {
-			grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-		}
-		.board.live .stage {
-			width: 100%;
-			position: sticky;
-			top: var(--space-4);
-		}
+	.meta {
+		justify-content: space-between;
+		align-items: baseline;
+		gap: var(--space-3);
+		min-height: 1.4rem;
 	}
-	/* Kana (what is typed) above, the pasted kanji line below it, like ruby (owner 2026-09-11). */
+	.status {
+		text-align: right;
+	}
+	.line {
+		margin: 0;
+		min-height: 1.6rem;
+		font-size: 1rem;
+		line-height: 1.6;
+		text-align: center;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	.lyric {
 		display: grid;
-		gap: var(--space-2);
+		gap: var(--space-1);
 		justify-items: center;
 		width: 100%;
+		padding: var(--space-2) 0;
 	}
-	.lyric.ruby :global(.target) {
-		font-size: clamp(1.5rem, 5vw, 2.5rem);
+	/* Lyrics run long: a smaller kana line than the lesson kana (owner 2026-09-11「歌詞字小一點」). */
+	.lyric :global(.typing) {
+		min-height: 0;
+		gap: var(--space-1);
+	}
+	.lyric :global(.target) {
+		font-size: clamp(1.5rem, 4vw, 2.25rem);
+		letter-spacing: 0.06em;
+		line-height: 1.35;
+	}
+	.lyric :global(.hint) {
+		font-size: 1rem;
+		min-height: 1.5rem;
 	}
 	.kanji {
 		margin: 0;
-		font-size: clamp(1.75rem, 7vw, 3rem);
-		font-weight: 600;
-		line-height: 1.3;
+		font-size: clamp(1.125rem, 3.2vw, 1.5rem);
+		font-weight: 500;
+		line-height: 1.4;
 		text-align: center;
 	}
-	.practice {
-		gap: var(--space-4);
+	.toolbar {
+		justify-content: space-between;
 		align-items: center;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+		padding-top: var(--space-2);
+		border-top: 1px solid var(--border);
 	}
-	.line {
-		min-height: 1.8rem;
-		font-size: 1.125rem;
+	.toggles,
+	.actions {
+		gap: var(--space-2);
+	}
+	.keys {
+		margin: 0;
+		font-size: 0.75rem;
 		text-align: center;
 	}
-	.status {
-		min-height: 1.4rem;
+
+	.publish {
+		padding: var(--space-4) var(--space-6);
+		gap: var(--space-2);
 	}
-	.review-note {
+	.publish p {
 		margin: 0;
-		color: var(--fg-muted);
 	}
-	.tools {
-		justify-content: center;
-		margin-top: var(--space-4);
+	.consent {
+		align-items: flex-start;
+		gap: var(--space-2);
+		cursor: pointer;
+	}
+	.consent input {
+		margin-top: 0.2em;
 	}
 </style>

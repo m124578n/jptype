@@ -45,6 +45,7 @@ function song(over: Partial<SongRecord> = {}): SongRecord {
 	return {
 		id: 'S1',
 		ownerId: 'u1',
+		type: 'song',
 		videoId: VIDEO,
 		title: 'テスト',
 		lines: LINES,
@@ -99,6 +100,7 @@ function fakeStore(seed: { songs?: SongRecord[]; strikes?: [string, StrikeRecord
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 			const rows: PublicSongSummary[] = all.slice(offset, offset + limit).map((s) => ({
 				id: s.id,
+				type: s.type,
 				title: s.title,
 				videoId: s.videoId,
 				lineCount: s.lines.length,
@@ -113,6 +115,7 @@ function fakeStore(seed: { songs?: SongRecord[]; strikes?: [string, StrikeRecord
 				.slice(0, limit)
 				.map((s) => ({
 					id: s.id,
+					type: s.type,
 					title: s.title,
 					ownerId: s.ownerId,
 					videoId: s.videoId,
@@ -222,7 +225,22 @@ describe('body validation', () => {
 	const body = { title: ' テスト ', videoId: `https://youtu.be/${VIDEO}`, lines: LINES };
 
 	it('trims the title and normalizes any YouTube URL to the video id', () => {
-		expect(parseSongInput(body)).toEqual({ title: 'テスト', videoId: VIDEO, lines: LINES });
+		expect(parseSongInput(body)).toEqual({
+			type: 'song',
+			title: 'テスト',
+			videoId: VIDEO,
+			lines: LINES
+		});
+	});
+
+	it('accepts any content type and no video for text-only content (M4-1e)', () => {
+		const article = parseSongInput({ ...body, type: 'news', videoId: '' });
+		expect(article).toMatchObject({ type: 'news', videoId: null });
+		expect(parseSongInput({ ...body, videoId: undefined })).toMatchObject({ videoId: null });
+		expect(parseSongInput({ ...body, type: 'podcast' })).toMatch(/type/);
+		expect(parseSongInput({ ...body, videoId: 'https://example.com/x' })).toMatch(/videoId/);
+		expect(parseSongPatchInput({ videoId: null })).toEqual({ videoId: null });
+		expect(parseSongPatchInput({ type: 'novel' })).toEqual({ type: 'novel' });
 	});
 
 	it('accepts plain strings as lines and rounds starts to centiseconds', () => {
@@ -314,7 +332,11 @@ describe('body validation', () => {
 describe('own library', () => {
 	it('creates songs private, whatever the client asks for', async () => {
 		const fake = fakeStore();
-		const r = await createSong('u1', { title: 'テスト', videoId: VIDEO, lines: LINES }, deps(fake));
+		const r = await createSong(
+			'u1',
+			{ type: 'song', title: 'テスト', videoId: VIDEO, lines: LINES },
+			deps(fake)
+		);
 		expect(r.ok && r.body.visibility).toBe('private');
 		expect(r.ok && r.body.publicConsentAt).toBeNull();
 		expect(await listMySongs('u1', deps(fake))).toHaveLength(1);
@@ -418,6 +440,7 @@ describe('public list', () => {
 		const r = await listPublicSongs({ q: 'テスト', page: 1 }, deps(fake));
 		expect(r.songs[0]).toEqual({
 			id: 'S1',
+			type: 'song',
 			title: 'テスト',
 			videoId: VIDEO,
 			lineCount: 3,

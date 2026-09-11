@@ -45,7 +45,7 @@
 
 	function recentHref(item: RecentSubject): string {
 		return item.kind === 'song'
-			? resolve('/songs/[id]', { id: item.id })
+			? resolve('/library/[id]', { id: item.id })
 			: resolve('/contents/[id]', { id: item.id });
 	}
 
@@ -57,6 +57,7 @@
 		type: string;
 		jlpt: string;
 		difficulty: string;
+		source: string;
 		q: string;
 		page: string;
 	}) {
@@ -67,18 +68,26 @@
 		return query === '' ? resolve('/contents') : `${resolve('/contents')}?${query}`;
 	}
 
-	function current(): { type: string; jlpt: string; difficulty: string; q: string; page: string } {
+	function current(): {
+		type: string;
+		jlpt: string;
+		difficulty: string;
+		source: string;
+		q: string;
+		page: string;
+	} {
 		return {
 			type: data.query.type ?? '',
 			jlpt: data.query.jlptLevel ?? '',
 			difficulty: data.query.difficulty ?? '',
+			source: data.query.owner === 'all' ? '' : data.query.owner,
 			q: data.query.q,
 			page: '1'
 		};
 	}
 
 	/** Change one filter (or the page); every other filter is kept. */
-	function filterHref(key: 'type' | 'jlpt' | 'difficulty' | 'page', value: string) {
+	function filterHref(key: 'type' | 'jlpt' | 'difficulty' | 'source' | 'page', value: string) {
 		return listHref({ ...current(), [key]: value });
 	}
 
@@ -97,11 +106,21 @@
 		data.query.type !== undefined ||
 			data.query.jlptLevel !== undefined ||
 			data.query.difficulty !== undefined ||
+			data.query.owner !== 'all' ||
 			data.query.q !== ''
 	);
 
+	/** User-provided content is practised on /library (the song machinery); platform content on /contents. */
+	function practiceHref(content: ContentSummary): string {
+		return content.ownerId === null
+			? resolve('/contents/[id]', { id: content.id })
+			: resolve('/library/[id]', { id: content.id });
+	}
+
 	function tags(content: ContentSummary): string[] {
-		const out = [typeLabel[content.type](), difficultyLabel[content.difficulty]()];
+		const out = [typeLabel[content.type]()];
+		if (content.ownerId !== null) out.push(m.contents_tag_user());
+		else out.push(difficultyLabel[content.difficulty]());
 		if (content.jlptLevel !== 'unknown') out.push(jlptLabel[content.jlptLevel]());
 		if (content.timedCount >= 2) out.push(m.contents_tag_sync());
 		return out;
@@ -162,6 +181,26 @@
 				>
 			{/each}
 		</div>
+		<div class="row" role="group" aria-label={m.contents_filter_source()}>
+			<a
+				class="btn btn--small"
+				href={filterHref('source', '')}
+				aria-current={data.query.owner === 'all' ? 'true' : undefined}
+				data-sveltekit-noscroll>{m.contents_filter_all()}</a
+			>
+			<a
+				class="btn btn--small"
+				href={filterHref('source', 'platform')}
+				aria-current={data.query.owner === 'platform' ? 'true' : undefined}
+				data-sveltekit-noscroll>{m.contents_source_platform()}</a
+			>
+			<a
+				class="btn btn--small"
+				href={filterHref('source', 'user')}
+				aria-current={data.query.owner === 'user' ? 'true' : undefined}
+				data-sveltekit-noscroll>{m.contents_source_user()}</a
+			>
+		</div>
 		<div class="row" role="group" aria-label={m.contents_filter_jlpt()}>
 			<a
 				class="btn btn--small"
@@ -207,7 +246,7 @@
 		<ul class="cards">
 			{#each data.list.contents as content (content.id)}
 				<li class="card item">
-					<a class="thumb" href={resolve('/contents/[id]', { id: content.id })}>
+					<a class="thumb" href={practiceHref(content)}>
 						{#if content.videoId}
 							<img
 								src={thumbnailUrl(content.videoId)}
@@ -222,7 +261,7 @@
 					</a>
 					<div class="stack body">
 						<h2 class="name">
-							<a href={resolve('/contents/[id]', { id: content.id })}>{content.title}</a>
+							<a href={practiceHref(content)}>{content.title}</a>
 						</h2>
 						{#if content.description !== ''}
 							<p class="muted desc">{content.description}</p>

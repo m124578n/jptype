@@ -22,13 +22,13 @@
 	$effect(() => {
 		if (prefilled || prefill === '') return;
 		prefilled = true;
-		target = `${page.url.origin}/songs/${prefill}`;
+		target = `${page.url.origin}/library/${prefill}`;
 	});
 
 	/** A song page URL identifies the row; anything else is treated as a YouTube link. */
 	function splitTarget(input: string): { contentId?: string; videoId?: string } {
 		const text = input.trim();
-		const songMatch = /\/songs\/([A-Za-z0-9_-]+)/.exec(text);
+		const songMatch = /\/library\/([A-Za-z0-9_-]+)/.exec(text);
 		if (songMatch?.[1]) return { contentId: songMatch[1] };
 		const videoId = parseYoutubeId(text);
 		return videoId === null ? {} : { videoId };

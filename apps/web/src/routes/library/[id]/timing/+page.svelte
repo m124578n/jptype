@@ -179,11 +179,15 @@
 <div class="container stack timing">
 	{#if loaded && !song}
 		<h1>{m.songs_not_found()}</h1>
-		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
+		<p><a class="btn" href={resolve('/library')}>{m.songs_back()}</a></p>
 	{:else if loaded && song && !isOwner}
 		<h1>{m.songs_timing_title()} · {song.title}</h1>
 		<p class="muted">{m.songs_timing_not_owner()}</p>
-		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
+		<p><a class="btn" href={resolve('/library')}>{m.songs_back()}</a></p>
+	{:else if song && song.youtubeId === ''}
+		<h1>{song.title}</h1>
+		<p class="muted">{m.library_timing_needs_video()}</p>
+		<p><a class="btn" href={resolve('/library/[id]', { id: data.id })}>{m.songs_practice()}</a></p>
 	{:else if song}
 		<header class="stack head">
 			<h1>{m.songs_timing_title()} · {song.title}</h1>
@@ -287,10 +291,10 @@
 			<button type="button" class="btn" onclick={clearEverything}>
 				{m.songs_timing_clear_all()}
 			</button>
-			<a class="btn" href={resolve('/songs/[id]', { id: data.id })}>
+			<a class="btn" href={resolve('/library/[id]', { id: data.id })}>
 				{m.songs_timing_open_practice()}
 			</a>
-			<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
+			<a class="btn" href={resolve('/library')}>{m.songs_back()}</a>
 			<span class="muted small" aria-live="polite">
 				{#if saveFailed}{m.songs_save_failed()}{:else if saved}{m.songs_timing_saved()}{:else if dirty}{m.songs_timing_unsaved()}{:else if done === lines.length && lines.length > 0}{m.songs_timing_done()}{/if}
 			</span>

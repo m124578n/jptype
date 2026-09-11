@@ -280,7 +280,7 @@
 
 		if (e.key === 'Escape') {
 			e.preventDefault();
-			void goto(resolve('/songs'));
+			void goto(resolve('/library'));
 			return;
 		}
 		if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R')) {
@@ -408,7 +408,7 @@
 <div class="container container--wide stack song">
 	{#if loaded && !song}
 		<h1>{m.songs_not_found()}</h1>
-		<p><a class="btn" href={resolve('/songs')}>{m.songs_back()}</a></p>
+		<p><a class="btn" href={resolve('/library')}>{m.songs_back()}</a></p>
 	{:else if song}
 		<header class="stack head">
 			<div class="row titlebar">
@@ -452,7 +452,7 @@
 				{:else if !syncable}
 					{m.songs_sync_unavailable()}
 					{#if isOwner}
-						<a href={resolve('/songs/[id]/timing', { id: data.id })}>{m.songs_timing_link()}</a>
+						<a href={resolve('/library/[id]/timing', { id: data.id })}>{m.songs_timing_link()}</a>
 					{/if}
 				{:else if mode === 'sync'}
 					{m.songs_mode_sync_hint()}
@@ -554,32 +554,34 @@
 
 		<!-- Video and lyrics as one object: the lyric strip is attached to the bottom edge of the player, like a subtitle band. -->
 		<section class="card unit" class:live={result === null}>
-			<div class="stage">
-				<YouTubePlayer
-					videoId={song.youtubeId}
-					title={song.title}
-					bind:controller
-					ontime={onPlayerTime}
-					onstate={onPlayerState}
-					onfail={() => (playerFailed = true)}
-				/>
-				{#if waiting !== null}
-					<div
-						class="countdown"
-						class:far={waiting.remaining > COUNTDOWN_FROM_S}
-						aria-live="polite"
-					>
-						{#if waiting.remaining > COUNTDOWN_FROM_S}
-							<span class="gap">
-								{waiting.intro ? m.songs_sync_intro() : m.songs_sync_interlude()}
-								· {m.songs_sync_next_in({ seconds: Math.ceil(waiting.remaining) })}
-							</span>
-						{:else}
-							<span>{Math.ceil(waiting.remaining)}</span>
-						{/if}
-					</div>
-				{/if}
-			</div>
+			{#if song.youtubeId !== ''}
+				<div class="stage">
+					<YouTubePlayer
+						videoId={song.youtubeId}
+						title={song.title}
+						bind:controller
+						ontime={onPlayerTime}
+						onstate={onPlayerState}
+						onfail={() => (playerFailed = true)}
+					/>
+					{#if waiting !== null}
+						<div
+							class="countdown"
+							class:far={waiting.remaining > COUNTDOWN_FROM_S}
+							aria-live="polite"
+						>
+							{#if waiting.remaining > COUNTDOWN_FROM_S}
+								<span class="gap">
+									{waiting.intro ? m.songs_sync_intro() : m.songs_sync_interlude()}
+									· {m.songs_sync_next_in({ seconds: Math.ceil(waiting.remaining) })}
+								</span>
+							{:else}
+								<span>{Math.ceil(waiting.remaining)}</span>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if mode === 'sync' && result === null}
 				{#if phase === 'idle'}
@@ -654,7 +656,7 @@
 					</p>
 				{/if}
 				<p class="center">
-					<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
+					<a class="btn" href={resolve('/library')}>{m.songs_back()}</a>
 				</p>
 			</div>
 		{/if}
@@ -775,6 +777,13 @@
 	}
 	.unit:not(.live) {
 		width: min(100%, calc(45vh * 16 / 9));
+	}
+	/* Text-only content: no player, the strip is the whole card. */
+	.unit:not(:has(.stage)) {
+		width: 100%;
+	}
+	.unit:not(:has(.stage)) .strip {
+		border-top: 0;
 	}
 	.stage {
 		position: relative;

@@ -94,8 +94,9 @@ function fakeStore() {
 	}
 
 	function matches(row: NewContentRow, filter: ContentFilter): boolean {
-		if ((filter.owner === 'platform') !== (row.ownerId === null || row.ownerId === undefined))
-			return false;
+		const platform = row.ownerId === null || row.ownerId === undefined;
+		if (filter.owner === 'platform' && !platform) return false;
+		if (filter.owner === 'user' && platform) return false;
 		if (filter.status !== 'all' && (row.status ?? 'draft') !== filter.status) return false;
 		if (filter.type !== undefined && row.type !== filter.type) return false;
 		if (filter.jlptLevel !== undefined && row.jlptLevel !== filter.jlptLevel) return false;
@@ -131,6 +132,7 @@ function fakeStore() {
 				const record = toRecord(row);
 				return {
 					id: record.id,
+					ownerId: record.ownerId,
 					type: record.type,
 					title: record.title,
 					description: record.description,
@@ -295,7 +297,7 @@ describe('parseStatusInput / parseListQuery', () => {
 		);
 		expect(q).toEqual({
 			status: 'published',
-			owner: 'platform',
+			owner: 'all',
 			type: 'song',
 			difficulty: 'hard',
 			q: 'うた',
@@ -436,7 +438,7 @@ describe('public reads', () => {
 		expect(filtered.contents).toHaveLength(0);
 	});
 
-	it('never lists or serves a user-provided song, published or not (M4-1c)', async () => {
+	it("lists a user's published content next to platform content, with its owner (M4-1e)", async () => {
 		const { deps, seedUserSong } = fakeStore();
 		await seedUserSong('S1');
 		await createContent('admin1', INPUT, deps);
@@ -444,7 +446,16 @@ describe('public reads', () => {
 		await setContentStatus('C1', 'published', deps);
 
 		const all = await listPublicContents(parseListQuery(new URLSearchParams(), 'published'), deps);
-		expect(all.contents.map((c) => c.id)).toEqual(['C1']);
+		expect(all.contents.map((c) => [c.id, c.ownerId])).toEqual([
+			['S1', 'u1'],
+			['C1', null]
+		]);
+		const platformOnly = await listPublicContents(
+			parseListQuery(new URLSearchParams({ source: 'platform' }), 'published'),
+			deps
+		);
+		expect(platformOnly.contents.map((c) => c.id)).toEqual(['C1']);
+		// The content page itself stays platform-only; user content is practised on /library.
 		expect(await getPublicContent('S1', deps)).toMatchObject({ status: 404 });
 	});
 

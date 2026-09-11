@@ -19,16 +19,17 @@
 	import {
 		countTimingUse,
 		createSong,
-		fetchPublicSongs,
 		findSharedTiming,
 		importLocalSongs,
 		loadLibrary,
 		localEntry,
 		removeEntry,
-		type LibraryEntry,
-		type PublicList
+		type LibraryEntry
 	} from '$lib/songs-api';
 	import { convertLines, needsReading, withEditedText } from '$lib/songs-kana';
+	import { CONTENT_TYPES, type ContentType } from '$lib/contents';
+	import { typeLabel } from '$lib/contents-labels';
+	import { segment } from '$lib/ja';
 	import { watchUrl } from '$lib/youtube';
 
 	let { data } = $props();
@@ -57,8 +58,11 @@
 	}
 
 	onMount(() => void refresh());
-	onMount(() => void loadPublic(1));
 
+	/** What kind of content this is (M4-1e): decides how the paste is split and what the hints say. */
+	let kind = $state<ContentType>('song');
+	/** Songs and anime lines come one per row (LRC allowed); articles are split into sentences. */
+	const lineBased = $derived(kind === 'song' || kind === 'anime');
 	let title = $state('');
 	let url = $state('');
 	let lyrics = $state('');
@@ -75,7 +79,14 @@
 	/** Once the user edits the title themselves, YouTube must not overwrite it. */
 	let titleEdited = $state(false);
 
-	const videoId = $derived(parseYoutubeId(url));
+	/** The 11-char id when a video was given; null for text-only content. */
+	const videoId = $derived(url.trim() === '' ? null : parseYoutubeId(url));
+	const urlInvalid = $derived(url.trim() !== '' && videoId === null);
+
+	/** One typing question per row (songs / anime, LRC-aware) or per sentence (articles). */
+	function parseText(text: string): SongLine[] {
+		return lineBased ? parseLyrics(text) : segment(text).map((t) => ({ text: t }));
+	}
 
 	// ── Shared timeline offered for this exact paste ────────────────────────────────────────────
 	let shared = $state.raw<TimingCandidate | null>(null);
@@ -91,7 +102,7 @@
 		sharedStarts = null;
 		const video = videoId;
 		if (video === null) return;
-		const lines = parseLyrics(lyrics);
+		const lines = parseText(lyrics);
 		if (lines.length < 2) return;
 		const found = await findSharedTiming(video, lines);
 		if (found && found.starts.length === lines.length) shared = found;
@@ -140,12 +151,12 @@
 		const found: string[] = [];
 		const t = title.trim();
 		if (t === '') found.push(m.songs_error_title());
-		if (videoId === null) found.push(m.songs_error_url());
-		const parsed = converted ?? parseLyrics(lyrics);
+		if (urlInvalid) found.push(m.songs_error_url());
+		const parsed = converted ?? parseText(lyrics);
 		if (parsed.length === 0) found.push(m.songs_error_lyrics());
 		issues = parsed.length === 0 ? [] : validateLines(parsed);
 		errors = found;
-		if (found.length > 0 || videoId === null) return;
+		if (found.length > 0) return;
 
 		// Kanji in the paste: convert in the browser and let the user confirm before saving.
 		if (issues.length > 0 && converted === null) {
@@ -167,7 +178,7 @@
 		const lines = withSharedStarts(parsed);
 		saving = true;
 		if (loggedIn && !offline) {
-			const created = await createSong({ title: t, videoId, lines });
+			const created = await createSong({ type: kind, title: t, videoId, lines });
 			saving = false;
 			if (!created) {
 				saveFailed = true;
@@ -178,8 +189,9 @@
 			const now = Date.now();
 			const song: Song = {
 				id: newSongId(),
+				type: kind,
 				title: t,
-				youtubeId: videoId,
+				youtubeId: videoId ?? '',
 				lines,
 				createdAt: now,
 				updatedAt: now
@@ -218,26 +230,6 @@
 		importFailed = result.failed;
 		await refresh();
 	}
-
-	// ── Public library (plain list, newest first, no curation) ──────────────────────────────────
-	let query = $state('');
-	let publicList = $state.raw<PublicList | null>(null);
-	let publicLoading = $state(false);
-
-	async function loadPublic(page: number) {
-		publicLoading = true;
-		publicList = await fetchPublicSongs(query.trim(), page);
-		publicLoading = false;
-	}
-
-	function searchPublic(event: SubmitEvent) {
-		event.preventDefault();
-		void loadPublic(1);
-	}
-
-	const publicPages = $derived(
-		publicList === null ? 1 : Math.max(1, Math.ceil(publicList.total / publicList.pageSize))
-	);
 </script>
 
 <svelte:head><title>{m.songs_title()} · {m.app_name()}</title></svelte:head>
@@ -290,11 +282,15 @@
 						<div class="stack info">
 							<span class="name">{entry.title}</span>
 							<span class="muted small">
-								{m.songs_line_count({ count: entry.lines.length })}
+								{typeLabel[entry.type]()}
 								·
-								{timedCount(entry.lines) === 0
-									? m.songs_untimed()
-									: m.songs_timed_count({ count: timedCount(entry.lines) })}
+								{m.songs_line_count({ count: entry.lines.length })}
+								{#if entry.youtubeId !== ''}
+									·
+									{timedCount(entry.lines) === 0
+										? m.songs_untimed()
+										: m.songs_timed_count({ count: timedCount(entry.lines) })}
+								{/if}
 								·
 								{entry.status === 'removed'
 									? m.songs_status_removed()
@@ -303,12 +299,14 @@
 										: m.songs_visibility_private()}
 							</span>
 						</div>
-						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: entry.id })}>
+						<a class="btn btn--primary" href={resolve('/library/[id]', { id: entry.id })}>
 							{m.songs_practice()}
 						</a>
-						<a class="btn" href={resolve('/songs/[id]/timing', { id: entry.id })}>
-							{m.songs_timing_link()}
-						</a>
+						{#if entry.youtubeId !== ''}
+							<a class="btn" href={resolve('/library/[id]/timing', { id: entry.id })}>
+								{m.songs_timing_link()}
+							</a>
+						{/if}
 						<button type="button" class="btn" onclick={() => remove(entry)}>
 							{m.songs_delete()}
 						</button>
@@ -324,6 +322,15 @@
 	<section class="stack">
 		<h2>{m.songs_add_title()}</h2>
 		<form class="stack form" onsubmit={submit}>
+			<div class="stack field">
+				<label for="song-kind">{m.library_field_type()}</label>
+				<select id="song-kind" bind:value={kind}>
+					{#each CONTENT_TYPES as t (t)}
+						<option value={t}>{typeLabel[t]()}</option>
+					{/each}
+				</select>
+			</div>
+
 			<div class="stack field">
 				<label for="song-url">{m.songs_field_url()}</label>
 				<input
@@ -382,7 +389,9 @@
 
 			{#if converted === null}
 				<div class="stack field">
-					<label for="song-lyrics">{m.songs_field_lyrics()}</label>
+					<label for="song-lyrics">
+						{lineBased ? m.songs_field_lyrics() : m.library_field_text()}
+					</label>
 					<textarea
 						id="song-lyrics"
 						rows="10"
@@ -390,8 +399,12 @@
 						oninput={scheduleLookup}
 						lang="ja"
 						spellcheck="false"></textarea>
-					<p class="muted small">{m.songs_field_lyrics_hint()}</p>
-					<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
+					<p class="muted small">
+						{lineBased ? m.songs_field_lyrics_hint() : m.library_text_hint_sentences()}
+					</p>
+					{#if lineBased}
+						<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
+					{/if}
 				</div>
 			{:else}
 				<div class="stack field readings" role="region" aria-labelledby="readings-title">
@@ -473,62 +486,6 @@
 			</p>
 		</form>
 	</section>
-
-	<section class="stack">
-		<h2>{m.songs_public_section_title()}</h2>
-		<p class="muted small">{m.songs_public_lead()}</p>
-		<form class="row" onsubmit={searchPublic}>
-			<label class="visually-hidden" for="public-q">{m.songs_public_search()}</label>
-			<input id="public-q" type="search" bind:value={query} />
-			<button type="submit" class="btn" disabled={publicLoading}>
-				{m.songs_public_search_button()}
-			</button>
-		</form>
-
-		{#if publicList !== null && publicList.songs.length === 0}
-			<p class="muted">{m.songs_public_empty()}</p>
-		{:else if publicList !== null}
-			<ul class="list">
-				{#each publicList.songs as song (song.id)}
-					<li class="card item">
-						<div class="stack info">
-							<span class="name">{song.title}</span>
-							<span class="muted small">
-								{m.songs_public_meta({ lines: song.lineCount, timed: song.timedCount })}
-							</span>
-						</div>
-						<a class="btn btn--primary" href={resolve('/songs/[id]', { id: song.id })}>
-							{m.songs_practice()}
-						</a>
-						<a class="btn" href="{resolve('/copyright')}?song={song.id}">
-							{m.songs_public_report()}
-						</a>
-					</li>
-				{/each}
-			</ul>
-			<p class="row pager">
-				<button
-					type="button"
-					class="btn"
-					disabled={publicList.page <= 1 || publicLoading}
-					onclick={() => loadPublic((publicList?.page ?? 1) - 1)}
-				>
-					{m.songs_public_prev()}
-				</button>
-				<span class="muted small">
-					{m.songs_public_page({ page: publicList.page, total: publicList.total })}
-				</span>
-				<button
-					type="button"
-					class="btn"
-					disabled={publicList.page >= publicPages || publicLoading}
-					onclick={() => loadPublic((publicList?.page ?? 1) + 1)}
-				>
-					{m.songs_public_next()}
-				</button>
-			</p>
-		{/if}
-	</section>
 </div>
 
 <style>
@@ -582,13 +539,11 @@
 		flex-wrap: wrap;
 		gap: var(--space-3);
 	}
-	.pager {
-		justify-content: center;
-	}
 	label {
 		font-weight: 500;
 	}
 	input,
+	select,
 	textarea {
 		font: inherit;
 		color: var(--fg);
@@ -598,13 +553,9 @@
 		padding: var(--space-3) var(--space-4);
 		width: 100%;
 	}
-	input {
+	input,
+	select {
 		min-height: 44px;
-	}
-	input[type='search'] {
-		flex: 1;
-		width: auto;
-		min-width: 8rem;
 	}
 	textarea {
 		resize: vertical;

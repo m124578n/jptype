@@ -110,7 +110,8 @@
 								<td class="when">{formatDateTime(report.createdAt)}</td>
 								<td>
 									{#if report.contentId && report.songTitle}
-										<a href={resolve('/songs/[id]', { id: report.contentId })}>{report.songTitle}</a
+										<a href={resolve('/library/[id]', { id: report.contentId })}
+											>{report.songTitle}</a
 										>
 									{:else}
 										<span class="muted">{m.admin_song_gone()}</span>
@@ -207,7 +208,7 @@
 						{#each data.songs as song (song.id)}
 							<tr>
 								<td>
-									<a href={resolve('/songs/[id]', { id: song.id })}>{song.title}</a>
+									<a href={resolve('/library/[id]', { id: song.id })}>{song.title}</a>
 									<span class="muted small">{m.songs_line_count({ count: song.lineCount })}</span>
 								</td>
 								<td class="break mono small">{song.ownerId}</td>

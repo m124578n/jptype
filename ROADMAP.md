@@ -72,6 +72,7 @@
 - ✅ 權利 metadata 為必填：sourceType（original / licensed / public_domain / user_provided / other）、sourceUrl、sourceName、license、rightsStatus（cleared / unknown）；**`rightsStatus != 'cleared'` 或沒有任何一句打得出來就不能發布**（伺服器 409）
 - ✅ Manual Import 管線：貼文字 → 斷句（`lib/ja/segment`）→ 漢字→假名（瀏覽器端 kuromoji，字典由自己的網域提供，不叫外部 API）→ 羅馬字（`lib/ja/romaji`）→ 管理員逐句校對 → 發布
 - ✅ 公開瀏覽 `/contents`（類型 / JLPT / 難度篩選 + 搜尋 + 個人最佳）與練習 `/contents/[id]`（有時間軸走同步模式，否則逐句）；成績送 `POST /api/runs`，mode `content:{id}`
+- ✅ **M4-1e（2026-09-11，owner 定案）：使用者內容不限歌曲**。`/songs` 改名 `/library`「我的內容」（不留轉址，未上線）：類型可選（歌曲／動畫／新聞／小說／JLPT／自由），YouTube 網址可選（有影片才有播放器、對時、同步模式），歌曲與動畫一行一句（吃 LRC），文章類型整段貼上依 。！？ 自動斷句；漢字轉假名、確認讀音、逐字注音、修正讀音全部沿用。公開後出現在 `/contents`（與平台內容並列，標「使用者提供」，可用「來源」篩選），練習連到 `/library/[id]`；`/library` 頁原本的「大家公開的歌」與 `/api/songs/public` 移除。使用者內容一律**不進榜**（文字可改，見「分數規則定案」）。API `/api/songs*` 名稱不變，body 多 `type`、`videoId` 可 null
 - ✅ 「User Provided」內容只存於該使用者名下，不進公共列表；現有 `/songs`（M4-1b 的 `songs` 表）併入此模型（**M4-1c，2026-09-11**）：`songs` 表刪除，一首歌 = `contents` 一列（`ownerId` 為該使用者、`sourceType = 'user_provided'`、`status` draft = 私有 / published = 公開 / removed = 下架）+ `content_lines`；migration `0005_unify_songs` 連資料一起搬（含 `takedown_requests.song_id → content_id`）。`/api/songs*`、`/api/timings*`、`/api/reports`、`/api/admin/songs*` 的介面與 `/songs` 頁面都沒變（檢舉 body 的 `songId` 改名 `contentId`，舊名仍收）；`/contents`、`/admin/contents`、`content:{id}` 排行榜一律只看平台內容（`ownerId IS NULL`）
 - ⬜ 之後任何第三方來源都以獨立 Connector 實作，並遵守該來源的使用條款（不做繞過、不做大量抓取）
 

@@ -38,8 +38,8 @@
 			body: m.home_card_listen_body
 		},
 		{
-			href: resolve('/songs'),
-			icon: 'music',
+			href: resolve('/library'),
+			icon: 'pen',
 			title: m.home_card_songs_title,
 			body: m.home_card_songs_body
 		}

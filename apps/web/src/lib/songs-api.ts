@@ -9,6 +9,7 @@
  * Every call resolves to `null` (or an `{ error }`) instead of throwing: the lyric library must
  * stay usable when the network or the bindings are unavailable.
  */
+import type { ContentType } from './contents.ts';
 import { hashLines, matchTiming, type TimingCandidate } from './song-hash.ts';
 import {
 	deleteSong as deleteLocalSong,
@@ -22,11 +23,12 @@ import {
 export type SongVisibility = 'private' | 'public';
 export type SongStatus = 'active' | 'removed';
 
-/** A song as the server stores it (`videoId`, not `youtubeId`). */
+/** A user's content as the server stores it (`videoId`, not `youtubeId`). */
 export interface ServerSong {
 	id: string;
 	ownerId: string;
-	videoId: string;
+	type: ContentType;
+	videoId: string | null;
 	title: string;
 	lines: SongLine[];
 	visibility: SongVisibility;
@@ -40,7 +42,9 @@ export interface ServerSong {
 /** One row of the library list, from D1 or from localStorage. */
 export interface LibraryEntry {
 	id: string;
+	type: ContentType;
 	title: string;
+	/** '' for text-only content. */
 	youtubeId: string;
 	lines: SongLine[];
 	createdAt: number;
@@ -53,8 +57,9 @@ export interface LibraryEntry {
 
 export interface PublicSongSummary {
 	id: string;
+	type: ContentType;
 	title: string;
-	videoId: string;
+	videoId: string | null;
 	lineCount: number;
 	timedCount: number;
 	updatedAt: number;
@@ -75,8 +80,9 @@ export interface PublishState {
 function toEntry(song: ServerSong): LibraryEntry {
 	return {
 		id: song.id,
+		type: song.type,
 		title: song.title,
-		youtubeId: song.videoId,
+		youtubeId: song.videoId ?? '',
 		lines: song.lines,
 		createdAt: song.createdAt,
 		updatedAt: song.updatedAt,
@@ -95,6 +101,7 @@ export function localEntry(song: Song): LibraryEntry {
 export function toSong(entry: LibraryEntry): Song {
 	return {
 		id: entry.id,
+		type: entry.type,
 		title: entry.title,
 		youtubeId: entry.youtubeId,
 		lines: entry.lines,
@@ -133,8 +140,10 @@ export async function fetchMyLibrary(): Promise<{
 }
 
 export interface SongInputBody {
+	type: ContentType;
 	title: string;
-	videoId: string;
+	/** Any YouTube URL shape or id; null / '' for text-only content. */
+	videoId: string | null;
 	lines: SongLine[];
 }
 
@@ -366,8 +375,9 @@ export async function importLocalSongs(): Promise<{ imported: number; failed: nu
 	let failed = 0;
 	for (const song of loadSongs()) {
 		const created = await createSong({
+			type: song.type,
 			title: song.title,
-			videoId: song.youtubeId,
+			videoId: song.youtubeId === '' ? null : song.youtubeId,
 			lines: song.lines
 		});
 		if (created) {

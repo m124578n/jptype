@@ -19,6 +19,7 @@ const NOW = Date.parse('2026-09-11T03:00:00Z');
 const SONG: SongRecord = {
 	id: 'S1',
 	ownerId: 'u1',
+	type: 'song',
 	videoId: 'dQw4w9WgXcQ',
 	title: 'テスト',
 	lines: [{ text: 'あいうえお', start: 1.5 }, { text: 'かきくけこ' }],
@@ -164,6 +165,16 @@ describe('row mapping', () => {
 			status: 'removed',
 			visibility: 'private',
 			removedReason: '權利人通知'
+		});
+	});
+
+	it('keeps the type and a missing video for text-only content (M4-1e)', () => {
+		const article: SongRecord = { ...SONG, type: 'news', videoId: null };
+		const row = songToContentRow(article);
+		expect(row).toMatchObject({ type: 'news', videoId: null });
+		expect(toSongRecord({ ...row } as ContentRow & { ownerId: string }, [])).toMatchObject({
+			type: 'news',
+			videoId: null
 		});
 	});
 

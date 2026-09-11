@@ -71,7 +71,8 @@ export interface ContentPatch {
  */
 export interface ContentFilter {
 	status: ContentStatus | 'all';
-	owner: 'platform' | 'user';
+	/** 'all' is the public list since M4-1e: platform and user-provided content side by side. */
+	owner: 'platform' | 'user' | 'all';
 	type?: ContentType;
 	jlptLevel?: JlptLevel;
 	difficulty?: Difficulty;
@@ -160,7 +161,11 @@ function textLike(q: string): SQL | undefined {
 
 function filterWhere(filter: ContentFilter): SQL | undefined {
 	return and(
-		filter.owner === 'platform' ? isNull(contents.ownerId) : isNotNull(contents.ownerId),
+		filter.owner === 'all'
+			? undefined
+			: filter.owner === 'platform'
+				? isNull(contents.ownerId)
+				: isNotNull(contents.ownerId),
 		filter.status === 'all' ? undefined : eq(contents.status, filter.status),
 		filter.type === undefined ? undefined : eq(contents.type, filter.type),
 		filter.jlptLevel === undefined ? undefined : eq(contents.jlptLevel, filter.jlptLevel),
@@ -238,6 +243,7 @@ export function d1ContentStore(db: Db): ContentStore {
 					const c = byId.find((x) => x.contentId === row.id);
 					return {
 						id: record.id,
+						ownerId: record.ownerId,
 						type: record.type,
 						title: record.title,
 						description: record.description,

@@ -262,15 +262,19 @@ export interface ListQuery extends ContentFilter {
 	page: number;
 }
 
-/** `?type=&jlpt=&difficulty=&q=&page=` — an unknown value drops the filter instead of erroring. */
+/**
+ * `?type=&jlpt=&difficulty=&source=&q=&page=` — an unknown value drops the filter instead of
+ * erroring. `source` picks platform / user-provided content; the default is both.
+ */
 export function parseListQuery(params: URLSearchParams, status: ContentStatus | 'all'): ListQuery {
 	const type = params.get('type');
 	const jlpt = params.get('jlpt');
 	const difficulty = params.get('difficulty');
+	const source = params.get('source');
 	const rawPage = Number(params.get('page') ?? '1');
 	return {
 		status,
-		owner: 'platform',
+		owner: source === 'platform' || source === 'user' ? source : 'all',
 		...(isContentType(type) ? { type } : {}),
 		...(isJlptLevel(jlpt) ? { jlptLevel: jlpt } : {}),
 		...(isDifficulty(difficulty) ? { difficulty } : {}),
@@ -429,11 +433,11 @@ export function listContentsAsAdmin(query: ListQuery, deps: ContentDeps): Promis
 }
 
 /**
- * Public list: published platform content only. Plain filters and search, newest first —
- * nothing is curated, and a user's published song is found on `/songs`, not here.
+ * Public list: everything published — platform content and the content users chose to publish
+ * (M4-1e), told apart by `ownerId`. Plain filters and search, newest first; nothing is curated.
  */
 export function listPublicContents(query: ListQuery, deps: ContentDeps): Promise<ContentList> {
-	return list({ ...query, status: 'published', owner: 'platform' }, PAGE_SIZE, deps);
+	return list({ ...query, status: 'published' }, PAGE_SIZE, deps);
 }
 
 export interface ContentDetail {

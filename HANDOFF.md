@@ -19,7 +19,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 ```
 
 - 本機 D1 是空的：排行榜、內容列表、後台都沒資料。要看排行榜可以先在 D1 塞測試列（之前的作法見 git log `feat(web): leaderboard`）。
-- 登入要 Google OAuth 憑證才跑得通；沒有時 `/login` 會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，其他頁面正常。**本機繞過**：`cd apps/web && node scripts/dev-login.mjs m23568n@gmail.com` 會在本機 D1 塞使用者與 session 並印出 `document.cookie = …`，貼到瀏覽器 console 就是登入狀態（用 `ADMIN_EMAILS` 的 e-mail 就是 admin）。這樣 `/admin`、`/admin/contents`、`/admin/users`、`/me`、歌曲存 D1 的流程都能在本機看。
+- 登入要 Google OAuth 憑證才跑得通；沒有時 `/login` 會回 500 `CLIENT_ID_AND_SECRET_REQUIRED`，其他頁面正常。**本機繞過**：`cd apps/web && node scripts/dev-login.mjs m23568n@gmail.com` 會在本機 D1 塞使用者與 session 並印出 `document.cookie = …`，貼到瀏覽器 console 就是登入狀態（用 `ADMIN_EMAILS` 的 e-mail 就是 admin）。這樣 `/admin`、`/admin/contents`、`/admin/users`、`/me`、我的內容（`/library`）存 D1 的流程都能在本機看。
 - Admin = 登入者 email 在 `wrangler.jsonc` 的 `ADMIN_EMAILS`（目前 m23568n@gmail.com，用 Google 登入）。
 
 ## 3. 需要 owner 親自提供的東西（沒有這些就做不下去的項目）
@@ -37,6 +37,10 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
 
 ## 4. 待辦（依優先序）
+
+### 2026-09-11 已合併（M4-1e 使用者內容不限歌曲）
+
+- `/songs` 改名 `/library`「我的內容」：類型任選、影片可選、文章自動斷句、可公開；`/contents` 公開列表合併平台與使用者內容（「來源」篩選、使用者內容連到 `/library/[id]`）；`/api/songs/public` 刪除。使用者內容不進榜。細節見 DECISIONS「M4-1e」。驗證：型別、353 測試、API 建純文字新聞內容 → 公開 → `/contents?source=user` 看得到。**瀏覽器未實測。**
 
 ### 2026-09-11 已合併（修正讀音）
 

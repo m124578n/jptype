@@ -12,6 +12,7 @@
  * Every read is defensive, like `storage.ts`: storage may be missing, empty or corrupted.
  */
 import { findKana, MAX_KANA_LENGTH, SYMBOLS } from '@jptype/data';
+import { isContentType, type ContentType } from './contents.ts';
 
 const KEY = 'jptype:songs';
 const MODE_KEY = 'jptype:songMode';
@@ -59,7 +60,10 @@ export function tokensAligned(tokens: readonly SongToken[], text: string): boole
 
 export interface Song {
 	id: string;
+	/** song / anime / news / novel / jlpt / free — a user's content of any kind (M4-1e). */
+	type: ContentType;
 	title: string;
+	/** 11-char YouTube id, or '' for text-only content (no player, no sync mode). */
 	youtubeId: string;
 	/** One typing question per line, already normalized by `parseLyrics`. */
 	lines: SongLine[];
@@ -69,7 +73,7 @@ export interface Song {
 
 /** Songs saved before timestamps existed hold plain strings; both shapes are read. */
 type StoredLine = string | SongLine;
-type StoredSong = Omit<Song, 'lines'> & { lines: StoredLine[] };
+type StoredSong = Omit<Song, 'lines' | 'type'> & { lines: StoredLine[]; type?: unknown };
 
 /** A character the typing engine cannot type, with the 1-based line it appears on. */
 export interface LineIssue {
@@ -122,7 +126,8 @@ function toLine(line: StoredLine): SongLine {
 }
 
 function toSong(song: StoredSong): Song {
-	return { ...song, lines: song.lines.map(toLine) };
+	const { type, ...rest } = song;
+	return { ...rest, type: isContentType(type) ? type : 'song', lines: song.lines.map(toLine) };
 }
 
 /** All saved songs, newest update first. Unknown / corrupted entries are dropped. */

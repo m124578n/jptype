@@ -14,6 +14,7 @@
  *   the user is suspended from publishing and their public songs go back to private;
  * - every step leaves a row behind (report status, removal reason, in-app notice).
  */
+import { isContentType, type ContentType } from '../../contents.ts';
 import { parseYoutubeId, tokensAligned, type SongLine, type SongToken } from '../../songs.ts';
 import { isHashList, matchTiming, type TimingCandidate } from '../../song-hash.ts';
 import { ulid } from '../ulid.ts';
@@ -71,8 +72,10 @@ function id(deps: SongDeps, nowMs: number): string {
 // ── Body validation (shape only, like `parseSubmission`) ────────────────────────────────────────
 
 export interface SongInput {
+	type: ContentType;
 	title: string;
-	videoId: string;
+	/** null → text-only content: no player, no sync mode, no shared timeline. */
+	videoId: string | null;
 	lines: SongLine[];
 }
 
@@ -138,18 +141,29 @@ function parseTitleField(raw: unknown): { title: string } | { error: string } {
 	return { title };
 }
 
-/** POST /api/songs body. `videoId` accepts any YouTube URL shape and is normalized to the 11-char id. */
+/** `null` for no video, the 11-char id for any YouTube URL shape, 'invalid' otherwise. */
+function parseVideoField(raw: unknown): string | null | 'invalid' {
+	if (raw === undefined || raw === null || raw === '') return null;
+	if (typeof raw !== 'string') return 'invalid';
+	return parseYoutubeId(raw) ?? 'invalid';
+}
+
+/**
+ * POST /api/songs body. `type` defaults to 'song' (the pre-M4-1e client); `videoId` accepts any
+ * YouTube URL shape and is normalized, or is left out for text-only content.
+ */
 export function parseSongInput(raw: unknown): SongInput | string {
 	if (!raw || typeof raw !== 'object') return 'body must be an object';
 	const b = raw as Record<string, unknown>;
 	const title = parseTitleField(b.title);
 	if ('error' in title) return title.error;
-	if (typeof b.videoId !== 'string') return 'videoId must be a string';
-	const videoId = parseYoutubeId(b.videoId);
-	if (videoId === null) return 'videoId invalid';
+	const type = b.type ?? 'song';
+	if (!isContentType(type)) return 'type invalid';
+	const videoId = parseVideoField(b.videoId);
+	if (videoId === 'invalid') return 'videoId invalid';
 	const lines = parseLinesField(b.lines);
 	if (typeof lines === 'string') return lines;
-	return { title: title.title, videoId, lines };
+	return { type, title: title.title, videoId, lines };
 }
 
 /** PUT /api/songs/[id] body: any subset of the three fields, at least one. */
@@ -162,10 +176,13 @@ export function parseSongPatchInput(raw: unknown): SongPatchInput | string {
 		if ('error' in title) return title.error;
 		patch.title = title.title;
 	}
+	if (b.type !== undefined) {
+		if (!isContentType(b.type)) return 'type invalid';
+		patch.type = b.type;
+	}
 	if (b.videoId !== undefined) {
-		if (typeof b.videoId !== 'string') return 'videoId must be a string';
-		const videoId = parseYoutubeId(b.videoId);
-		if (videoId === null) return 'videoId invalid';
+		const videoId = parseVideoField(b.videoId);
+		if (videoId === 'invalid') return 'videoId invalid';
 		patch.videoId = videoId;
 	}
 	if (b.lines !== undefined) {
@@ -173,9 +190,7 @@ export function parseSongPatchInput(raw: unknown): SongPatchInput | string {
 		if (typeof lines === 'string') return lines;
 		patch.lines = lines;
 	}
-	if (patch.title === undefined && patch.videoId === undefined && patch.lines === undefined) {
-		return 'nothing to update';
-	}
+	if (Object.keys(patch).length === 0) return 'nothing to update';
 	return patch;
 }
 
@@ -287,6 +302,7 @@ export async function createSong(
 	const song: SongRecord = {
 		id: id(deps, now),
 		ownerId: userId,
+		type: input.type,
 		videoId: input.videoId,
 		title: input.title,
 		lines: input.lines,
@@ -486,7 +502,7 @@ export async function fileReport(
 	if (contentId !== null) {
 		const song = await deps.store.getSong(contentId);
 		if (!song) contentId = null;
-		else if (videoId === '') videoId = song.videoId;
+		else if (videoId === '') videoId = song.videoId ?? '';
 	}
 	if (contentId === null && videoId === '') return fail(400, 'contentId or videoId required');
 	const reportId = id(deps, now);

@@ -77,6 +77,8 @@ export interface ContentLine {
 /** What the list pages show: no lines, just enough for a card. */
 export interface ContentSummary {
 	id: string;
+	/** Null for platform content; the owning user's id for user-provided content (M4-1e). */
+	ownerId: string | null;
 	type: ContentType;
 	title: string;
 	description: string;

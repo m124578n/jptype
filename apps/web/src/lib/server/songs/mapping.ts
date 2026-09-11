@@ -14,6 +14,7 @@
  *
  * Pure functions only, so the mapping is unit-tested without D1.
  */
+import { isContentType } from '../../contents.ts';
 import { toRomaji } from '../../ja/romaji.ts';
 import { tokensAligned, type SongLine, type SongToken } from '../../songs.ts';
 import type { ContentRow, NewContentLineRow, NewContentRow } from '../db/schema.ts';
@@ -55,7 +56,7 @@ export function statusPatchOf(
 export function songToContentRow(song: SongRecord): NewContentRow {
 	return {
 		id: song.id,
-		type: 'song',
+		type: song.type,
 		title: song.title,
 		description: '',
 		videoId: song.videoId,
@@ -162,7 +163,8 @@ export function toSongRecord(row: ContentRow & { ownerId: string }, lines: SongL
 	return {
 		id: row.id,
 		ownerId: row.ownerId,
-		videoId: row.videoId ?? '',
+		type: isContentType(row.type) ? row.type : 'free',
+		videoId: row.videoId ?? null,
 		title: row.title,
 		lines,
 		visibility: state.visibility,

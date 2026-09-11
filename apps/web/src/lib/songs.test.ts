@@ -43,6 +43,7 @@ function song(over: Partial<Song> = {}): Song {
 	return {
 		id: 'a',
 		title: 'テスト',
+		type: 'song',
 		youtubeId: 'Kz7Aq3bN1xY',
 		lines: [{ text: 'あいうえお' }, { text: 'かきくけこ' }],
 		createdAt: 1000,

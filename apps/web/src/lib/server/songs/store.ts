@@ -6,6 +6,7 @@
  * `RunStore`).
  */
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql, type SQL } from 'drizzle-orm';
+import { isContentType, type ContentType } from '../../contents.ts';
 import type { SongLine } from '../../songs.ts';
 import type { TimingCandidate } from '../../song-hash.ts';
 import type { Db } from '../db/index.ts';
@@ -36,11 +37,13 @@ export type SongVisibility = 'private' | 'public';
 export type SongStatus = 'active' | 'removed';
 export type ReportStatus = 'open' | 'removed' | 'rejected';
 
-/** A song as the API and the pages see it. */
+/** A user's content (song, anime lines, an article…) as the API and the pages see it. */
 export interface SongRecord {
 	id: string;
 	ownerId: string;
-	videoId: string;
+	type: ContentType;
+	/** 11-char YouTube id, or null for text-only content. */
+	videoId: string | null;
 	title: string;
 	lines: SongLine[];
 	visibility: SongVisibility;
@@ -54,8 +57,9 @@ export interface SongRecord {
 /** What the public list shows: no lyrics, so the list itself distributes nothing. */
 export interface PublicSongSummary {
 	id: string;
+	type: ContentType;
 	title: string;
-	videoId: string;
+	videoId: string | null;
 	lineCount: number;
 	timedCount: number;
 	updatedAt: number;
@@ -64,9 +68,10 @@ export interface PublicSongSummary {
 /** What the admin console shows: titles, owners and status — never the lyrics. */
 export interface AdminSongSummary {
 	id: string;
+	type: ContentType;
 	title: string;
 	ownerId: string;
-	videoId: string;
+	videoId: string | null;
 	lineCount: number;
 	visibility: SongVisibility;
 	status: SongStatus;
@@ -105,8 +110,9 @@ export interface StrikeRecord {
 }
 
 export interface SongPatch {
+	type?: ContentType;
 	title?: string;
-	videoId?: string;
+	videoId?: string | null;
 	lines?: SongLine[];
 	visibility?: SongVisibility;
 	publicConsentAt?: number | null;
@@ -298,6 +304,7 @@ export function d1SongStore(db: Db): SongStore {
 
 		async patchSong(id, patch) {
 			const set: Record<string, unknown> = { updatedAt: patch.updatedAt };
+			if (patch.type !== undefined) set.type = patch.type;
 			if (patch.title !== undefined) set.title = patch.title;
 			if (patch.videoId !== undefined) set.videoId = patch.videoId;
 			if (patch.publicConsentAt !== undefined) set.publicConsentAt = patch.publicConsentAt;
@@ -347,6 +354,7 @@ export function d1SongStore(db: Db): SongStore {
 			const rows = await db
 				.select({
 					id: contents.id,
+					type: contents.type,
 					title: contents.title,
 					videoId: contents.videoId,
 					updatedAt: contents.updatedAt
@@ -361,8 +369,9 @@ export function d1SongStore(db: Db): SongStore {
 			return {
 				rows: rows.map((r) => ({
 					id: r.id,
+					type: isContentType(r.type) ? r.type : 'free',
 					title: r.title,
-					videoId: r.videoId ?? '',
+					videoId: r.videoId ?? null,
 					lineCount: counts.get(r.id)?.lines ?? 0,
 					timedCount: counts.get(r.id)?.timed ?? 0,
 					updatedAt: r.updatedAt
@@ -384,6 +393,7 @@ export function d1SongStore(db: Db): SongStore {
 				const song = toSongRecord(row, []);
 				return {
 					id: song.id,
+					type: song.type,
 					title: song.title,
 					ownerId: song.ownerId,
 					videoId: song.videoId,

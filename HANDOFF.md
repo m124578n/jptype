@@ -38,6 +38,10 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
+### 2026-09-11 已合併（修正讀音）
+
+- 練習頁歌詞條與對時頁每一行的「修正讀音」：逐 token 改假名（`ReadingEditor`、`lib/reading-edit.ts` 有測試），套用到同首歌相同句子，存回帳號或本機；同步模式改完從影片位置接著跑。見 DECISIONS「修正讀音」。**瀏覽器未實測。**
+
 ### 2026-09-11 已合併（逐字注音 + 對時掉漢字修正）
 
 - `SongLine.tokens`（kuromoji 斷詞對應，讀音接起來 = text）：localStorage 與 `content_lines.metadata` 都存；`TypingArea` 新 prop `tokens` 用 `<ruby>` 逐字注音。對時頁（`song-timing.ts`）之前會把 `original` 丟掉，已修並加回歸測試。見 DECISIONS「逐字注音」。**瀏覽器未實測 ruby 排版**；owner 之前貼的假名歌沒有原文，要重貼一次才會有漢字。

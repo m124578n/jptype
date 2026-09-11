@@ -22,6 +22,7 @@
 		type LibraryEntry
 	} from '$lib/songs-api';
 	import type { PlayerController } from '$lib/youtube';
+	import ReadingEditor from '$lib/components/ReadingEditor.svelte';
 
 	let { data } = $props();
 
@@ -43,6 +44,8 @@
 	let controller = $state<PlayerController | undefined>(undefined);
 	let playerFailed = $state(false);
 	let rows = $state<(HTMLLIElement | undefined)[]>([]);
+	/** Row whose reading editor is open, or -1 (owner 2026-09-11: fix a reading while timing). */
+	let fixingRow = $state(-1);
 
 	/** ±0.5 s per nudge, as agreed with the owner. */
 	const NUDGE_S = 0.5;
@@ -222,6 +225,12 @@
 						<span class="muted small no">{m.songs_timing_line({ line: i + 1 })}</span>
 						<span class="text" lang="ja">{line.original ?? line.text}</span>
 					</button>
+					<button
+						type="button"
+						class="btn btn--small"
+						aria-expanded={fixingRow === i}
+						onclick={() => (fixingRow = fixingRow === i ? -1 : i)}>{m.songs_fix_reading()}</button
+					>
 					<span class="time" class:untimed={line.start === undefined}>{formatTime(line.start)}</span
 					>
 					<span class="row nudges">
@@ -254,6 +263,19 @@
 							onclick={() => clearOne(i)}>{m.songs_timing_clear()}</button
 						>
 					</span>
+					{#if fixingRow === i}
+						<div class="fix">
+							<ReadingEditor
+								{line}
+								{lines}
+								onsave={(next) => {
+									change(next);
+									fixingRow = -1;
+								}}
+								oncancel={() => (fixingRow = -1)}
+							/>
+						</div>
+					{/if}
 				</li>
 			{/each}
 		</ol>
@@ -296,6 +318,16 @@
 </div>
 
 <style>
+	.fix {
+		flex-basis: 100%;
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--border);
+	}
+	.btn--small {
+		min-height: 36px;
+		padding-inline: var(--space-3);
+		font-size: 0.875rem;
+	}
 	.timing {
 		gap: var(--space-8);
 	}

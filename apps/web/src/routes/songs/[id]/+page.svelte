@@ -21,8 +21,23 @@
 		type LineOutcome,
 		type ReviewStore
 	} from '$lib/review';
-	import { hasSync, loadSongMode, saveSongMode, type Song, type SongMode } from '$lib/songs';
-	import { loadOne, setVisibility, toSong, type SongVisibility } from '$lib/songs-api';
+	import {
+		hasSync,
+		loadSongMode,
+		saveSongMode,
+		type Song,
+		type SongLine,
+		type SongMode
+	} from '$lib/songs';
+	import ReadingEditor from '$lib/components/ReadingEditor.svelte';
+	import {
+		loadOne,
+		saveEntryLines,
+		setVisibility,
+		toSong,
+		type LibraryEntry,
+		type SongVisibility
+	} from '$lib/songs-api';
 	import {
 		DEFAULT_SETTINGS,
 		loadSettings,
@@ -37,6 +52,12 @@
 	// The song comes from the account (signed in), from this browser, or — for a published song —
 	// from the public API; either way it is fetched after mount so SSR and hydration agree.
 	let song = $state.raw<Song | null>(null);
+	/** Where the song lives (account or this browser), needed to save a reading fix. */
+	let entry = $state.raw<LibraryEntry | null>(null);
+	/** The reading editor is open for the line being typed (owner 2026-09-11). */
+	let fixing = $state(false);
+	let fixSaving = $state(false);
+	let fixError = $state('');
 	let loaded = $state(false);
 	/** The two persisted modes plus Review, which only practises the lines you got wrong. */
 	type Mode = SongMode | 'review';
@@ -109,6 +130,7 @@
 	async function load() {
 		const found = await loadOne(data.id, data.user !== null);
 		song = found ? toSong(found.entry) : null;
+		entry = found?.entry ?? null;
 		isOwner = found?.isOwner ?? false;
 		remote = found?.entry.remote ?? false;
 		visibility = found?.entry.visibility ?? 'private';
@@ -254,6 +276,7 @@
 	function onkeydown(e: KeyboardEvent) {
 		const tag = (e.target as HTMLElement | null)?.tagName;
 		if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+		if (fixing) return; // the reading editor owns the keyboard
 
 		if (e.key === 'Escape') {
 			e.preventDefault();
@@ -326,6 +349,47 @@
 
 	function originalOf(text: string): string | undefined {
 		return song?.lines.find((l) => l.text === text && l.original !== undefined)?.original;
+	}
+
+	/** The stored line behind the one being typed (first match; a chorus shares one reading). */
+	const currentLine = $derived(
+		active ? song?.lines.find((l) => l.text === active.current) : undefined
+	);
+
+	function openFix() {
+		if (!currentLine || !isOwner) return;
+		if (mode === 'sync') controller?.pause();
+		fixError = '';
+		fixing = true;
+	}
+
+	/**
+	 * Save the corrected reading wherever the song lives and rebuild the run on the new lines:
+	 * sync mode picks the current line up again from the video position, free mode starts over.
+	 */
+	async function applyFixAndReload(nextLines: SongLine[]) {
+		const current = entry;
+		if (!current || !song) return;
+		fixSaving = true;
+		fixError = '';
+		const updated = await saveEntryLines(current, nextLines);
+		fixSaving = false;
+		if (!updated) {
+			fixError = m.songs_fix_failed();
+			return;
+		}
+		entry = updated;
+		song = { ...song, lines: nextLines };
+		fixing = false;
+		if (mode === 'sync' && phase === 'running') {
+			const at = Number.isFinite(lastTime) ? lastTime : 0;
+			const next = new SongSyncRun(song.lines);
+			next.seek(at);
+			sync = next;
+			skippedLines = 0;
+		} else {
+			reset();
+		}
 	}
 
 	/** Furigana split of the line being typed, when the paste went through the dictionary. */
@@ -453,19 +517,37 @@
 			<div class="strip stack">
 				<div class="row meta">
 					<span class="muted small" aria-live="polite">{progressText}</span>
-					<span class="muted small status" aria-live="polite">{statusText}</span>
+					<span class="row metaright">
+						<span class="muted small status" aria-live="polite">{statusText}</span>
+						{#if isOwner && currentLine && !fixing}
+							<button type="button" class="btn btn--tiny" onclick={openFix}>
+								{m.songs_fix_reading()}
+							</button>
+						{/if}
+					</span>
 				</div>
-				<p class="muted line" lang="ja">{previous ?? ''}</p>
-				<div
-					class="lyric"
-					class:ruby={currentOriginal !== undefined && currentTokens === undefined}
-				>
-					<TypingArea run={r} showHint={settings.showHint} tokens={currentTokens} />
-					{#if currentOriginal !== undefined && currentTokens === undefined}
-						<p class="kanji" lang="ja">{currentOriginal}</p>
-					{/if}
-				</div>
-				<p class="muted line" lang="ja">{upcoming ?? ''}</p>
+				{#if fixing && currentLine && song}
+					<ReadingEditor
+						line={currentLine}
+						lines={song.lines}
+						busy={fixSaving}
+						error={fixError}
+						onsave={(next) => void applyFixAndReload(next)}
+						oncancel={() => (fixing = false)}
+					/>
+				{:else}
+					<p class="muted line" lang="ja">{previous ?? ''}</p>
+					<div
+						class="lyric"
+						class:ruby={currentOriginal !== undefined && currentTokens === undefined}
+					>
+						<TypingArea run={r} showHint={settings.showHint} tokens={currentTokens} />
+						{#if currentOriginal !== undefined && currentTokens === undefined}
+							<p class="kanji" lang="ja">{currentOriginal}</p>
+						{/if}
+					</div>
+					<p class="muted line" lang="ja">{upcoming ?? ''}</p>
+				{/if}
 				{@render tools(stop)}
 			</div>
 		{/snippet}
@@ -750,6 +832,15 @@
 	}
 	.status {
 		text-align: right;
+	}
+	.metaright {
+		gap: var(--space-2);
+		align-items: center;
+	}
+	.btn--tiny {
+		min-height: 28px;
+		padding-inline: var(--space-3);
+		font-size: 0.75rem;
 	}
 	.line {
 		margin: 0;

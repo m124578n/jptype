@@ -7,7 +7,8 @@
  * paste are just a starting point; tapping overwrites them.
  *
  * Everything here is pure: `SongLine[]` in, a new `SongLine[]` out, so it is unit-testable
- * without a DOM or a player.
+ * without a DOM or a player. Only `start` is ever touched — `original` and `tokens` (M4-1d) ride
+ * along untouched, which is what the 2026-09-11 "the kanji vanished after timing" report was.
  */
 import type { SongLine } from './songs.ts';
 
@@ -20,15 +21,20 @@ function inRange(lines: readonly SongLine[], index: number): boolean {
 	return Number.isInteger(index) && index >= 0 && index < lines.length;
 }
 
+/** The same line with a new start, or with no start at all when `seconds` is undefined. */
+function withStart(line: SongLine, seconds: number | undefined): SongLine {
+	const { start: _start, ...rest } = line;
+	void _start;
+	return seconds === undefined ? rest : { ...rest, start: roundSeconds(seconds) };
+}
+
 /**
  * Set `lines[index].start` to `seconds` (clamped at 0, rounded to centiseconds).
  * An out-of-range index or a non-finite time leaves the list untouched.
  */
 export function stampLine(lines: readonly SongLine[], index: number, seconds: number): SongLine[] {
 	if (!inRange(lines, index) || !Number.isFinite(seconds)) return lines.slice();
-	return lines.map((line, i) =>
-		i === index ? { text: line.text, start: roundSeconds(seconds) } : line
-	);
+	return lines.map((line, i) => (i === index ? withStart(line, seconds) : line));
 }
 
 /**
@@ -39,20 +45,18 @@ export function nudgeLine(lines: readonly SongLine[], index: number, delta: numb
 	if (!inRange(lines, index) || !Number.isFinite(delta)) return lines.slice();
 	const start = (lines[index] as SongLine).start;
 	if (start === undefined) return lines.slice();
-	return lines.map((l, i) =>
-		i === index ? { text: l.text, start: roundSeconds(start + delta) } : l
-	);
+	return lines.map((l, i) => (i === index ? withStart(l, start + delta) : l));
 }
 
 /** Drop one line's timing (back to an untimed line). */
 export function clearLineTiming(lines: readonly SongLine[], index: number): SongLine[] {
 	if (!inRange(lines, index)) return lines.slice();
-	return lines.map((line, i) => (i === index ? { text: line.text } : line));
+	return lines.map((line, i) => (i === index ? withStart(line, undefined) : line));
 }
 
 /** Drop every timing, e.g. to start the whole song over. */
 export function clearAllTimings(lines: readonly SongLine[]): SongLine[] {
-	return lines.map((line) => ({ text: line.text }));
+	return lines.map((line) => withStart(line, undefined));
 }
 
 /** How many lines carry a start time (the progress readout of the timing editor). */

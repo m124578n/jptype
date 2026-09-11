@@ -645,3 +645,22 @@ owner 對完時間軸試打，回報：有前奏／間奏的歌會怪、開始�
 ### 漢字在下、假名在上
 
 有 `original` 的句子：打字列（假名、含進度高亮）縮小放上面，原文漢字大字放下面，像注音／ルビ的相對位置但整句對齊，不做逐字對齊（kuromoji 的 token 邊界在歌詞上不夠可靠，也沒存下來）。前後句的預覽也改顯示原文。純假名的歌看起來跟以前一樣。
+
+## 2026-09-11 逐字注音（owner：「歌詞顯示漢字、假名在漢字上方」）與對時掉漢字的 bug
+
+### 漢字為什麼會不見：對時那一步
+
+owner 問「是一開始輸入還是對時的時候漢字不見的」。答案是對時：`lib/song-timing.ts` 的 `stampLine` / `nudgeLine` / `clearLineTiming` / `clearAllTimings` 都用 `{ text, start }` 重建整行，M4-1d 剛加的 `original` 就在第一次打點時被丟掉。改成只動 `start`、其他欄位原樣帶著，並加了回歸測試。（另外，M4-1d 之前貼的歌本來就只有假名，沒有原文可顯示，要重貼一次。）
+
+### 逐字注音：斷詞對應要存下來
+
+要把假名標在**各個漢字**上方，得知道哪段假名屬於哪個漢字，這只有 kuromoji 斷詞當下知道，所以 `SongLine` 多了 `tokens: { surface, reading }[]`：`surface` 是顯示的字（漢字或假名或標點），`reading` 是為它打的假名，所有 `reading` 接起來**必須等於** `text`（`tokensAligned`）；標點的 `reading` 是空字串（顯示但不打）。`alignTokens` 負責把標點從讀音裡拿掉、把 token 之間的空白收合成跟 `stripPunctuation` 一致的結果。
+
+- 儲存：localStorage 直接存；D1 放進 M4-1 就有的 `content_lines.metadata`（JSON `{"tokens":[["今日","きょう"],…]}`）。讀回時若對不上 `kana_text`（例如在別處改過假名）就當沒有，不信任舊資料。API `POST/PUT /api/songs` 每行可帶 `tokens`，格式錯 400、對不上就靜默丟掉。
+- 使用者在「確認讀音」改了假名：`withEditedText` 只在改完仍對得上時保留 tokens，否則丟掉（退回「假名一列、漢字一列」的顯示），不做自動重對齊。
+- 顯示：`TypingArea` 多一個 `tokens` prop。有的話整行用 `<ruby>` 排：surface 用本來的字級，`<rt>` 是它的假名（0.42em、muted），打字進度照樣逐字：已打的假名淡出、目前的假名與所在的漢字變 accent、錯鍵閃紅照舊；純假名的 token 直接當一般 unit 顯示。tokens 跟引擎的 unit 對不上時（防禦）退回原本的假名列。羅馬字提示與連段計數不變。
+- 對時頁列表顯示原文；前後句預覽顯示原文（已在前一輪）。
+
+### 沒做的
+
+kuromoji 的斷詞在歌詞上不總是對（人名、當て字、方言），錯的注音會照錯的顯示；修正只能改假名（會失去逐字注音）或刪掉重貼。之後若要「逐字改注音」的編輯器再開。

@@ -198,7 +198,8 @@ export function d1SongStore(db: Db): SongStore {
 					contentId: contentLines.contentId,
 					kanaText: contentLines.kanaText,
 					originalText: contentLines.originalText,
-					startTime: contentLines.startTime
+					startTime: contentLines.startTime,
+					metadata: contentLines.metadata
 				})
 				.from(contentLines)
 				.where(inArray(contentLines.contentId, part))

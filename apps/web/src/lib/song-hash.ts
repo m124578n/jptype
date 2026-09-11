@@ -73,10 +73,9 @@ export function matchTiming(
 export function applyTiming(lines: readonly SongLine[], starts: readonly number[]): SongLine[] {
 	return lines.map((line, i) => {
 		const start = starts[i];
-		const out: SongLine = { text: line.text };
-		if (line.original !== undefined) out.original = line.original;
-		if (start !== undefined && Number.isFinite(start)) out.start = start;
-		return out;
+		const { start: _start, ...rest } = line;
+		void _start;
+		return start !== undefined && Number.isFinite(start) ? { ...rest, start } : rest;
 	});
 }
 

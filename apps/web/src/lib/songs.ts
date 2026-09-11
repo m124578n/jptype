@@ -25,6 +25,36 @@ export interface SongLine {
 	text: string;
 	start?: number;
 	original?: string;
+	/**
+	 * The dictionary's split of `original`: each surface (kanji or kana) with the reading that
+	 * was typed for it. Readings joined equal `text`; a token with an empty reading is
+	 * punctuation shown but not typed. Present only for lines converted through kuromoji.
+	 */
+	tokens?: SongToken[];
+}
+
+/** One furigana unit: what is shown (`surface`) over what is typed (`reading`). */
+export interface SongToken {
+	surface: string;
+	reading: string;
+}
+
+const MAX_TOKENS = 200;
+
+export function isSongToken(value: unknown): value is SongToken {
+	if (typeof value !== 'object' || value === null) return false;
+	const t = value as Partial<SongToken>;
+	return typeof t.surface === 'string' && typeof t.reading === 'string';
+}
+
+/** Tokens describe `text` only when their readings concatenate to exactly it. */
+export function tokensAligned(tokens: readonly SongToken[], text: string): boolean {
+	return (
+		tokens.length > 0 &&
+		tokens.length <= MAX_TOKENS &&
+		tokens.every(isSongToken) &&
+		tokens.map((t) => t.reading).join('') === text
+	);
 }
 
 export interface Song {
@@ -56,6 +86,7 @@ function isStoredLine(value: unknown): value is StoredLine {
 	const line = value as Partial<SongLine>;
 	if (typeof line.text !== 'string') return false;
 	if (line.original !== undefined && typeof line.original !== 'string') return false;
+	if (line.tokens !== undefined && !Array.isArray(line.tokens)) return false;
 	return (
 		line.start === undefined || (typeof line.start === 'number' && Number.isFinite(line.start))
 	);
@@ -83,6 +114,9 @@ function toLine(line: StoredLine): SongLine {
 	if (line.start !== undefined) out.start = line.start;
 	if (line.original !== undefined && line.original !== '' && line.original !== line.text) {
 		out.original = line.original;
+	}
+	if (line.tokens !== undefined && tokensAligned(line.tokens, line.text)) {
+		out.tokens = line.tokens.map((t) => ({ surface: t.surface, reading: t.reading }));
 	}
 	return out;
 }

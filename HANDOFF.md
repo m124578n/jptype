@@ -38,6 +38,10 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 4. 待辦（依優先序）
 
+### 2026-09-11 已合併（逐字注音 + 對時掉漢字修正）
+
+- `SongLine.tokens`（kuromoji 斷詞對應，讀音接起來 = text）：localStorage 與 `content_lines.metadata` 都存；`TypingArea` 新 prop `tokens` 用 `<ruby>` 逐字注音。對時頁（`song-timing.ts`）之前會把 `original` 丟掉，已修並加回歸測試。見 DECISIONS「逐字注音」。**瀏覽器未實測 ruby 排版**；owner 之前貼的假名歌沒有原文，要重貼一次才會有漢字。
+
 ### 2026-09-11 已合併（歌曲頁設計整理）
 
 - owner：「歌詞字小一點」「UI/UX 跑一遍」。`/songs/[id]` 重排（owner 選上下排）：標題＋模式切換一列；影片與歌詞條合成同一張卡（歌詞條貼在影片下緣，前一句 → 假名縮小＋漢字 → 下一句 → 工具列），卡寬 = min(100%, (100vh − 17rem) × 16/9) 讓整張卡在畫面內；鍵盤在卡下方；公開設定移到最下面縮成一列。只動 markup 與 CSS，邏輯沒改。**瀏覽器未實測（375 / 768 / 1024 / 1440）。**

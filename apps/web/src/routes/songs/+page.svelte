@@ -28,7 +28,7 @@
 		type LibraryEntry,
 		type PublicList
 	} from '$lib/songs-api';
-	import { convertLines, needsReading } from '$lib/songs-kana';
+	import { convertLines, needsReading, withEditedText } from '$lib/songs-kana';
 	import { watchUrl } from '$lib/youtube';
 
 	let { data } = $props();
@@ -119,12 +119,7 @@
 	/** The confirmed reading of line `i` was edited; keep `original` only while it still differs. */
 	function editReading(i: number, text: string) {
 		if (!converted) return;
-		converted = converted.map((line, index) => {
-			if (index !== i) return line;
-			const next: SongLine = { ...line, text };
-			if (next.original === text) delete next.original;
-			return next;
-		});
+		converted = converted.map((line, index) => (index === i ? withEditedText(line, text) : line));
 	}
 
 	function backToLyrics() {

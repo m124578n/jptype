@@ -88,3 +88,20 @@ describe('formatTime', () => {
 		expect(formatTime(Number.NaN)).toBe('—');
 	});
 });
+
+describe('original and tokens survive the timing editor (2026-09-11 regression)', () => {
+	const tokens = [
+		{ surface: '今日', reading: 'きょう' },
+		{ surface: 'は', reading: 'は' }
+	];
+	const line = { text: 'きょうは', original: '今日は', tokens };
+
+	it('keeps them through stamp, nudge and clear', () => {
+		const stamped = stampLine([line], 0, 12.345);
+		expect(stamped[0]).toEqual({ ...line, start: 12.35 });
+		const nudged = nudgeLine(stamped, 0, 0.5);
+		expect(nudged[0]).toEqual({ ...line, start: 12.85 });
+		expect(clearLineTiming(nudged, 0)[0]).toEqual(line);
+		expect(clearAllTimings(nudged)[0]).toEqual(line);
+	});
+});

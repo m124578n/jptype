@@ -125,6 +125,22 @@ describe('row mapping', () => {
 		expect(rowsToLines(linesToRows('S1', SONG.lines))).toEqual(SONG.lines);
 	});
 
+	it('stores the furigana tokens in metadata and reads them back only while aligned', () => {
+		const tokens = [
+			{ surface: '今日', reading: 'きょう' },
+			{ surface: 'は', reading: 'は' }
+		];
+		const lines = [{ text: 'きょうは', original: '今日は', tokens }];
+		const rows = linesToRows('S1', lines);
+		expect(rows[0]?.metadata).toBe('{"tokens":[["今日","きょう"],["は","は"]]}');
+		expect(rowsToLines(rows)).toEqual(lines);
+		// Stale metadata (the kana was edited elsewhere) is ignored rather than trusted.
+		expect(rowsToLines([{ kanaText: 'きょうはね', metadata: rows[0]?.metadata }])).toEqual([
+			{ text: 'きょうはね' }
+		]);
+		expect(rowsToLines([{ kanaText: 'あ', metadata: '{not json' }])).toEqual([{ text: 'あ' }]);
+	});
+
 	it('keeps the pasted kanji line as originalText and reads it back as original (M4-1d)', () => {
 		const lines = [{ text: 'きょうはいいてんき', original: '今日はいい天気', start: 2 }];
 		const rows = linesToRows('S1', lines);

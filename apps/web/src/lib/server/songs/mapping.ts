@@ -15,7 +15,7 @@
  * Pure functions only, so the mapping is unit-tested without D1.
  */
 import { toRomaji } from '../../ja/romaji.ts';
-import type { SongLine } from '../../songs.ts';
+import { tokensAligned, type SongLine, type SongToken } from '../../songs.ts';
 import type { ContentRow, NewContentLineRow, NewContentRow } from '../db/schema.ts';
 import type { SongPatch, SongRecord, SongStatus, SongVisibility } from './store.ts';
 
@@ -97,13 +97,46 @@ export function linesToRows(contentId: string, lines: readonly SongLine[]): NewC
 		originalText: line.original ?? line.text,
 		kanaText: line.text,
 		romajiText: toRomaji(line.text),
-		metadata: null
+		metadata: line.tokens === undefined ? null : JSON.stringify({ tokens: packTokens(line.tokens) })
 	}));
+}
+
+/** `[[surface, reading], …]` — the compact form `content_lines.metadata` holds. */
+function packTokens(tokens: readonly SongToken[]): [string, string][] {
+	return tokens.map((t) => [t.surface, t.reading]);
+}
+
+/** The tokens in a metadata JSON string, if it holds any that still add up to `text`. */
+export function unpackTokens(
+	metadata: string | null | undefined,
+	text: string
+): SongToken[] | undefined {
+	if (!metadata) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(metadata);
+		const raw = (parsed as { tokens?: unknown } | null)?.tokens;
+		if (!Array.isArray(raw)) return undefined;
+		const tokens: SongToken[] = [];
+		for (const pair of raw as unknown[]) {
+			if (!Array.isArray(pair) || typeof pair[0] !== 'string' || typeof pair[1] !== 'string') {
+				return undefined;
+			}
+			tokens.push({ surface: pair[0], reading: pair[1] });
+		}
+		return tokensAligned(tokens, text) ? tokens : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 /** Back to the song shape; rows must already be in `order`. */
 export function rowsToLines(
-	rows: readonly { kanaText: string; originalText?: string; startTime?: number | null }[]
+	rows: readonly {
+		kanaText: string;
+		originalText?: string;
+		startTime?: number | null;
+		metadata?: string | null;
+	}[]
 ): SongLine[] {
 	return rows.map((row) => {
 		const line: SongLine = { text: row.kanaText };
@@ -111,6 +144,8 @@ export function rowsToLines(
 		if (row.originalText !== undefined && row.originalText !== row.kanaText) {
 			line.original = row.originalText;
 		}
+		const tokens = unpackTokens(row.metadata, row.kanaText);
+		if (tokens) line.tokens = tokens;
 		return line;
 	});
 }

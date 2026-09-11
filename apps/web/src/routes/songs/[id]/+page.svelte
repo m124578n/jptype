@@ -327,6 +327,13 @@
 	function originalOf(text: string): string | undefined {
 		return song?.lines.find((l) => l.text === text && l.original !== undefined)?.original;
 	}
+
+	/** Furigana split of the line being typed, when the paste went through the dictionary. */
+	const currentTokens = $derived(
+		active
+			? song?.lines.find((l) => l.text === active.current && l.tokens !== undefined)?.tokens
+			: undefined
+	);
 </script>
 
 <svelte:head>
@@ -449,9 +456,12 @@
 					<span class="muted small status" aria-live="polite">{statusText}</span>
 				</div>
 				<p class="muted line" lang="ja">{previous ?? ''}</p>
-				<div class="lyric" class:ruby={currentOriginal !== undefined}>
-					<TypingArea run={r} showHint={settings.showHint} />
-					{#if currentOriginal !== undefined}
+				<div
+					class="lyric"
+					class:ruby={currentOriginal !== undefined && currentTokens === undefined}
+				>
+					<TypingArea run={r} showHint={settings.showHint} tokens={currentTokens} />
+					{#if currentOriginal !== undefined && currentTokens === undefined}
 						<p class="kanji" lang="ja">{currentOriginal}</p>
 					{/if}
 				</div>

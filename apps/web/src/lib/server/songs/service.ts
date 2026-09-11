@@ -14,7 +14,7 @@
  *   the user is suspended from publishing and their public songs go back to private;
  * - every step leaves a row behind (report status, removal reason, in-app notice).
  */
-import { parseYoutubeId, type SongLine } from '../../songs.ts';
+import { parseYoutubeId, tokensAligned, type SongLine, type SongToken } from '../../songs.ts';
 import { isHashList, matchTiming, type TimingCandidate } from '../../song-hash.ts';
 import { ulid } from '../ulid.ts';
 import type {
@@ -90,10 +90,11 @@ function parseLinesField(raw: unknown): SongLine[] | string {
 			continue;
 		}
 		if (!item || typeof item !== 'object') return 'line invalid';
-		const { text, start, original } = item as {
+		const { text, start, original, tokens } = item as {
 			text?: unknown;
 			start?: unknown;
 			original?: unknown;
+			tokens?: unknown;
 		};
 		if (typeof text !== 'string' || text === '') return 'line invalid';
 		if (text.length > MAX_LINE_CHARS) return 'line too long';
@@ -103,6 +104,20 @@ function parseLinesField(raw: unknown): SongLine[] | string {
 			if (typeof original !== 'string') return 'line original invalid';
 			if (original.length > MAX_LINE_CHARS) return 'line too long';
 			if (original !== text) line.original = original;
+		}
+		// The furigana split; kept only when it still adds up to the text.
+		if (tokens !== undefined && tokens !== null) {
+			if (!Array.isArray(tokens)) return 'line tokens invalid';
+			const parsedTokens: SongToken[] = [];
+			for (const t of tokens as unknown[]) {
+				const { surface, reading } = (t ?? {}) as { surface?: unknown; reading?: unknown };
+				if (typeof surface !== 'string' || typeof reading !== 'string')
+					return 'line tokens invalid';
+				if (surface.length > MAX_LINE_CHARS || reading.length > MAX_LINE_CHARS)
+					return 'line too long';
+				parsedTokens.push({ surface, reading });
+			}
+			if (tokensAligned(parsedTokens, text)) line.tokens = parsedTokens;
 		}
 		if (start !== undefined && start !== null) {
 			if (typeof start !== 'number' || !Number.isFinite(start) || start < 0)

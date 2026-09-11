@@ -7,12 +7,19 @@
 	let {
 		run,
 		showHint = true,
-		hints
+		hints,
+		tokens
 	}: {
 		run: TypingRun;
 		showHint?: boolean;
 		/** Kanji + 繁體中文 for word/sentence questions, keyed by the question's kana. */
 		hints?: Record<string, LessonHint>;
+		/**
+		 * Furigana split of the current question (M4-1d lyrics): each surface with the reading
+		 * typed for it, readings joining to the question's kana. When given (and aligned), the
+		 * line is drawn as the surfaces with the kana over each kanji, typing progress and all.
+		 */
+		tokens?: readonly { surface: string; reading: string }[];
 	} = $props();
 
 	const meaning = $derived(hints?.[run.current]);
@@ -22,6 +29,46 @@
 		return run.session.units;
 	});
 	const currentKana = $derived(units[run.unitIndex]?.kana ?? '');
+
+	type CharState = 'done' | 'current' | 'upcoming';
+	/** Every kana character of the question with the state of the unit it belongs to. */
+	const chars = $derived.by(() => {
+		const out: { ch: string; state: CharState }[] = [];
+		units.forEach((unit, i) => {
+			const state: CharState =
+				i < run.unitIndex ? 'done' : i === run.unitIndex ? 'current' : 'upcoming';
+			for (const ch of [...unit.kana]) out.push({ ch, state });
+		});
+		return out;
+	});
+
+	/** The ruby line: tokens with their characters, or null when there are none / they do not add up. */
+	const ruby = $derived.by(() => {
+		if (!tokens || tokens.length === 0) return null;
+		const total = tokens.reduce((n, t) => n + [...t.reading].length, 0);
+		if (total !== chars.length) return null;
+		let pos = 0;
+		return tokens.map((t) => {
+			const n = [...t.reading].length;
+			const own = chars.slice(pos, pos + n);
+			pos += n;
+			const state: CharState | 'plain' =
+				own.length === 0
+					? 'plain'
+					: own.some((c) => c.state === 'current')
+						? 'current'
+						: own.every((c) => c.state === 'done')
+							? 'done'
+							: 'upcoming';
+			// Kana tokens are typed as they stand; only a surface that differs gets furigana.
+			return {
+				surface: t.surface,
+				chars: own,
+				annotate: t.surface !== t.reading && own.length > 0,
+				state
+			};
+		});
+	});
 
 	// Shake/flash for 160 ms after a wrong key (spec §10); re-triggers on each error.
 	let shaking = $state(false);
@@ -54,16 +101,37 @@
 			<span class="zh">{meaning.zh}</span>
 		</p>
 	{/if}
-	<p class="target" lang="ja" class:shake={shaking}>
-		{#each units as unit, i (i)}
-			<span
-				class="unit"
-				class:done={i < run.unitIndex}
-				class:current={i === run.unitIndex}
-				class:wrong={i === run.unitIndex && shaking}>{unit.kana}</span
-			>
-		{/each}
-	</p>
+	{#if ruby}
+		<p class="target ruby" lang="ja" class:shake={shaking}>
+			{#each ruby as token, i (i)}
+				{#if token.annotate}
+					<ruby class="tok {token.state}" class:wrong={token.state === 'current' && shaking}
+						>{token.surface}<rp>(</rp><rt
+							>{#each token.chars as c, j (j)}<span class="rc {c.state}">{c.ch}</span>{/each}</rt
+						><rp>)</rp></ruby
+					>
+				{:else if token.chars.length === 0}
+					<span class="tok plain">{token.surface}</span>
+				{:else}
+					{#each token.chars as c, j (j)}<span
+							class="unit {c.state}"
+							class:wrong={c.state === 'current' && shaking}>{c.ch}</span
+						>{/each}
+				{/if}
+			{/each}
+		</p>
+	{:else}
+		<p class="target" lang="ja" class:shake={shaking}>
+			{#each units as unit, i (i)}
+				<span
+					class="unit"
+					class:done={i < run.unitIndex}
+					class:current={i === run.unitIndex}
+					class:wrong={i === run.unitIndex && shaking}>{unit.kana}</span
+				>
+			{/each}
+		</p>
+	{/if}
 	<p class="hint" aria-hidden="true">
 		{#if showHint}
 			<span class="typed">{run.typed}</span><span class="rest"
@@ -125,6 +193,44 @@
 	.unit.wrong {
 		color: var(--danger);
 		background: var(--danger-soft);
+	}
+	/* Furigana line: surfaces in the base size, the typed kana small over each kanji. */
+	.ruby {
+		line-height: 1.9;
+		align-items: baseline;
+	}
+	.ruby ruby {
+		ruby-position: over;
+		ruby-align: center;
+		padding: 0 0.04em;
+		border-radius: var(--radius-sm);
+		transition: color var(--dur-fast) var(--ease-out);
+	}
+	.ruby rt {
+		font-size: 0.42em;
+		font-weight: 400;
+		letter-spacing: 0.02em;
+		line-height: 1;
+		color: var(--fg-muted);
+	}
+	.tok.done {
+		color: var(--fg-muted);
+	}
+	.tok.current {
+		color: var(--accent);
+	}
+	.tok.plain {
+		color: var(--fg-muted);
+	}
+	.tok.wrong {
+		color: var(--danger);
+		background: var(--danger-soft);
+	}
+	.rc.done {
+		opacity: 0.45;
+	}
+	.rc.current {
+		color: var(--accent);
 	}
 	.hint {
 		min-height: 2rem;

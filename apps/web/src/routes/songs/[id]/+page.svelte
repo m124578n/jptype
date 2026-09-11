@@ -10,6 +10,7 @@
 	import TypingArea from '$lib/components/TypingArea.svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 	import { PracticeRun } from '$lib/practice/run.svelte';
+	import type { TypingRun } from '$lib/practice/run.svelte';
 	import { SongSyncRun } from '$lib/practice/song-sync.svelte';
 	import { TypewriterSound } from '$lib/practice/sound';
 	import {
@@ -441,7 +442,26 @@
 			</div>
 		{/snippet}
 
-		<div class="board" class:live={result === null}>
+		{#snippet lyricStrip(r: TypingRun, progressText: string, statusText: string, stop: boolean)}
+			<div class="strip stack">
+				<div class="row meta">
+					<span class="muted small" aria-live="polite">{progressText}</span>
+					<span class="muted small status" aria-live="polite">{statusText}</span>
+				</div>
+				<p class="muted line" lang="ja">{previous ?? ''}</p>
+				<div class="lyric" class:ruby={currentOriginal !== undefined}>
+					<TypingArea run={r} showHint={settings.showHint} />
+					{#if currentOriginal !== undefined}
+						<p class="kanji" lang="ja">{currentOriginal}</p>
+					{/if}
+				</div>
+				<p class="muted line" lang="ja">{upcoming ?? ''}</p>
+				{@render tools(stop)}
+			</div>
+		{/snippet}
+
+		<!-- Video and lyrics as one object: the lyric strip is attached to the bottom edge of the player, like a subtitle band. -->
+		<section class="card unit" class:live={result === null}>
 			<div class="stage">
 				<YouTubePlayer
 					videoId={song.youtubeId}
@@ -467,111 +487,85 @@
 						{/if}
 					</div>
 				{/if}
-				{#if playerFailed}
-					<p class="muted small center">{m.songs_player_failed()}</p>
-				{/if}
 			</div>
 
 			{#if mode === 'sync' && result === null}
-				<section class="card panel stack" aria-label={m.songs_mode_sync()}>
-					{#if phase === 'idle'}
-						<div class="stack idle">
-							<button type="button" class="btn btn--primary" onclick={startSync}>
-								{m.songs_sync_start()}
-							</button>
-							<p class="muted small center">{m.songs_sync_keys()}</p>
-						</div>
-					{:else if sync}
-						<div class="row meta">
-							<span class="muted small" aria-live="polite">
-								{m.songs_progress({ current: sync.index + 1, total: sync.total })}
-								{#if skippedLines > 0}· {m.songs_skipped({ count: skippedLines })}{/if}
-							</span>
-							<span class="muted small status" aria-live="polite">
-								{#if playerState === 'paused'}
-									{m.songs_sync_paused()}
-								{:else if sync.pending && playerState === 'playing'}
-									{m.songs_sync_pending()}
-								{:else if sync.lineDone}
-									✓ {m.songs_sync_line_done()}
-								{:else if playerState !== 'playing'}
-									{m.songs_sync_waiting()}
-								{/if}
-							</span>
-						</div>
-						<p class="muted line" lang="ja">{previous ?? ''}</p>
-						<div class="lyric" class:ruby={currentOriginal !== undefined}>
-							<TypingArea run={sync} showHint={settings.showHint} />
-							{#if currentOriginal !== undefined}
-								<p class="kanji" lang="ja">{currentOriginal}</p>
-							{/if}
-						</div>
-						<p class="muted line" lang="ja">{upcoming ?? ''}</p>
-						{#if settings.showKeyboard}
-							<Keyboard next={sync.nextKey} />
-						{/if}
-						{#if coarsePointer}
-							<p class="muted small center">{m.typing_mobile_notice()}</p>
-						{/if}
-						{@render tools(true)}
-						<p class="muted keys">{m.songs_sync_keys()}</p>
-					{/if}
-				</section>
+				{#if phase === 'idle'}
+					<div class="strip stack idle">
+						<button type="button" class="btn btn--primary" onclick={startSync}>
+							{m.songs_sync_start()}
+						</button>
+						<p class="muted small center">{m.songs_sync_keys()}</p>
+					</div>
+				{:else if sync}
+					{@render lyricStrip(
+						sync,
+						m.songs_progress({ current: sync.index + 1, total: sync.total }) +
+							(skippedLines > 0 ? ' · ' + m.songs_skipped({ count: skippedLines }) : ''),
+						playerState === 'paused'
+							? m.songs_sync_paused()
+							: sync.pending && playerState === 'playing'
+								? m.songs_sync_pending()
+								: sync.lineDone
+									? '✓ ' + m.songs_sync_line_done()
+									: playerState !== 'playing'
+										? m.songs_sync_waiting()
+										: '',
+						true
+					)}
+				{/if}
 			{:else if mode !== 'sync' && run && result === null}
-				<section class="card panel stack" aria-label={m.songs_mode_free()}>
-					<div class="row meta">
-						<span class="muted small" aria-live="polite">
-							{m.songs_progress({ current: run.index + 1, total: run.questions.length })}
-						</span>
-						{#if lineNote > 0}
-							<span class="muted small" aria-live="polite">
-								{m.review_line_note({ count: lineNote })}
-							</span>
-						{/if}
-					</div>
-					<p class="muted line" lang="ja">{previous ?? ''}</p>
-					<div class="lyric" class:ruby={currentOriginal !== undefined}>
-						<TypingArea {run} showHint={settings.showHint} />
-						{#if currentOriginal !== undefined}
-							<p class="kanji" lang="ja">{currentOriginal}</p>
-						{/if}
-					</div>
-					<p class="muted line" lang="ja">{upcoming ?? ''}</p>
-					{#if settings.showKeyboard}
-						<Keyboard next={run.nextKey} />
-					{/if}
-					{#if coarsePointer}
-						<p class="muted small center">{m.typing_mobile_notice()}</p>
-					{/if}
-					{@render tools(false)}
-				</section>
-			{:else if result && active}
-				<div class="stack">
-					<ResultPanel
-						{result}
-						wrongUnits={active.wrongUnits}
-						{newBest}
-						onpracticeWrong={reset}
-						onretry={reset}
-						retryLabel={m.songs_again()}
-						showPracticeWrong={false}
-						durationMs={active.durationMs}
-						maxCombo={active.maxCombo}
-						errors={active.errorAnalysis()}
-					/>
-					{#if mode === 'sync'}
-						<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>
-					{:else if mode === 'review'}
-						<p class="center muted small">
-							{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
-						</p>
-					{/if}
-					<p class="center">
-						<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
-					</p>
+				{@render lyricStrip(
+					run,
+					m.songs_progress({ current: run.index + 1, total: run.questions.length }),
+					lineNote > 0 ? m.review_line_note({ count: lineNote }) : '',
+					false
+				)}
+			{/if}
+		</section>
+
+		{#if playerFailed}
+			<p class="muted small center">{m.songs_player_failed()}</p>
+		{/if}
+
+		{#if result === null && phase !== 'idle' && active}
+			{#if settings.showKeyboard}
+				<div class="keyboard">
+					<Keyboard next={active.nextKey} />
 				</div>
 			{/if}
-		</div>
+			{#if coarsePointer}
+				<p class="muted small center">{m.typing_mobile_notice()}</p>
+			{/if}
+			{#if mode === 'sync'}
+				<p class="muted keys">{m.songs_sync_keys()}</p>
+			{/if}
+		{:else if result && active}
+			<div class="stack">
+				<ResultPanel
+					{result}
+					wrongUnits={active.wrongUnits}
+					{newBest}
+					onpracticeWrong={reset}
+					onretry={reset}
+					retryLabel={m.songs_again()}
+					showPracticeWrong={false}
+					durationMs={active.durationMs}
+					maxCombo={active.maxCombo}
+					errors={active.errorAnalysis()}
+				/>
+				{#if mode === 'sync'}
+					<p class="center muted">{m.songs_skipped({ count: skippedLines })}</p>
+				{:else if mode === 'review'}
+					<p class="center muted small">
+						{missed.length === 0 ? m.review_cleared() : m.review_local_only()}
+					</p>
+				{/if}
+				<p class="center">
+					<a class="btn" href={resolve('/songs')}>{m.songs_back()}</a>
+				</p>
+			</div>
+		{/if}
 
 		{#if isOwner && !removed}
 			<section class="card publish stack">
@@ -676,29 +670,27 @@
 		font-size: 0.875rem;
 	}
 
-	/* Video and the line being typed side by side on wide screens, so both stay in view. */
-	.board {
-		display: grid;
-		gap: var(--space-4);
-		align-items: start;
+	/*
+	 * The unit: one card holding the player and, glued to its bottom edge, the lyric strip.
+	 * Its width is derived from the viewport height so player + strip stay on screen together
+	 * (the strip needs ~15rem under the 16:9 player); the container caps it on wide screens.
+	 */
+	.unit {
+		width: min(100%, calc((100vh - 17rem) * 16 / 9));
+		min-width: min(100%, 20rem);
+		margin-inline: auto;
+		overflow: hidden;
+	}
+	.unit:not(.live) {
+		width: min(100%, calc(45vh * 16 / 9));
 	}
 	.stage {
 		position: relative;
 	}
-	.board.live .stage {
-		width: min(100%, calc(38vh * 16 / 9));
-		margin-inline: auto;
-	}
-	@media (min-width: 64rem) {
-		.board.live {
-			grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-			gap: var(--space-6);
-		}
-		.board.live .stage {
-			width: 100%;
-			position: sticky;
-			top: var(--space-4);
-		}
+	/* The player's own frame is the card's frame now. */
+	.stage :global(.player) {
+		border: 0;
+		border-radius: 0;
 	}
 	.countdown {
 		position: absolute;
@@ -707,7 +699,6 @@
 		align-items: center;
 		justify-content: center;
 		background: color-mix(in srgb, var(--bg) 78%, transparent);
-		border-radius: var(--radius-lg);
 		font-size: clamp(3rem, 12vw, 6rem);
 		font-weight: 700;
 		color: var(--accent);
@@ -716,7 +707,7 @@
 	}
 	.countdown.far {
 		align-items: flex-end;
-		padding-bottom: var(--space-4);
+		padding-bottom: var(--space-3);
 		background: transparent;
 	}
 	.gap {
@@ -728,17 +719,18 @@
 		background: color-mix(in srgb, var(--bg) 85%, transparent);
 	}
 
-	/* The lyric panel: meta row, previous line, current line (kana over kanji), next line, tools. */
-	.panel {
-		padding: var(--space-4) var(--space-6);
-		gap: var(--space-3);
-		min-height: 14rem;
+	/* Subtitle band: previous line, the line being typed (kana over kanji), next line, tools. */
+	.strip {
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-6) var(--space-3);
+		border-top: 1px solid var(--border);
+		background: var(--surface);
 	}
-	.idle {
+	.strip.idle {
 		align-items: center;
 		justify-content: center;
 		gap: var(--space-3);
-		min-height: 12rem;
+		min-height: 9rem;
 	}
 	.meta {
 		justify-content: space-between;
@@ -751,8 +743,8 @@
 	}
 	.line {
 		margin: 0;
-		min-height: 1.6rem;
-		font-size: 1rem;
+		min-height: 1.5rem;
+		font-size: 0.9375rem;
 		line-height: 1.6;
 		text-align: center;
 		overflow: hidden;
@@ -764,7 +756,6 @@
 		gap: var(--space-1);
 		justify-items: center;
 		width: 100%;
-		padding: var(--space-2) 0;
 	}
 	/* Lyrics run long: a smaller kana line than the lesson kana (owner 2026-09-11「歌詞字小一點」). */
 	.lyric :global(.typing) {
@@ -798,6 +789,10 @@
 	.toggles,
 	.actions {
 		gap: var(--space-2);
+	}
+	.keyboard {
+		display: flex;
+		justify-content: center;
 	}
 	.keys {
 		margin: 0;

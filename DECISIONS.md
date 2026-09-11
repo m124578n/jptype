@@ -604,3 +604,23 @@ ROADMAP M4-4「內容瀏覽、開始練習、完成練習，核心指標 = 開�
 | Kokoro-82M / Piper  | 開源                                                                      | 本機                                                          | 日文品質普遍評為不如 VOICEVOX                | 不划算                                                                                                    |
 
 建議：願意辦 Azure 綁卡 → Azure F0（我寫 `scripts/tts-batch.ts`：即時 REST、節流、產 mp3、wrangler 傳 R2）；不想綁卡 → VOICEVOX（owner 本機開著引擎，腳本打 localhost 產檔再傳 R2，頁尾加角色標示）。前端接法相同：有 R2 音檔就播，沒有就退回瀏覽器語音，先做哪條都不影響之後換。**待 owner 決定路線與聲音偏好（男 / 女聲、要不要教材感）。**
+
+## 2026-09-11 M4-1d 歌詞貼漢字也可以（owner：「只能填平假名太麻煩了」「標點符號也不要擋」）
+
+### 做法：後台匯入那條管線直接拿來用，但多一步「確認」
+
+`/songs` 的儲存流程改成：`parseLyrics` → `validateLines` 有打不出來的字 → **在瀏覽器**跑 `lib/songs-kana.ts`（kuromoji，字典從自家網域載，跟 `/admin/contents` 匯入同一個 `lib/ja/kana.ts`）→ 表單切成「確認讀音」清單（每行：原文 + 可編輯的假名，還有打不出來的字的行標紅）→ 使用者再按一次儲存。轉換結果只是建議，最後存的是使用者確認過的假名。規格「runtime 不呼叫外部 API」不變：Worker 完全沒參與，歌詞也沒離開頁面。
+
+### 標點符號：從要打的字裡拿掉，原文保留
+
+引擎只認 ー、。？！ 與 ASCII（`SYMBOLS`），其他標點（「」『』…・〜（）等，Unicode p{P} / p{S}）以前會擋。現在 `stripPunctuation` 在轉換時把它們從 `text` 拿掉並收合多餘空白，整行只剩標點就整行丟掉。**只有標點問題的行不會載字典**（17 MB 只在真的有漢字時才抓）。原文含標點完整留在 `original`。
+
+### 資料：`SongLine.original`
+
+`SongLine` 多一個可選 `original`（貼入的原句，只在跟 `text` 不同時存在）。localStorage 直接存；D1 走 M4-1c 已經有的欄位：`content_lines.original_text = original ?? text`、`kana_text = text`，讀回時兩者不同就還原成 `original`。API `POST/PUT /api/songs` 接受每行可選的 `original`（≤ 300 字、非字串就 400）。練習頁在假名上方顯示原文（同步 / 自由模式都有），對時頁列表顯示原文。共享時間軸仍只雜湊 `text`（假名），所以純假名貼法的雜湊跟以前一模一樣；漢字貼法轉出來的假名跟別人一致才會配到，這是原本的語意。
+
+### 沒做的
+
+- 沒做「編輯已存歌曲的歌詞」頁（原本就沒有）；要改讀音只能刪掉重貼。
+- 全形英數沒有正規化成 ASCII（會被當成打不出來的字，在確認清單裡標紅讓使用者改）。
+- kuromoji 對歌詞的斷詞讀音不一定對（尤其人名、當て字），所以才堅持有確認步驟。

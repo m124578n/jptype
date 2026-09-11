@@ -83,9 +83,9 @@ export function lineId(contentId: string, order: number): string {
 }
 
 /**
- * `content_lines` rows for a song's lines. The pasted text is both the original and the kana
- * (a song is pasted as kana already — kanji are refused on the way in), and the romaji is
- * derived so the row looks like any other content line.
+ * `content_lines` rows for a song's lines. `kanaText` is what the engine types; `originalText`
+ * is the pasted line with its kanji when the reading was converted in the browser (M4-1d),
+ * otherwise the same kana; the romaji is derived so the row looks like any other content line.
  */
 export function linesToRows(contentId: string, lines: readonly SongLine[]): NewContentLineRow[] {
 	return lines.map((line, order) => ({
@@ -94,7 +94,7 @@ export function linesToRows(contentId: string, lines: readonly SongLine[]): NewC
 		order,
 		startTime: line.start ?? null,
 		endTime: null,
-		originalText: line.text,
+		originalText: line.original ?? line.text,
 		kanaText: line.text,
 		romajiText: toRomaji(line.text),
 		metadata: null
@@ -103,13 +103,16 @@ export function linesToRows(contentId: string, lines: readonly SongLine[]): NewC
 
 /** Back to the song shape; rows must already be in `order`. */
 export function rowsToLines(
-	rows: readonly { kanaText: string; startTime?: number | null }[]
+	rows: readonly { kanaText: string; originalText?: string; startTime?: number | null }[]
 ): SongLine[] {
-	return rows.map((row) =>
-		row.startTime === null || row.startTime === undefined
-			? { text: row.kanaText }
-			: { text: row.kanaText, start: row.startTime }
-	);
+	return rows.map((row) => {
+		const line: SongLine = { text: row.kanaText };
+		if (row.startTime !== null && row.startTime !== undefined) line.start = row.startTime;
+		if (row.originalText !== undefined && row.originalText !== row.kanaText) {
+			line.original = row.originalText;
+		}
+		return line;
+	});
 }
 
 /** Whether a `contents` row is a song at all (user-provided rows only reach the song API). */

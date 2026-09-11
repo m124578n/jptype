@@ -28,6 +28,7 @@
 		type LibraryEntry,
 		type PublicList
 	} from '$lib/songs-api';
+	import { convertLines, needsReading } from '$lib/songs-kana';
 	import { watchUrl } from '$lib/youtube';
 
 	let { data } = $props();
@@ -64,6 +65,13 @@
 	let errors = $state<string[]>([]);
 	let issues = $state<LineIssue[]>([]);
 	let saving = $state(false);
+	/**
+	 * Readings to confirm (M4-1d): set when the paste had kanji and the browser converted it.
+	 * While non-null the form shows this list instead of the textarea; saving uses it.
+	 */
+	let converted = $state<SongLine[] | null>(null);
+	let converting = $state('');
+	let convertFailed = $state(false);
 	/** Once the user edits the title themselves, YouTube must not overwrite it. */
 	let titleEdited = $state(false);
 
@@ -108,18 +116,58 @@
 		return starts !== null && starts.length === lines.length ? applyTiming(lines, starts) : lines;
 	}
 
+	/** The confirmed reading of line `i` was edited; keep `original` only while it still differs. */
+	function editReading(i: number, text: string) {
+		if (!converted) return;
+		converted = converted.map((line, index) => {
+			if (index !== i) return line;
+			const next: SongLine = { ...line, text };
+			if (next.original === text) delete next.original;
+			return next;
+		});
+	}
+
+	function backToLyrics() {
+		converted = null;
+		issues = [];
+		errors = [];
+	}
+
+	/** Lines that still contain something the engine cannot type, 1-based, for the list. */
+	const unresolvedLines = $derived(
+		converted ? converted.flatMap((line, i) => (needsReading(line) ? [i + 1] : [])) : []
+	);
+
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		saveFailed = false;
+		convertFailed = false;
 		const found: string[] = [];
 		const t = title.trim();
 		if (t === '') found.push(m.songs_error_title());
 		if (videoId === null) found.push(m.songs_error_url());
-		const parsed = parseLyrics(lyrics);
+		const parsed = converted ?? parseLyrics(lyrics);
 		if (parsed.length === 0) found.push(m.songs_error_lyrics());
 		issues = parsed.length === 0 ? [] : validateLines(parsed);
 		errors = found;
-		if (found.length > 0 || issues.length > 0 || videoId === null) return;
+		if (found.length > 0 || videoId === null) return;
+
+		// Kanji in the paste: convert in the browser and let the user confirm before saving.
+		if (issues.length > 0 && converted === null) {
+			converting = m.songs_convert_loading();
+			try {
+				converted = await convertLines(parsed, (stage) => {
+					converting = stage === 'loading' ? m.songs_convert_loading() : m.songs_convert_working();
+				});
+				issues = validateLines(converted);
+			} catch {
+				convertFailed = true;
+			} finally {
+				converting = '';
+			}
+			return;
+		}
+		if (issues.length > 0) return;
 
 		const lines = withSharedStarts(parsed);
 		saving = true;
@@ -150,6 +198,8 @@
 		title = '';
 		url = '';
 		lyrics = '';
+		converted = null;
+		issues = [];
 		titleEdited = false;
 		shared = null;
 		sharedStarts = null;
@@ -335,18 +385,57 @@
 				</p>
 			</div>
 
-			<div class="stack field">
-				<label for="song-lyrics">{m.songs_field_lyrics()}</label>
-				<textarea
-					id="song-lyrics"
-					rows="10"
-					bind:value={lyrics}
-					oninput={scheduleLookup}
-					lang="ja"
-					spellcheck="false"></textarea>
-				<p class="muted small">{m.songs_field_lyrics_hint()}</p>
-				<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
-			</div>
+			{#if converted === null}
+				<div class="stack field">
+					<label for="song-lyrics">{m.songs_field_lyrics()}</label>
+					<textarea
+						id="song-lyrics"
+						rows="10"
+						bind:value={lyrics}
+						oninput={scheduleLookup}
+						lang="ja"
+						spellcheck="false"></textarea>
+					<p class="muted small">{m.songs_field_lyrics_hint()}</p>
+					<p class="muted small">{m.songs_field_lyrics_sync_hint()}</p>
+				</div>
+			{:else}
+				<div class="stack field readings" role="region" aria-labelledby="readings-title">
+					<h3 id="readings-title">{m.songs_convert_title()}</h3>
+					<p class="muted small">{m.songs_convert_lead()}</p>
+					<ol class="stack reading-list">
+						{#each converted as line, i (i)}
+							<li class="stack reading" class:bad={unresolvedLines.includes(i + 1)}>
+								{#if line.original !== undefined}
+									<span class="muted small original" lang="ja">{line.original}</span>
+								{/if}
+								<label class="visually-hidden" for="reading-{i}">
+									{m.songs_convert_kana({ line: i + 1 })}
+								</label>
+								<input
+									id="reading-{i}"
+									type="text"
+									value={line.text}
+									oninput={(e) => editReading(i, e.currentTarget.value)}
+									lang="ja"
+									autocomplete="off"
+									spellcheck="false"
+								/>
+							</li>
+						{/each}
+					</ol>
+					<p class="row">
+						<button type="button" class="btn" onclick={backToLyrics}>
+							{m.songs_convert_back()}
+						</button>
+					</p>
+				</div>
+			{/if}
+			{#if converting !== ''}
+				<p class="muted small" role="status">{converting}</p>
+			{/if}
+			{#if convertFailed}
+				<p class="error small" role="alert">{m.songs_convert_failed()}</p>
+			{/if}
 
 			{#if shared !== null}
 				<div class="stack shared" role="status">
@@ -383,7 +472,7 @@
 			{/if}
 
 			<p>
-				<button type="submit" class="btn btn--primary" disabled={saving}>
+				<button type="submit" class="btn btn--primary" disabled={saving || converting !== ''}>
 					{saving ? m.songs_saving() : m.songs_save()}
 				</button>
 			</p>
@@ -534,6 +623,26 @@
 	}
 	.shared p {
 		margin: 0;
+	}
+	.readings {
+		gap: var(--space-3);
+	}
+	.readings h3 {
+		margin: 0;
+	}
+	.reading-list {
+		gap: var(--space-2);
+		margin: 0;
+		padding-left: 1.5rem;
+	}
+	.reading {
+		gap: var(--space-1);
+	}
+	.reading.bad input {
+		border-color: var(--danger);
+	}
+	.original {
+		line-height: 1.5;
 	}
 	.problems {
 		gap: var(--space-2);

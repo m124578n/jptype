@@ -18,12 +18,15 @@ import type { TypingRun, UnitOutcome } from './run.svelte.ts';
 export interface TimedLine {
 	text: string;
 	start?: number;
+	/** The line as pasted (kanji) when `text` is a converted reading (M4-1d). */
+	original?: string;
 }
 
 /** A line that carries a start time; only these take part in sync mode. */
 export interface SyncLine {
 	text: string;
 	start: number;
+	original?: string;
 }
 
 /**
@@ -75,7 +78,10 @@ export class SongSyncRun implements TypingRun {
 	constructor(lines: readonly TimedLine[]) {
 		const timed: SyncLine[] = [];
 		for (const line of lines) {
-			if (line.start !== undefined) timed.push({ text: line.text, start: line.start });
+			if (line.start === undefined) continue;
+			const sync: SyncLine = { text: line.text, start: line.start };
+			if (line.original !== undefined) sync.original = line.original;
+			timed.push(sync);
 		}
 		timed.sort((a, b) => a.start - b.start);
 		this.lines = timed;

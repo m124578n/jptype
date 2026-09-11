@@ -90,16 +90,26 @@ function parseLinesField(raw: unknown): SongLine[] | string {
 			continue;
 		}
 		if (!item || typeof item !== 'object') return 'line invalid';
-		const { text, start } = item as { text?: unknown; start?: unknown };
+		const { text, start, original } = item as {
+			text?: unknown;
+			start?: unknown;
+			original?: unknown;
+		};
 		if (typeof text !== 'string' || text === '') return 'line invalid';
 		if (text.length > MAX_LINE_CHARS) return 'line too long';
-		if (start === undefined || start === null) {
-			lines.push({ text });
-			continue;
+		const line: SongLine = { text };
+		// The pasted (kanji) line behind a converted reading; dropped when it adds nothing.
+		if (original !== undefined && original !== null && original !== '') {
+			if (typeof original !== 'string') return 'line original invalid';
+			if (original.length > MAX_LINE_CHARS) return 'line too long';
+			if (original !== text) line.original = original;
 		}
-		if (typeof start !== 'number' || !Number.isFinite(start) || start < 0)
-			return 'line start invalid';
-		lines.push({ text, start: Math.round(start * 100) / 100 });
+		if (start !== undefined && start !== null) {
+			if (typeof start !== 'number' || !Number.isFinite(start) || start < 0)
+				return 'line start invalid';
+			line.start = Math.round(start * 100) / 100;
+		}
+		lines.push(line);
 	}
 	return lines;
 }

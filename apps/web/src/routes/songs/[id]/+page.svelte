@@ -311,10 +311,16 @@
 
 	const previous = $derived(active && active.index > 0 ? lineTextAt(active.index - 1) : undefined);
 	const upcoming = $derived(active ? lineTextAt(active.index + 1) : undefined);
+	/** The pasted (kanji) form of the line being typed, when the reading was converted (M4-1d). */
+	const currentOriginal = $derived(active ? originalOf(active.current) : undefined);
 
 	function lineTextAt(index: number): string | undefined {
 		if (mode === 'sync') return sync?.lines[index]?.text;
 		return run?.questions[index];
+	}
+
+	function originalOf(text: string): string | undefined {
+		return song?.lines.find((l) => l.text === text && l.original !== undefined)?.original;
 	}
 </script>
 
@@ -457,6 +463,9 @@
 						{#if skippedLines > 0}· {m.songs_skipped({ count: skippedLines })}{/if}
 					</p>
 					<p class="muted line" lang="ja">{previous ?? ''}</p>
+					{#if currentOriginal !== undefined}
+						<p class="original center" lang="ja">{currentOriginal}</p>
+					{/if}
 					<TypingArea run={sync} showHint={settings.showHint} />
 					<p class="muted line" lang="ja">{upcoming ?? ''}</p>
 					<p class="muted small center status" aria-live="polite">
@@ -598,6 +607,11 @@
 </div>
 
 <style>
+	.original {
+		margin: 0;
+		font-size: 1.125rem;
+		color: var(--fg-muted);
+	}
 	.song {
 		gap: var(--space-8);
 	}

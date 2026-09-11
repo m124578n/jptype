@@ -1,6 +1,6 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-11（M4-1c、M4-4 後台與分析事件、分數規則定案之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-11（M4-1c、M4-4 後台與分析事件、分數規則定案、M4-1d 歌詞貼漢字之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
@@ -37,6 +37,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
 
 ## 4. 待辦（依優先序）
+
+### 2026-09-11 已合併（M4-1d 歌詞貼漢字 + 標點不擋）
+
+- `/songs` 儲存時若有打不出來的字：瀏覽器端 kuromoji 轉假名 + 略過標點 → 「確認讀音」清單逐行可改 → 再存。`lib/songs-kana.ts`（純函式有測試）、`SongLine.original`（localStorage 與 `content_lines.original_text` 都存），練習頁與對時頁顯示原文。細節與沒做的事見 DECISIONS「M4-1d」。
+- 驗證：單元測試（假 tokenizer）、型別、API 往返（`original` 進 D1 再讀回）；**瀏覽器裡實際載字典轉換沒有實測**，owner 用 `dev-login.mjs` 登入後貼一段漢字歌詞試一次即可。
 
 ### 2026-09-11 已合併（分數規則定案）
 

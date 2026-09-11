@@ -50,6 +50,7 @@
 - ✅ B. 瀏覽器 TTS（`lib/speech.ts`，Web Speech API 本機 ja-JP 語音，零網路零 assets）：認識頁卡片播放鈕 + 聽打模式 `/listen`（計時賽題庫 × 20 題、自動念題、Tab 重播、答對或連錯兩鍵才短暫揭曉；成績只存本機）
 - ✅ C. 歌詞打字 `/songs`：嵌 youtube-nocookie 官方播放器（只存 11 字元影片 id）+ 使用者自貼假名歌詞（漢字會被擋下並指出行號），只存 localStorage、不送伺服器、不進榜；`/songs/[id]` 逐行打（前後行淡顯）
   - ✅ 同步模式（唱到哪打到哪）：`lines` 改成 `{ text, start? }`（秒），`parseLyrics` 吃 LRC `[mm:ss.xx]`／`[mm:ss]`（一行多標籤會複製該行）、裸 `mm:ss`／`hh:mm:ss` 前綴、metadata 與 enhanced 標籤會丟掉；YouTube IFrame Player API 每 100 ms 回報時間，`start <= t` 的最後一行就是目前句，沒打完也跟著走（結果頁顯示跳過句數），暫停時不吃鍵、Seek 會重開該行的 `TypingSession`；倒數 3-2-1-START、Space 播放／暫停、Esc 離開、Ctrl+R 重來。模式（同步／自由）記在 localStorage
+  - ✅ 貼漢字歌詞也可以（**M4-1d，2026-09-11**，owner：「只能填平假名太麻煩」）：儲存時在瀏覽器用 kuromoji（跟後台匯入同一條管線、字典自家網域）把漢字轉成假名、打不出來的標點符號自動略過，出現「確認讀音」逐行可改的清單，確認後才存；`SongLine.original` 保留原文（D1 的 `content_lines.original_text`），練習時顯示在假名上方，對時頁也顯示原文。純假名的貼法完全不變（共享時間軸的雜湊也不變）
   - ✅ 對時工具 `/songs/[id]/timing`：時間標記不靠任何網站，使用者邊播邊按 Space 打點（每行 ±0.5 秒微調、「從這句重播」、上一句重打、全部重來），存回該首歌的 `lines[].start`；兩行以上有時間才開放同步模式
 - ⬜ 批次音檔 → R2（瀏覽器 TTS 先頂著）：**待 owner 選路線**（Azure F0 免費層 vs. VOICEVOX 本機產檔），調查結果在 DECISIONS「TTS 路線」
 - ⬜ AI 生成分級文章（離線 + 人工校對，需要 API key）

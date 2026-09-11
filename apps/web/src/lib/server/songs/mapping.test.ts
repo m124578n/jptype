@@ -125,6 +125,17 @@ describe('row mapping', () => {
 		expect(rowsToLines(linesToRows('S1', SONG.lines))).toEqual(SONG.lines);
 	});
 
+	it('keeps the pasted kanji line as originalText and reads it back as original (M4-1d)', () => {
+		const lines = [{ text: 'きょうはいいてんき', original: '今日はいい天気', start: 2 }];
+		const rows = linesToRows('S1', lines);
+		expect(rows[0]).toMatchObject({
+			originalText: '今日はいい天気',
+			kanaText: 'きょうはいいてんき',
+			romajiText: 'kyouhaiitenki'
+		});
+		expect(rowsToLines(rows)).toEqual(lines);
+	});
+
 	it('round-trips a song through a content row', () => {
 		const row = contentRow();
 		expect(isSongRow(row)).toBe(true);

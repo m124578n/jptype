@@ -16,10 +16,15 @@ import { findKana, MAX_KANA_LENGTH, SYMBOLS } from '@jptype/data';
 const KEY = 'jptype:songs';
 const MODE_KEY = 'jptype:songMode';
 
-/** One typing question. `start` (seconds into the video) is what enables sync mode. */
+/**
+ * One typing question. `text` is the kana the engine types; `start` (seconds into the video)
+ * is what enables sync mode; `original` is the line as pasted (kanji included) when it was
+ * converted to kana (M4-1d), shown above the kana while practising.
+ */
 export interface SongLine {
 	text: string;
 	start?: number;
+	original?: string;
 }
 
 export interface Song {
@@ -50,6 +55,7 @@ function isStoredLine(value: unknown): value is StoredLine {
 	if (typeof value !== 'object' || value === null) return false;
 	const line = value as Partial<SongLine>;
 	if (typeof line.text !== 'string') return false;
+	if (line.original !== undefined && typeof line.original !== 'string') return false;
 	return (
 		line.start === undefined || (typeof line.start === 'number' && Number.isFinite(line.start))
 	);
@@ -73,7 +79,12 @@ function isStoredSong(value: unknown): value is StoredSong {
 /** Migrate one stored line (legacy `string`, current `{ text, start? }`) to the current shape. */
 function toLine(line: StoredLine): SongLine {
 	if (typeof line === 'string') return { text: line };
-	return line.start === undefined ? { text: line.text } : { text: line.text, start: line.start };
+	const out: SongLine = { text: line.text };
+	if (line.start !== undefined) out.start = line.start;
+	if (line.original !== undefined && line.original !== '' && line.original !== line.text) {
+		out.original = line.original;
+	}
+	return out;
 }
 
 function toSong(song: StoredSong): Song {

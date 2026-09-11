@@ -220,7 +220,7 @@
 				<li class="card row line" class:current={i === index} bind:this={rows[i]}>
 					<button type="button" class="pick" aria-current={i === index} onclick={() => focusRow(i)}>
 						<span class="muted small no">{m.songs_timing_line({ line: i + 1 })}</span>
-						<span class="text" lang="ja">{line.text}</span>
+						<span class="text" lang="ja">{line.original ?? line.text}</span>
 					</button>
 					<span class="time" class:untimed={line.start === undefined}>{formatTime(line.start)}</span
 					>

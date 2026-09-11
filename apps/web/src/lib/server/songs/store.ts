@@ -197,6 +197,7 @@ export function d1SongStore(db: Db): SongStore {
 				.select({
 					contentId: contentLines.contentId,
 					kanaText: contentLines.kanaText,
+					originalText: contentLines.originalText,
 					startTime: contentLines.startTime
 				})
 				.from(contentLines)

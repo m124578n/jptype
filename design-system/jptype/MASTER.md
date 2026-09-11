@@ -80,6 +80,6 @@ Inline SVG (Lucide outlines, 20px, stroke 1.75). No emoji as icons.
 
 - **Mark**：一顆鍵帽（accent 色的帽面 + 深 28% 的底座，做出按鍵厚度），帽面上一個粗體「ぱ」（on-accent 色，偏左），右上角三道短線是敲鍵聲——ぱちぱち 既是鍵盤聲也是拍手聲。64×64 viewBox，最小可用 16px（favicon 時三道線退成一個小點也還認得出鍵帽）。
 - **Wordmark**：「ぱちぱち」Noto Sans JP 700，字距 0.02em，高度為 mark 的 0.7。header 用 mark + wordmark；favicon、manifest、社群縮圖只用 mark。
-- **顏色**：只用 / ，深淺模式自動對調（ 用 CSS 變數； 固定 #0D9488 / #0A6B62 / #FFFFFF）。不做漸層、不加陰影、不加外框。
+- **顏色**：只用 `--accent` / `--on-accent`，深淺模式自動對調（`Logo.svelte` 用 CSS 變數；`static/icon.svg` 固定 #0D9488 / #0A6B62 / #FFFFFF）。不做漸層、不加陰影、不加外框。
 - **禁止**：把「ぱ」換成別的假名、改成多色、旋轉、加光暈。
-- 來源：、（= ）。
+- 來源：`apps/web/src/lib/components/Logo.svelte`、`apps/web/static/icon.svg`（= `src/lib/assets/favicon.svg`）。

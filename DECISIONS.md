@@ -694,6 +694,6 @@ M4-1c 已把歌併進 `contents`，所以「不限歌曲」只是：`SongRecord.
 
 ## 2026-09-11 站名「ぱちぱち」與 logo
 
-owner 從五個提案裡選了 **ぱちぱち**（鍵盤敲擊聲，也是拍手聲；好記、可愛、中文圈也念得出來）。 改為「ぱちぱち」，網頁 title 維持「日文打字練習」（SEO 用字）， 是「ぱちぱち｜日文打字練習」，manifest 名稱「ぱちぱち — 日文打字練習」，JSON-LD 的 alternateName 列 ぱちぱち / pachipachi / jptype。repo、套件與程式識別字維持 jptype，不改。
+owner 從五個提案裡選了 **ぱちぱち**（鍵盤敲擊聲，也是拍手聲；好記、可愛、中文圈也念得出來）。`app_name` 改為「ぱちぱち」，網頁 title 維持「日文打字練習」（SEO 用字），`og:site_name` 是「ぱちぱち｜日文打字練習」，manifest 名稱「ぱちぱち — 日文打字練習」，JSON-LD 的 alternateName 列 ぱちぱち / pachipachi / jptype。repo、套件與程式識別字維持 jptype，不改。
 
-Logo 設計見 「Logo」：鍵帽 + ぱ + 三道敲擊線。選「ぱ」而不是「あ」是因為站名的第一個音就是它，半濁點的圈又剛好像一顆按鍵指示燈。仍然缺 PNG（og:image 1200×630、apple-touch-icon 180×180），需要 owner 用有字型的工具從 匯出。
+Logo 設計見 `design-system/jptype/MASTER.md`「Logo」：鍵帽 + ぱ + 三道敲擊線。選「ぱ」而不是「あ」是因為站名的第一個音就是它，半濁點的圈又剛好像一顆按鍵指示燈。仍然缺 PNG（og:image 1200×630、apple-touch-icon 180×180），需要 owner 用有字型的工具從 `static/icon.svg` 匯出。

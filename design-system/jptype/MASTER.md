@@ -82,4 +82,4 @@ Inline SVG (Lucide outlines, 20px, stroke 1.75). No emoji as icons.
 - **Wordmark**：「ぱちぱち」Noto Sans JP 700，字距 0.02em，高度為 mark 的 0.7。header 用 mark + wordmark；favicon、manifest、社群縮圖只用 mark。
 - **顏色**：只用 `--accent` / `--on-accent`，深淺模式自動對調（`Logo.svelte` 用 CSS 變數；`static/icon.svg` 固定 #0D9488 / #0A6B62 / #FFFFFF）。不做漸層、不加陰影、不加外框。
 - **禁止**：把「ぱ」換成別的假名、改成多色、旋轉、加光暈。
-- 來源：`apps/web/src/lib/components/Logo.svelte`、`apps/web/static/icon.svg`（= `src/lib/assets/favicon.svg`）。
+- **產生方式**：`pnpm --filter web brand`（`apps/web/scripts/brand.mjs`）。「ぱ」與社群卡的文字用 fontkit 從 Noto Sans CJK JP Bold（SIL OFL，放在 git-ignored 的 `apps/web/.cache/fonts/`）轉成 SVG path，所以 logo 不依賴使用者的字型；PNG 用 resvg 的 WASM 版點陣化。產出：`static/icon.svg`（= `src/lib/assets/favicon.svg`）、`src/lib/assets/logo-glyph.ts`（`Logo.svelte` 用的 path）、`static/icon-192.png`、`static/icon-512.png`、`static/apple-touch-icon.png`（180，淺色底）、`static/og.png`（1200×630：鍵帽 + ぱちぱち + 日文打字練習 + 一條主色線）。改 logo 就改 `brand.mjs` 裡的 `markSvg` 再跑一次。

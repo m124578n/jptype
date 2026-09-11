@@ -42,3 +42,4 @@ apps/web/static/dict/
 
 # Claude Code local settings
 .claude/settings.local.json
+apps/web/.cache/

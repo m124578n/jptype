@@ -37,6 +37,7 @@
 	<link rel="canonical" href={canonical} />
 	<link rel="icon" href={favicon} type="image/svg+xml" />
 	<link rel="manifest" href="/manifest.webmanifest" />
+	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	<meta name="application-name" content={m.app_name()} />
 	<meta name="apple-mobile-web-app-title" content={m.app_name()} />
 	<meta property="og:site_name" content="{m.app_name()}｜{m.seo_site_name()}" />
@@ -45,7 +46,12 @@
 	<meta property="og:title" content={seo.title} />
 	<meta property="og:description" content={seo.description} />
 	<meta property="og:url" content={canonical} />
-	<meta name="twitter:card" content="summary" />
+	<meta property="og:image" content="{page.url.origin}/og.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="{m.app_name()}｜{m.seo_site_name()}" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:image" content="{page.url.origin}/og.png" />
 	<meta name="twitter:title" content={seo.title} />
 	<meta name="twitter:description" content={seo.description} />
 	{#if noindex}

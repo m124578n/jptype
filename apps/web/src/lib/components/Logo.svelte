@@ -6,6 +6,8 @@
 	 * colour so the same mark reads on light and dark backgrounds. `size` is the height in px;
 	 * the wordmark is optional so the mark alone works as an icon.
 	 */
+	import { LOGO_GLYPH_PA } from '$lib/assets/logo-glyph';
+
 	let { size = 28, wordmark = true }: { size?: number; wordmark?: boolean } = $props();
 </script>
 
@@ -22,16 +24,8 @@
 		<rect x="4" y="10" width="56" height="52" rx="14" class="plinth" />
 		<!-- cap -->
 		<rect x="4" y="4" width="56" height="52" rx="14" class="cap" />
-		<!-- ぱ, sitting a little left so the clacks have room -->
-		<text
-			x="29"
-			y="43"
-			text-anchor="middle"
-			font-family="'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', system-ui, sans-serif"
-			font-size="32"
-			font-weight="700"
-			class="glyph">ぱ</text
-		>
+		<!-- ぱ as a path (scripts/brand.mjs, Noto Sans CJK JP Bold), sitting a little left so the clacks have room -->
+		<path d={LOGO_GLYPH_PA} class="glyph" />
 		<!-- ぱち、ぱち: three clack strokes -->
 		<g class="clack" stroke-width="3.2" stroke-linecap="round" fill="none">
 			<path d="M47 20 L52 15" />

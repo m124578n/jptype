@@ -129,7 +129,9 @@ export class PracticeRun implements TypingRun {
 		return this.hint.charAt(this.typed.length);
 	}
 
+	/** True once the first key was logged. Reactive: `startedAt` is plain, so read `tick`. */
 	get started(): boolean {
+		void this.tick;
 		return this.startedAt !== null;
 	}
 

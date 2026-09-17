@@ -8,6 +8,7 @@
 	import KanaCard from '$lib/components/KanaCard.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
+	import KeyCapture from '$lib/components/KeyCapture.svelte';
 	import TypingArea from '$lib/components/TypingArea.svelte';
 	import { weakPool } from '$lib/practice/questions';
 	import { PracticeRun } from '$lib/practice/run.svelte';
@@ -90,13 +91,9 @@
 		void submitPracticeRun(r, mode, { loggedIn, turnstileSiteKey });
 	}
 
-	function onkeydown(e: KeyboardEvent) {
+	function onkey(key: string, now: number) {
 		if (phase !== 'practice' || !run) return;
-		if (e.ctrlKey || e.metaKey || e.altKey) return;
-		if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
-		if (e.key.length !== 1) return;
-		e.preventDefault();
-		const res = run.press(e.key, performance.now());
+		const res = run.press(key, now);
 		if (!res) return;
 		sound.play(res.ok ? 'key' : 'error');
 		if (run.finished) finish(run);
@@ -106,8 +103,6 @@
 		[...(selected?.romaji[0] ?? '')].filter((ch, i, all) => all.indexOf(ch) === i)
 	);
 </script>
-
-<svelte:window {onkeydown} />
 
 <div class="container stack lesson">
 	<header class="row head">
@@ -145,7 +140,9 @@
 			<p class="muted progress">
 				{m.lesson_practice_progress({ current: run.index + 1, total: run.total })}
 			</p>
-			<TypingArea {run} showHint={settings.showHint} hints={lesson.hints} />
+			<KeyCapture active={phase === 'practice'} {onkey}>
+				<TypingArea {run} showHint={settings.showHint} hints={lesson.hints} />
+			</KeyCapture>
 			{#if settings.showKeyboard}
 				<Keyboard next={run.nextKey} />
 			{/if}

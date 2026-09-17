@@ -5,6 +5,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { resolve } from '$app/paths';
 	import Icon from '$lib/components/Icon.svelte';
+	import KeyCapture from '$lib/components/KeyCapture.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
 	import type { ErrorAnalysis } from '$lib/practice/errors';
@@ -154,21 +155,20 @@
 		phase = 'result';
 	}
 
-	function onkeydown(e: KeyboardEvent) {
-		if (phase !== 'run' || !run) return;
-		if (e.ctrlKey || e.metaKey || e.altKey) return;
-		if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
-		// Tab replays the question; Shift+Tab is left alone so the page stays navigable.
-		if (e.key === 'Tab' && !e.shiftKey) {
-			e.preventDefault();
-			play();
-			return;
-		}
-		if (e.key.length !== 1) return;
+	// Tab replays the question; Shift+Tab is left alone so the page stays navigable.
+	function onspecial(e: KeyboardEvent): boolean {
+		if (phase !== 'run' || !run) return false;
+		if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return false;
 		e.preventDefault();
+		play();
+		return true;
+	}
+
+	function onkey(key: string, now: number) {
+		if (phase !== 'run' || !run) return;
 		// press() may swap in the next question's session; remember the units being typed.
 		const units = run.session.units;
-		const res = run.press(e.key, performance.now());
+		const res = run.press(key, now);
 		if (!res) return;
 		sound.play(res.ok ? 'key' : 'error');
 		const kana = units[res.unitIndex]?.kana ?? '';
@@ -203,7 +203,6 @@
 </script>
 
 <svelte:head><title>{m.listen_title()} · {m.seo_site_name()}</title></svelte:head>
-<svelte:window {onkeydown} />
 
 <div class="container stack listen">
 	<header class="stack head">
@@ -246,21 +245,26 @@
 			<p class="muted progress">
 				{m.listen_progress({ current: run.index + 1, total: run.total })}
 			</p>
-			<div class="quiz" aria-label={m.listen_masked({ current: run.index + 1, total: run.total })}>
-				<p class="mask" class:speaking aria-hidden="true">
-					{#each masked as dot, i (i)}
-						<span class="dot" class:current={i === run.unitIndex}>{dot}</span>
-					{/each}
-				</p>
-				<p class="reveal muted" lang="ja" aria-live="polite">
-					{#if revealed}{revealed}{/if}
-				</p>
-				<p class="typed" aria-hidden="true">
-					<span>{run.typed}</span>{#if stuck}<span class="rest"
-							>{run.hint.slice(run.typed.length)}</span
-						>{/if}
-				</p>
-			</div>
+			<KeyCapture active={phase === 'run'} {onkey} {onspecial}>
+				<div
+					class="quiz"
+					aria-label={m.listen_masked({ current: run.index + 1, total: run.total })}
+				>
+					<p class="mask" class:speaking aria-hidden="true">
+						{#each masked as dot, i (i)}
+							<span class="dot" class:current={i === run.unitIndex}>{dot}</span>
+						{/each}
+					</p>
+					<p class="reveal muted" lang="ja" aria-live="polite">
+						{#if revealed}{revealed}{/if}
+					</p>
+					<p class="typed" aria-hidden="true">
+						<span>{run.typed}</span>{#if stuck}<span class="rest"
+								>{run.hint.slice(run.typed.length)}</span
+							>{/if}
+					</p>
+				</div>
+			</KeyCapture>
 			<div class="row replay">
 				<button type="button" class="btn btn--primary" onclick={play}>
 					<Icon name="speaker" />

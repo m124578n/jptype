@@ -7,6 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
+	import KeyCapture from '$lib/components/KeyCapture.svelte';
 	import TypingArea from '$lib/components/TypingArea.svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 	import { PracticeRun } from '$lib/practice/run.svelte';
@@ -273,44 +274,46 @@
 		else controller?.play();
 	}
 
-	function onkeydown(e: KeyboardEvent) {
-		const tag = (e.target as HTMLElement | null)?.tagName;
-		if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-		if (fixing) return; // the reading editor owns the keyboard
+	/** Page shortcuts (Escape, Ctrl+R, space in sync mode); printable keys go to `onkey`. */
+	function onspecial(e: KeyboardEvent): boolean {
+		if (fixing) return true; // the reading editor owns the keyboard
 
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			void goto(resolve('/library'));
-			return;
+			return true;
 		}
 		if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R')) {
 			e.preventDefault();
 			reset();
-			return;
+			return true;
 		}
-		if (e.ctrlKey || e.metaKey || e.altKey) return;
-		if (result !== null) return;
+		if (e.ctrlKey || e.metaKey || e.altKey) return false;
+		if (result !== null || mode !== 'sync' || !sync) return false;
+		if (phase === 'idle') {
+			if (e.key !== ' ') return false;
+			e.preventDefault();
+			startSync();
+			return true;
+		}
+		// Space is play/pause — unless the line really expects a space character.
+		if (e.key === ' ' && sync.nextKey !== ' ') {
+			e.preventDefault();
+			togglePlay();
+			return true;
+		}
+		return false;
+	}
+
+	function onkey(key: string, now: number) {
+		if (fixing || result !== null) return;
 
 		if (mode === 'sync') {
 			const s = sync;
-			if (!s) return;
-			if (phase === 'idle') {
-				if (e.key !== ' ') return;
-				e.preventDefault();
-				startSync();
-				return;
-			}
-			// Space is play/pause — unless the line really expects a space character.
-			if (e.key === ' ' && s.nextKey !== ' ') {
-				e.preventDefault();
-				togglePlay();
-				return;
-			}
+			if (!s || phase === 'idle') return;
 			if (playerState !== 'playing') return; // paused: the song is not moving, ignore typing
-			if (e.key.length !== 1) return;
-			e.preventDefault();
 			const line = s.current;
-			const res = s.press(e.key, performance.now());
+			const res = s.press(key, now);
 			if (!res) return;
 			noteKey(line, res.ok);
 			sound.play(res.ok ? 'key' : 'error');
@@ -320,10 +323,8 @@
 
 		const r = run;
 		if (!r || r.finished) return;
-		if (e.key.length !== 1) return;
-		e.preventDefault();
 		const line = r.current;
-		const res = r.press(e.key, performance.now());
+		const res = r.press(key, now);
 		if (!res) return;
 		noteKey(line, res.ok);
 		sound.play(res.ok ? 'key' : 'error');
@@ -403,7 +404,6 @@
 <svelte:head>
 	<title>{song ? song.title : m.songs_title()} · {m.seo_site_name()}</title>
 </svelte:head>
-<svelte:window {onkeydown} />
 
 <div class="container container--wide stack song">
 	{#if loaded && !song}
@@ -537,15 +537,17 @@
 					/>
 				{:else}
 					<p class="muted line" lang="ja">{previous ?? ''}</p>
-					<div
-						class="lyric"
-						class:ruby={currentOriginal !== undefined && currentTokens === undefined}
-					>
-						<TypingArea run={r} showHint={settings.showHint} tokens={currentTokens} />
-						{#if currentOriginal !== undefined && currentTokens === undefined}
-							<p class="kanji" lang="ja">{currentOriginal}</p>
-						{/if}
-					</div>
+					<KeyCapture active={result === null && !fixing} {onkey} {onspecial}>
+						<div
+							class="lyric"
+							class:ruby={currentOriginal !== undefined && currentTokens === undefined}
+						>
+							<TypingArea run={r} showHint={settings.showHint} tokens={currentTokens} />
+							{#if currentOriginal !== undefined && currentTokens === undefined}
+								<p class="kanji" lang="ja">{currentOriginal}</p>
+							{/if}
+						</div>
+					</KeyCapture>
 					<p class="muted line" lang="ja">{upcoming ?? ''}</p>
 				{/if}
 				{@render tools(stop)}

@@ -713,3 +713,13 @@ Logo：先做了單鍵版，owner 說「給我幾版讓我挑」，用同一條�
 ### 部署管線：Workers Builds，不用 GitHub Actions
 
 `deploy.yml` 需要 owner 自建 API token 放進 GitHub secrets；owner 選了在 Cloudflare 那邊授權 GitHub App 走 **Workers Builds**（token 由 Cloudflare 自動產、設定在 Dashboard），兩條路只能留一條，`deploy.yml` 刪除。Deploy command 把 D1 migration 放在 `wrangler deploy` 前面，跟原本 Action 的順序一樣。正式網址 **https://pachipachi.shunzz.com**（`routes` + `custom_domain: true`，zone `shunzz.com` 在同一帳號；`workers_dev: false`，只留一個 canonical origin）。Google OAuth 的 redirect URI 兩個 origin 都登記過了。
+
+## 2026-09-17 手機也能打（owner：「我想要手機也能打，但現在手機不會跳出鍵盤可以按」）
+
+原本規格 §1 把「手機觸控打字」列在明確不做，只顯示「建議用實體鍵盤」；owner 上線後改主意，要能打。
+
+**做法**：新元件 `KeyCapture.svelte` 包住練習區（`TypingArea` 或聽打的遮罩），裡面放一個看不見但可聚焦的 `<input>`（`opacity: 0`、1px、`font-size: 16px` 防 iOS 放大、`autocapitalize=none` 等關掉自動修正）。點練習區或頁面在開始鍵裡呼叫 `focus()` 就會跳出手機鍵盤。**兩條輸入路徑、一次只走一條**：input 沒聚焦時吃 window `keydown`（桌機原本的行為）；input 聚焦時一律用 `input` 事件讀值——Android 鍵盤的 keydown 是 `Unidentified`，而 Gboard 會用組字（`insertCompositionText`）把整個詞一直送來，所以拿現值和上次交出去的字做前綴 diff，只餵新增的字，組字結束才清空。五個頁面（課程、計時賽、聽打、內容、我的內容）的 `onkeydown` 改成 `onkey(key, now)` + `onspecial(e)`（Escape、Ctrl+R、Tab 重播、同步模式的空白鍵），純函式邏輯沒動。
+
+**驗證**：dev server 上用 JS 模擬三種路徑（組字、insertText、未聚焦 keydown）與「聚焦時 keydown 不重複計數」，題號前進正確；**真機沒測**，owner 用手機開 /learn 任一課試一次。已知限制：iOS 只有在使用者手勢裡 focus 才會出鍵盤，所以「開始」後要點一下題目；手機若停在日文鍵盤會送假名進來，判定不會過，提示文字要使用者切英文鍵盤。
+
+同一輪的手機版 UX：header 在 ≤640px 改兩列（品牌＋登入／分頁連結橫捲）、`site-main` 上下留白縮小、內容篩選四組加小標、新增 `+error.svelte`（原本 404 是 SvelteKit 預設無樣式頁）、首頁課程卡「28 課」寫死改成 `LESSONS.length`。

@@ -17,7 +17,7 @@
 			href: resolve('/learn'),
 			icon: 'book',
 			title: m.home_card_learn_title,
-			body: m.home_card_learn_body
+			body: () => m.home_card_learn_body({ total: LESSONS.length })
 		},
 		{
 			href: resolve('/timed'),

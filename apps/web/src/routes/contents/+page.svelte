@@ -166,6 +166,7 @@
 	<!-- eslint-disable svelte/no-navigation-without-resolve -- filterHref() applies resolve(); only a query string is appended -->
 	<nav class="stack filters" aria-label={m.contents_filters()}>
 		<div class="row" role="group" aria-label={m.contents_filter_type()}>
+			<span class="label muted" aria-hidden="true">{m.contents_filter_type()}</span>
 			<a
 				class="btn btn--small"
 				href={filterHref('type', '')}
@@ -182,6 +183,7 @@
 			{/each}
 		</div>
 		<div class="row" role="group" aria-label={m.contents_filter_source()}>
+			<span class="label muted" aria-hidden="true">{m.contents_filter_source()}</span>
 			<a
 				class="btn btn--small"
 				href={filterHref('source', '')}
@@ -202,6 +204,7 @@
 			>
 		</div>
 		<div class="row" role="group" aria-label={m.contents_filter_jlpt()}>
+			<span class="label muted" aria-hidden="true">{m.contents_filter_jlpt()}</span>
 			<a
 				class="btn btn--small"
 				href={filterHref('jlpt', '')}
@@ -218,6 +221,7 @@
 			{/each}
 		</div>
 		<div class="row" role="group" aria-label={m.contents_filter_difficulty()}>
+			<span class="label muted" aria-hidden="true">{m.contents_filter_difficulty()}</span>
 			<a
 				class="btn btn--small"
 				href={filterHref('difficulty', '')}
@@ -334,11 +338,17 @@
 		font-size: 0.875rem;
 	}
 	.filters {
-		gap: var(--space-2);
+		gap: var(--space-3);
 	}
 	.filters .row {
 		flex-wrap: wrap;
 		gap: var(--space-2);
+	}
+	.filters .label {
+		flex-basis: 100%;
+		font-size: 0.75rem;
+		line-height: 1;
+		margin-bottom: calc(-1 * var(--space-1));
 	}
 	.cards {
 		list-style: none;

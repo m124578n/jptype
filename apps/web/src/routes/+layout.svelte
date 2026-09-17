@@ -62,16 +62,19 @@
 <header class="site-header">
 	<nav class="container container--wide row" aria-label="主要">
 		<a class="brand" href={resolve('/')} aria-label={m.seo_site_name()}><Logo size={26} /></a>
-		<a href={resolve('/learn')} aria-current={isLearn ? 'page' : undefined}>{m.nav_learn()}</a>
-		<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
-		<a href={resolve('/listen')} aria-current={isListen ? 'page' : undefined}>{m.nav_listen()}</a>
-		<a href={resolve('/library')} aria-current={isSongs ? 'page' : undefined}>{m.nav_songs()}</a>
-		<a href={resolve('/contents')} aria-current={isContents ? 'page' : undefined}>
-			{m.nav_contents()}
-		</a>
-		<a href={resolve('/leaderboard')} aria-current={isBoard ? 'page' : undefined}
-			>{m.nav_leaderboard()}</a
-		>
+		<!-- On phones this row drops under the brand and scrolls sideways (see .links). -->
+		<div class="links">
+			<a href={resolve('/learn')} aria-current={isLearn ? 'page' : undefined}>{m.nav_learn()}</a>
+			<a href={resolve('/timed')} aria-current={isTimed ? 'page' : undefined}>{m.nav_timed()}</a>
+			<a href={resolve('/listen')} aria-current={isListen ? 'page' : undefined}>{m.nav_listen()}</a>
+			<a href={resolve('/library')} aria-current={isSongs ? 'page' : undefined}>{m.nav_songs()}</a>
+			<a href={resolve('/contents')} aria-current={isContents ? 'page' : undefined}>
+				{m.nav_contents()}
+			</a>
+			<a href={resolve('/leaderboard')} aria-current={isBoard ? 'page' : undefined}
+				>{m.nav_leaderboard()}</a
+			>
+		</div>
 		<span class="spacer"></span>
 		{#if data.user}
 			<a href={resolve('/me')} aria-current={isMe ? 'page' : undefined}>{m.nav_me()}</a>
@@ -119,10 +122,16 @@
 		min-height: 56px;
 		gap: var(--space-6);
 	}
+	.links {
+		display: flex;
+		align-items: center;
+		gap: var(--space-6);
+	}
 	nav a:not(.btn) {
 		text-decoration: none;
 		padding: var(--space-2) 0;
 		border-bottom: 2px solid transparent;
+		white-space: nowrap;
 	}
 	nav a:not(.btn)[aria-current='page'] {
 		border-bottom-color: var(--accent);
@@ -173,5 +182,36 @@
 		justify-content: center;
 		gap: var(--space-4);
 		margin-top: var(--space-2);
+	}
+
+	/* Phones: brand + account on the first row, the section links as a second row that
+	   scrolls sideways instead of wrapping into a tall header. */
+	@media (max-width: 640px) {
+		nav {
+			gap: var(--space-3) var(--space-4);
+			padding-block: var(--space-2);
+		}
+		.brand {
+			margin-right: 0;
+		}
+		.links {
+			order: 10;
+			flex-basis: 100%;
+			gap: var(--space-4);
+			overflow-x: auto;
+			scrollbar-width: none;
+			-webkit-overflow-scrolling: touch;
+			margin-inline: calc(-1 * var(--space-6));
+			padding-inline: var(--space-6);
+		}
+		.links::-webkit-scrollbar {
+			display: none;
+		}
+		.name {
+			display: none;
+		}
+		.site-main {
+			padding: var(--space-6) 0 var(--space-16);
+		}
 	}
 </style>

@@ -15,6 +15,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import ResultPanel from '$lib/components/ResultPanel.svelte';
+	import KeyCapture from '$lib/components/KeyCapture.svelte';
 	import TypingArea from '$lib/components/TypingArea.svelte';
 	import type { ErrorAnalysis } from '$lib/practice/errors';
 	import { PracticeRun } from '$lib/practice/run.svelte';
@@ -129,14 +130,10 @@
 		});
 	}
 
-	function onkeydown(e: KeyboardEvent) {
+	function onkey(key: string, now: number) {
 		if (phase !== 'run' || !run) return;
-		if (e.ctrlKey || e.metaKey || e.altKey) return;
-		if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
-		if (e.key.length !== 1) return;
-		e.preventDefault();
 		const wasStarted = run.started;
-		const res = run.press(e.key, performance.now());
+		const res = run.press(key, now);
 		if (!res) return;
 		if (!wasStarted) startTimer();
 		sound.play(res.ok ? 'key' : 'error');
@@ -150,7 +147,6 @@
 </script>
 
 <svelte:head><title>{m.timed_title()} · {m.seo_site_name()}</title></svelte:head>
-<svelte:window {onkeydown} />
 
 <div class="container stack timed">
 	<header class="stack head">
@@ -201,7 +197,9 @@
 				{#if run.started}{remainingLabel}{:else}{seconds}.0{/if}
 				<span class="muted unit-s">s</span>
 			</p>
-			<TypingArea {run} showHint={settings.showHint} {hints} />
+			<KeyCapture active={phase === 'run'} {onkey}>
+				<TypingArea {run} showHint={settings.showHint} {hints} />
+			</KeyCapture>
 			{#if settings.showKeyboard}
 				<Keyboard next={run.nextKey} />
 			{/if}

@@ -28,7 +28,8 @@
 - ✅ 打字手感（owner 2026-09-10 地端試打：「很好」）：零延遲判定、動畫輕、鍵盤與提示同步（owner 2026-09-10 強調 UX 舒服）
 - ✅ 螢幕鍵盤（QWERTY）高亮下一鍵，可收合
 - ✅ 練習結果存 localStorage（每課最佳 / 次數、每假名 attempts / errors、設定）
-- ✅ 手機提示「建議使用實體鍵盤」（pointer: coarse）
+- ✅ 手機觸控打字（2026-09-17）：`KeyCapture` 把練習區包成可點的隱形輸入框，點一下叫出鍵盤；Android 走 input 事件（含 Gboard 組字），iOS／桌機走 keydown；提示改為「點題目叫出鍵盤、切英文鍵盤」（pointer: coarse）
+- ✅ 手機版 header（品牌＋登入一列、分頁連結一列可橫捲）、內容篩選加群組標籤、404／錯誤頁（2026-09-17）
 - ✅ 設計系統：`design-system/jptype/MASTER.md`（ui-ux-pro-max 產生後依規格校正）、單一 teal 主色、Noto Sans JP、深色跟系統
 
 ## M2 — 帳號、計時賽、排行榜
@@ -122,7 +123,7 @@
 
 ## 明確不做（第一版）
 
-かな入力、漢字輸入 / IME 變換、手機觸控打字、廣告 / 付費牆（只留 `user.plan` 欄位）、多語系 UI、即時對戰。
+かな入力、漢字輸入 / IME 變換、廣告 / 付費牆（只留 `user.plan` 欄位）、多語系 UI、即時對戰。
 
 ## 點子池
 

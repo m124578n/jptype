@@ -4,7 +4,7 @@
 
 ## 1. 現況一句話
 
-M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理、M4-4 分析事件（migration 0006）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**2026-09-17 已部署**到 https://pachipachi.shunzz.com（D1 + KV，R2 未開，見 DECISIONS「先不開 R2」）。
+M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理、M4-4 分析事件（migration 0006）都在 `main`，全部 push 到 https://github.com/m124578n/pachipachi 。**2026-09-17 已部署**到 https://pachipachi.shunzz.com（D1 + KV，R2 未開，見 DECISIONS「先不開 R2」）。
 
 ## 2. 新機器起手式
 
@@ -33,7 +33,7 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 | Azure Speech key（可選）                                                                                                                                 | M3 批次 TTS 音檔 → R2 | 之後的 `scripts/tts-batch.ts`                                       |
 | LLM API key（可選）                                                                                                                                      | M4-5 AI 分析與生成    | 之後再定                                                            |
 
-部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署。正式站 https://pachipachi.shunzz.com（2026-09-17 首次部署，owner 當場指示）；自動部署走 Cloudflare **Workers Builds**（Dashboard → jptype → Settings → Builds：repo `m124578n/jptype`、branch `main`、build `pnpm run build`、deploy `cd apps/web && npx wrangler d1 migrations apply DB --remote && npx wrangler deploy`），push `main` 就會建置＋套 migration＋部署；`deploy.yml` 已刪。Secrets（`BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID/SECRET`）已放在 Worker 上，不在 repo。
+部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署。正式站 https://pachipachi.shunzz.com（2026-09-17 首次部署，owner 當場指示）；自動部署走 Cloudflare **Workers Builds**（Dashboard → jptype → Settings → Builds：repo `m124578n/pachipachi`（原 jptype，2026-09-17 改名；Cloudflare 的 GitHub App 用 repo ID 綁，不用重連）、branch `main`、build `pnpm run build`、deploy `cd apps/web && npx wrangler d1 migrations apply DB --remote && npx wrangler deploy`），push `main` 就會建置＋套 migration＋部署；`deploy.yml` 已刪。Secrets（`BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID/SECRET`）已放在 Worker 上，不在 repo。
 
 ## 4. 待辦（依優先序）
 

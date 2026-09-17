@@ -27,7 +27,8 @@ Read `HANDOFF.md` first (current state, what is pending, what the owner must pro
 ## Deploy policy
 
 - Never run `wrangler deploy`, create Cloudflare resources, or put secrets from a Claude session. The owner verifies locally first and says when to deploy.
-- The GitHub Actions `deploy.yml` (push to `main`) is intentionally left enabled.
+- Production deploys via Cloudflare **Workers Builds** (Git integration, push to `main` → `pnpm build` → D1 migrations → `wrangler deploy`); settings live in the Cloudflare dashboard, not the repo. There is no GitHub Actions deploy workflow.
+- Production origin: https://pachipachi.shunzz.com (custom domain; `workers_dev` is off).
 
 ## Local dev gotchas (Windows)
 

@@ -13,7 +13,10 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
-	"workers_dev": true,
+	// Production hostname (zone shunzz.com is on this account; wrangler created the DNS record + cert).
+	// workers.dev is off so there is exactly one canonical origin for SEO / OAuth.
+	"routes": [{ "pattern": "pachipachi.shunzz.com", "custom_domain": true }],
+	"workers_dev": false,
 	"preview_urls": true,
 	"observability": { "enabled": true },
 

@@ -709,3 +709,7 @@ Logo：先做了單鍵版，owner 說「給我幾版讓我挑」，用同一條�
 **代價**：這段期間的練習沒有原始按鍵紀錄，之後開了 R2 也補不回來。要做 M4-5 的錯誤回放、或反作弊需要人工看 log 時再開（`wrangler r2 bucket create jptype` → 加回 `r2_buckets` → grep「先不開 R2」還原）。
 
 **同一次部署**：D1 `jptype`（APAC）、KV 都用 wrangler 建好，ID 直接寫在 `wrangler.jsonc`（不是秘密）；migration 0000–0007 已套到正式 D1；Turnstile 正式站還沒建 widget，`TURNSTILE_SECRET_KEY` 先不放（程式碼沒 key 就不驗，見「Turnstile」）。
+
+### 部署管線：Workers Builds，不用 GitHub Actions
+
+`deploy.yml` 需要 owner 自建 API token 放進 GitHub secrets；owner 選了在 Cloudflare 那邊授權 GitHub App 走 **Workers Builds**（token 由 Cloudflare 自動產、設定在 Dashboard），兩條路只能留一條，`deploy.yml` 刪除。Deploy command 把 D1 migration 放在 `wrangler deploy` 前面，跟原本 Action 的順序一樣。正式網址 **https://pachipachi.shunzz.com**（`routes` + `custom_domain: true`，zone `shunzz.com` 在同一帳號；`workers_dev: false`，只留一個 canonical origin）。Google OAuth 的 redirect URI 兩個 origin 都登記過了。

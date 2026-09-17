@@ -1,10 +1,10 @@
 # HANDOFF — 給下一個 Claude Code session（或任何接手的人）
 
-最後更新：2026-09-11（M4-1c、M4-4 後台與分析事件、分數規則定案、M4-1d 歌詞貼漢字之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
+最後更新：2026-09-17（首次部署之後）。這份文件講「現在在哪、怎麼跑、還缺什麼」。規格在 `jp-typing-spec.md`，功能狀態在 `ROADMAP.md`，每個技術/產品決策與理由在 `DECISIONS.md`，工作約定在 `CLAUDE.md`。先讀這四份再動手。
 
 ## 1. 現況一句話
 
-M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理、M4-4 分析事件（migration 0006）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**尚未部署**，也沒建任何 Cloudflare 資源。
+M0（引擎、假名表）、M1（課程 UI）、M2（登入、送分 API、排行榜、cron、/me）、M3 A/B/C（N5 單字與短句、瀏覽器 TTS 與聽打、歌詞打字）、M4-1（內容模型、後台匯入、Line Editor）、M4-1b（歌詞私有存 D1、時間軸共享、可選公開 + 通知取下、admin）、M4-1c（`songs` 表併入 `contents`，migration 0005）、M4-4 後台使用者與練習紀錄管理、M4-4 分析事件（migration 0006）都在 `main`，全部 push 到 https://github.com/m124578n/jptype 。**2026-09-17 已部署**到 https://pachipachi.shunzz.com（D1 + KV，R2 未開，見 DECISIONS「先不開 R2」）。
 
 ## 2. 新機器起手式
 
@@ -29,12 +29,11 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 | Google OAuth Client ID / Secret（redirect URI：`<origin>/api/auth/callback/google`）                                                                     | 登入                  | 本機 `apps/web/.dev.vars`；正式 `wrangler secret put`               |
 | Cloudflare 帳號：D1 與 KV **已建好**（2026-09-17，ID 在 `apps/web/wrangler.jsonc`）；R2 未啟用（要綁付款方式），keylog 先不存，見 DECISIONS「先不開 R2」 | 部署                  | 之後要開 R2：`wrangler r2 bucket create jptype` 再加回 `r2_buckets` |
 | Turnstile widget 的 site key / secret                                                                                                                    | 登入者送分防機器人    | `PUBLIC_TURNSTILE_SITE_KEY` var、`TURNSTILE_SECRET_KEY` secret      |
-| GitHub secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`                                                                                           | `deploy.yml` 自動部署 | GitHub repo settings                                                |
 | `BETTER_AUTH_SECRET`                                                                                                                                     | session 簽章          | secret                                                              |
 | Azure Speech key（可選）                                                                                                                                 | M3 批次 TTS 音檔 → R2 | 之後的 `scripts/tts-batch.ts`                                       |
 | LLM API key（可選）                                                                                                                                      | M4-5 AI 分析與生成    | 之後再定                                                            |
 
-部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
+部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署。正式站 https://pachipachi.shunzz.com（2026-09-17 首次部署，owner 當場指示）；自動部署走 Cloudflare **Workers Builds**（Dashboard → jptype → Settings → Builds：repo `m124578n/jptype`、branch `main`、build `pnpm run build`、deploy `cd apps/web && npx wrangler d1 migrations apply DB --remote && npx wrangler deploy`），push `main` 就會建置＋套 migration＋部署；`deploy.yml` 已刪。Secrets（`BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID/SECRET`）已放在 Worker 上，不在 repo。
 
 ## 4. 待辦（依優先序）
 

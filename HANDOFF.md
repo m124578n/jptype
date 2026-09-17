@@ -24,15 +24,15 @@ pnpm build && pnpm preview                         # 用 wrangler dev 跑 build 
 
 ## 3. 需要 owner 親自提供的東西（沒有這些就做不下去的項目）
 
-| 項目                                                                                                                | 用途                  | 放哪                                                           |
-| ------------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------- |
-| Google OAuth Client ID / Secret（redirect URI：`<origin>/api/auth/callback/google`）                                | 登入                  | 本機 `apps/web/.dev.vars`；正式 `wrangler secret put`          |
-| Cloudflare 帳號：`wrangler d1 create jptype`、`wrangler kv namespace create KV`、`wrangler r2 bucket create jptype` | 部署                  | 把 ID 填回 `apps/web/wrangler.jsonc`（現在是占位值）           |
-| Turnstile widget 的 site key / secret                                                                               | 登入者送分防機器人    | `PUBLIC_TURNSTILE_SITE_KEY` var、`TURNSTILE_SECRET_KEY` secret |
-| GitHub secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`                                                      | `deploy.yml` 自動部署 | GitHub repo settings                                           |
-| `BETTER_AUTH_SECRET`                                                                                                | session 簽章          | secret                                                         |
-| Azure Speech key（可選）                                                                                            | M3 批次 TTS 音檔 → R2 | 之後的 `scripts/tts-batch.ts`                                  |
-| LLM API key（可選）                                                                                                 | M4-5 AI 分析與生成    | 之後再定                                                       |
+| 項目                                                                                                                                                     | 用途                  | 放哪                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------- |
+| Google OAuth Client ID / Secret（redirect URI：`<origin>/api/auth/callback/google`）                                                                     | 登入                  | 本機 `apps/web/.dev.vars`；正式 `wrangler secret put`               |
+| Cloudflare 帳號：D1 與 KV **已建好**（2026-09-17，ID 在 `apps/web/wrangler.jsonc`）；R2 未啟用（要綁付款方式），keylog 先不存，見 DECISIONS「先不開 R2」 | 部署                  | 之後要開 R2：`wrangler r2 bucket create jptype` 再加回 `r2_buckets` |
+| Turnstile widget 的 site key / secret                                                                                                                    | 登入者送分防機器人    | `PUBLIC_TURNSTILE_SITE_KEY` var、`TURNSTILE_SECRET_KEY` secret      |
+| GitHub secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`                                                                                           | `deploy.yml` 自動部署 | GitHub repo settings                                                |
+| `BETTER_AUTH_SECRET`                                                                                                                                     | session 簽章          | secret                                                              |
+| Azure Speech key（可選）                                                                                                                                 | M3 批次 TTS 音檔 → R2 | 之後的 `scripts/tts-batch.ts`                                       |
+| LLM API key（可選）                                                                                                                                      | M4-5 AI 分析與生成    | 之後再定                                                            |
 
 部署規則（owner 定的）：**不要在 Claude session 裡執行 `wrangler deploy` 或建 Cloudflare 資源**，owner 地端驗證完會自己說要部署；GitHub Actions 的自動部署維持開著（目前因缺 secrets 會失敗，正常）。
 

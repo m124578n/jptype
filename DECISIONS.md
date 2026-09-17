@@ -697,3 +697,15 @@ M4-1c 已把歌併進 `contents`，所以「不限歌曲」只是：`SongRecord.
 owner 從五個提案裡選了 **ぱちぱち**（鍵盤敲擊聲，也是拍手聲；好記、可愛、中文圈也念得出來）。`app_name` 改為「ぱちぱち」，網頁 title 維持「日文打字練習」（SEO 用字），`og:site_name` 是「ぱちぱち｜日文打字練習」，manifest 名稱「ぱちぱち — 日文打字練習」，JSON-LD 的 alternateName 列 ぱちぱち / pachipachi / jptype。repo、套件與程式識別字維持 jptype，不改。
 
 Logo：先做了單鍵版，owner 說「給我幾版讓我挑」，用同一條管線出了六案（單鍵、圓鍵、字標、對話氣泡、雙鍵、線框，各附淺深色、16–32px、header 組合、分頁模擬）做成比較頁，owner 選**雙鍵「ぱ・ち」**。定稿見 `design-system/jptype/MASTER.md`「Logo」。PNG 也做出來了：`scripts/brand.mjs` 用 fontkit 把 Noto Sans CJK JP Bold 的字形轉成 path、resvg-wasm 點陣化，純 JS 不需要系統字型或原生工具；產出 icon 192／512、apple-touch-icon、og.png，`<head>` 已接上 `og:image`／`twitter:card=summary_large_image`／`apple-touch-icon`，manifest 也列了 PNG。字型檔不進 git（17 MB），首次執行前照腳本開頭的指令下載一次。
+
+## 2026-09-17 首次部署：先不開 R2（owner：「先不開 R2，照這樣改然後部署」）
+
+`wrangler r2 bucket create` 回 `Please enable R2 through the Cloudflare Dashboard [code: 10042]`：R2 要在 Dashboard 綁付款方式才能啟用，owner 決定先不開。
+
+**現況**：R2 只在三處使用，而且全部是「寫 keylog」（`POST /api/runs` 存 `runs/{id}.json`、後台刪紀錄時連帶刪、cron 刪 90 天前的）。**沒有任何地方把 keylog 讀回來**（沒有回放頁、沒有人工複查頁），分數重算與反作弊六條規則都在提交當下用 request body 的 log 做，寫進 D1 的是結果。所以拿掉 R2 只是少存一份原始證據，不影響任何現有功能。
+
+**改法**：`wrangler.jsonc` 拿掉 `r2_buckets`（`wrangler types` 後 `Env` 就沒有 `R2`，型別會抓出所有用到的地方）；`api/runs` 的 `putLog`、`admin-users/route.ts` 的 `deleteKeylog` 改成 no-op；`worker/index.ts` 的 cron 只留週榜快照。`submitRun` / `AdminUserDeps` 的介面與 `scheduled.ts` 的 `deleteOldLogs`（含測試）都保留，之後接回只要還原三處呼叫。不用 `env.R2?.put` 這種「binding 可能不存在」的寫法——沒綁定就型別上不存在，no-op 比 runtime 猜清楚。
+
+**代價**：這段期間的練習沒有原始按鍵紀錄，之後開了 R2 也補不回來。要做 M4-5 的錯誤回放、或反作弊需要人工看 log 時再開（`wrangler r2 bucket create jptype` → 加回 `r2_buckets` → grep「先不開 R2」還原）。
+
+**同一次部署**：D1 `jptype`（APAC）、KV 都用 wrangler 建好，ID 直接寫在 `wrangler.jsonc`（不是秘密）；migration 0000–0007 已套到正式 D1；Turnstile 正式站還沒建 widget，`TURNSTILE_SECRET_KEY` 先不放（程式碼沒 key 就不驗，見「Turnstile」）。

@@ -20,8 +20,7 @@ export function adminUserDeps(event: Pick<RequestEvent, 'platform'>): AdminUserD
 		invalidateLeaderboard: async (mode, week) => {
 			await Promise.all([env.KV.delete(`lb:${mode}:${week}`), env.KV.delete(`lb:${mode}:all`)]);
 		},
-		deleteKeylog: async (runId) => {
-			await env.R2.delete(`runs/${runId}.json`);
-		}
+		// No R2 keylogs to delete yet — DECISIONS「先不開 R2」.
+		deleteKeylog: async () => {}
 	};
 }

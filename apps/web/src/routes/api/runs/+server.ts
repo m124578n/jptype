@@ -41,10 +41,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		store: d1RunStore(db),
 		// `content:{id}` runs are validated against the content's own lines (M4-1).
 		poolForMode: contentPoolResolver({ store: d1ContentStore(db) }),
-		putLog: (id, log) =>
-			env.R2.put(`runs/${id}.json`, JSON.stringify(log), {
-				httpMetadata: { contentType: 'application/json' }
-			}).then(() => undefined),
+		// Keylog storage (spec §9.6, R2 `runs/{id}.json`) is not provisioned — DECISIONS「先不開 R2」.
+		putLog: async () => {},
 		invalidateLeaderboard: async (mode, week) => {
 			await Promise.all([env.KV.delete(`lb:${mode}:${week}`), env.KV.delete(`lb:${mode}:all`)]);
 		}

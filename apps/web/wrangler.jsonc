@@ -21,20 +21,22 @@
 	// Replace the placeholder IDs after running:
 	//   wrangler d1 create jptype
 	//   wrangler kv namespace create KV
-	//   wrangler r2 bucket create jptype
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "jptype",
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "25812aac-254a-4941-86a2-97082758051a",
 			"migrations_dir": "drizzle"
 		}
 	],
-	"kv_namespaces": [{ "binding": "KV", "id": "0000000000000000000000000000000000" }],
-	"r2_buckets": [{ "binding": "R2", "bucket_name": "jptype" }],
+	"kv_namespaces": [{ "binding": "KV", "id": "1c5b6fe1b6054de0bad8fc477772c206" }],
+	// No R2 yet (DECISIONS「先不開 R2」): keylogs are not persisted. To enable:
+	//   wrangler r2 bucket create jptype
+	//   "r2_buckets": [{ "binding": "R2", "bucket_name": "jptype" }],
+	// then restore putLog / deleteKeylog / deleteOldLogs (grep "先不開 R2").
 
-	// Weekly leaderboard settlement + R2 keylog cleanup: Monday 00:00 Asia/Taipei = Sunday 16:00 UTC.
-	"triggers": { "crons": ["0 16 * * 0"] },
+	// Weekly leaderboard settlement (+ R2 keylog cleanup once R2 exists): Monday 00:00 Asia/Taipei = Sunday 16:00 UTC (Cloudflare rejects `0` as Sunday, use SUN).
+	"triggers": { "crons": ["0 16 * * SUN"] },
 
 	"vars": {
 		"PUBLIC_TURNSTILE_SITE_KEY": "",

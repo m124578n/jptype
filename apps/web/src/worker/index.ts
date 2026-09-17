@@ -11,15 +11,15 @@
 import kit from '../../.svelte-kit/cloudflare/_worker.js';
 import { createDb } from '../lib/server/db/index.ts';
 import { d1RunStore } from '../lib/server/runs/store.ts';
-import { deleteOldLogs, snapshotLastWeek } from '../lib/server/scheduled.ts';
+import { snapshotLastWeek } from '../lib/server/scheduled.ts';
 
 const kitWorker = kit as ExportedHandler<Env>;
 
 async function runScheduled(env: Env, scheduledTime: number): Promise<void> {
 	const store = d1RunStore(createDb(env.DB));
 	const snap = await snapshotLastWeek({ store, kv: env.KV }, scheduledTime);
-	const deleted = await deleteOldLogs(env.R2, scheduledTime);
-	console.log(`[cron] snapshot ${snap.week} (${snap.modes} modes), deleted ${deleted} old logs`);
+	// `deleteOldLogs(env.R2, …)` returns here once R2 is provisioned — DECISIONS「先不開 R2」.
+	console.log(`[cron] snapshot ${snap.week} (${snap.modes} modes)`);
 }
 
 export default {
